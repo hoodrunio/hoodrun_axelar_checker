@@ -1,10 +1,9 @@
 import { Bot } from "grammy";
 import { Commands } from "./Commands";
 import { TgReply } from "./TGReply";
+import { TG_TOKEN } from "../../config";
 
-const tempToken = "";
-
-const tempDB = {};
+const TGToken = TG_TOKEN;
 
 export class TGBot {
   private static _instance: TGBot;
@@ -18,7 +17,7 @@ export class TGBot {
 
   public static async getInstance() {
     if (!TGBot._instance) {
-      const _instance = new TGBot({ token: tempToken });
+      const _instance = new TGBot({ token: TGToken });
       TGBot._instance = _instance;
 
       _instance.appendBaseSubscribers();
