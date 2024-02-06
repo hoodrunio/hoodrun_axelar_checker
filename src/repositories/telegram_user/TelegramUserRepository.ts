@@ -32,4 +32,20 @@ export class TelegramUserRepository extends BaseRepository<ITelegramUser> {
       }
     );
   }
+
+  async removeOperatorAddressFromChat(params: {
+    chat_id: number;
+    operator_address: string;
+  }): Promise<void> {
+    const { chat_id, operator_address } = params;
+
+    await TelegramUserDbModel.updateOne(
+      { chat_id },
+      {
+        $pull: {
+          operator_addresses: operator_address,
+        },
+      }
+    );
+  }
 }
