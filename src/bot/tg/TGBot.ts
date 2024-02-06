@@ -53,7 +53,6 @@ export class TGBot {
 
   private async initCommands() {
     const commands = Object.values(Commands);
-    console.log({ commands });
 
     await this.bot.api.setMyCommands(commands);
   }
