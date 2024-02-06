@@ -9,7 +9,7 @@ const TELEGRA_USER_COLLECTION_NAME = "telegram_users";
 
 const TelegramUserSchema: Schema<ITelegramUserDocument> =
   createAppSchema<ITelegramUserDocument>({
-    operator_addresses: { type: [String], required: true },
+    operator_addresses: { type: [String], required: true, default: [] },
     chat_id: {
       type: Number,
       required: true,
