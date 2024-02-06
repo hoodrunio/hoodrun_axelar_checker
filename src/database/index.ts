@@ -1,5 +1,6 @@
 import { connect, set } from "mongoose";
 import appConfig from "src/config";
+import { logger } from "src/utils/logger";
 
 const { dbConnectionString, dbName, dbUser, dbPwd, dbHost, dbPort } = appConfig;
 
@@ -12,15 +13,15 @@ export const connectDb = async (env: string) => {
     set("debug", true);
   }
 
-  console.log("Connecting to the database...", { connectionString });
+  logger.info("Connecting to the database...", { connectionString });
 
   try {
-    const connectionRes = await connect(connectionString, {
+    await connect(connectionString, {
       dbName: dbName,
     });
-    console.log("Connected to the database");
+    logger.info("Connected to the database");
   } catch (error) {
-    console.error(`Database connection failed: ${error}`);
+    logger.error(`Database connection failed: ${error}`);
     throw error;
   }
 };

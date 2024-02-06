@@ -11,6 +11,8 @@ const {
   DB_PWD,
   DB_HOST,
   DB_PORT,
+  LOG_FORMAT,
+  LOG_DIR,
 } = process.env;
 
 const appConfig = {
@@ -23,6 +25,8 @@ const appConfig = {
   dbPwd: DB_PWD as string,
   dbHost: DB_HOST as string,
   dbPort: DB_PORT as string,
+  logFormat: LOG_FORMAT as string,
+  logDir: LOG_DIR as string,
 };
 
 export default appConfig;
