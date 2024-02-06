@@ -39,7 +39,7 @@ class BaseRepository<T extends IBaseInterface> {
     return await this._model.findOne(query).exec();
   }
 
-  async updateOne(
+  async upsertOne(
     data: Partial<CRUDDoc<T>>,
     query?: FilterQuery<T>
   ): Promise<TDoc<T> | null> {
@@ -57,19 +57,6 @@ class BaseRepository<T extends IBaseInterface> {
   ): Promise<TDoc<T> | null> {
     return await this._model
       .findByIdAndUpdate(id, { ...data, updatedAt: new Date() }, { new: true })
-      .exec();
-  }
-
-  async upsertById(
-    id: string | null,
-    data: Partial<CRUDDoc<T>>
-  ): Promise<TDoc<T> | null> {
-    return await this._model
-      .findByIdAndUpdate(
-        id,
-        { ...data, updatedAt: new Date() },
-        { new: true, upsert: true }
-      )
       .exec();
   }
 
