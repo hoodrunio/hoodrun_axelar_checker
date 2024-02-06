@@ -1,7 +1,13 @@
-import { TGBot } from "./bot/tg/TGBot";
+import App from "./app/App";
+import { logger } from "./utils/logger";
 
-console.log("Starting bot...");
+logger.info("Starting bot...");
 
-const tgBot = await TGBot.getInstance();
+async function main() {
+  const app = new App();
+  await app.initalizeApplication();
 
-console.log("Bot started!");
+  logger.info("Application initialized");
+}
+
+main();
