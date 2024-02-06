@@ -1,0 +1,8 @@
+{
+  "restartable": "rs",
+  "ignore": [".git", "node_modules/**/*"],
+  "verbose": true,
+  "watch": ["app/", "translations/", "configs/"],
+  "ext": "ts,js,json",
+  "exec": "ts-node -r tsconfig-paths/register --transpile-only src/index.ts"
+}
