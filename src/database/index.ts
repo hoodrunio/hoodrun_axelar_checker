@@ -1,12 +1,12 @@
+import appConfig from "@config/index";
+import { logger } from "@utils/logger";
 import { connect, set } from "mongoose";
-import appConfig from "src/config";
-import { logger } from "src/utils/logger";
 
 const { dbConnectionString, dbName, dbUser, dbPwd, dbHost, dbPort } = appConfig;
 
-const connectionString = dbConnectionString
-  ? dbConnectionString
-  : `mongodb://${dbUser}:${dbPwd}@${dbHost}:${dbPort}/${dbName}`;
+const connectionString =
+  dbConnectionString ??
+  `mongodb://${dbUser}:${dbPwd}@${dbHost}:${dbPort}/${dbName}`;
 
 export const connectDb = async (env: string) => {
   if (env !== "production") {

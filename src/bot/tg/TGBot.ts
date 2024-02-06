@@ -1,7 +1,7 @@
 import { Bot } from "grammy";
 import { Commands } from "./Commands";
 import { TgReply } from "./TGReply";
-import appConfig from "src/config";
+import appConfig from "@config/index";
 
 export class TGBot {
   private static _instance: TGBot;

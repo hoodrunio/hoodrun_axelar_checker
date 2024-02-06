@@ -1,4 +1,4 @@
-import { connectDb } from "src/database";
+import { connectDb } from "@database/index";
 import { AxelarQueryService } from "../services/rest/AxelarQueryService";
 import { Validator } from "../services/rest/interfaces/validators/validator";
 
@@ -7,7 +7,7 @@ class App {
   env: string;
 
   constructor() {
-    this.env = process.env.NODE_ENV || "development";
+    this.env = process.env.NODE_ENV ?? "development";
 
     this.axelarQueryService = new AxelarQueryService();
     this.initalizeApplication();

@@ -1,6 +1,6 @@
+import appConfig from "@config/index";
 import { existsSync, mkdirSync } from "fs";
 import { join } from "path";
-import appConfig from "src/config";
 import winston from "winston";
 import winstonDaily from "winston-daily-rotate-file";
 
