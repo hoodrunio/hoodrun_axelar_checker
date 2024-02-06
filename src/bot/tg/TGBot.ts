@@ -1,9 +1,7 @@
 import { Bot } from "grammy";
 import { Commands } from "./Commands";
 import { TgReply } from "./TGReply";
-import { TG_TOKEN } from "../../config";
-
-const TGToken = TG_TOKEN;
+import appConfig from "src/config";
 
 export class TGBot {
   private static _instance: TGBot;
@@ -17,7 +15,7 @@ export class TGBot {
 
   public static async getInstance() {
     if (!TGBot._instance) {
-      const _instance = new TGBot({ token: TGToken });
+      const _instance = new TGBot({ token: appConfig.tgToken });
       TGBot._instance = _instance;
 
       _instance.appendBaseSubscribers();
@@ -50,9 +48,7 @@ export class TGBot {
   }
 
   private _addOperatorAddressCMD() {
-    this.bot.command(Commands.AddOperatorAddress.command, (ctx) => {
-      const a = ctx.message.text;
-    });
+    this.bot.command(Commands.AddOperatorAddress.command, (ctx) => {});
   }
 
   private async initCommands() {
