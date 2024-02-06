@@ -16,4 +16,20 @@ export class TelegramUserRepository extends BaseRepository<ITelegramUser> {
 
     return !!telegram_user;
   }
+
+  async addOperatorAddressToChat(params: {
+    chat_id: number;
+    operator_address: string;
+  }): Promise<void> {
+    const { chat_id, operator_address } = params;
+
+    await TelegramUserDbModel.updateOne(
+      { chat_id },
+      {
+        $addToSet: {
+          operator_addresses: operator_address,
+        },
+      }
+    );
+  }
 }
