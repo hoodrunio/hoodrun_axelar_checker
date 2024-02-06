@@ -1,0 +1,21 @@
+FROM node:18.17-buster-slim
+
+# Copy Dir
+COPY . ./app
+
+# Work to Dir
+WORKDIR /app
+
+# Install pnpm
+RUN npm install -g pnpm
+
+# Install Node Package
+RUN pnpm install --shamefully-hoist
+
+# Set Env
+ENV NODE_ENV development
+
+EXPOSE 3000
+
+# Cmd script
+CMD ["pnpm", "run", "dev"]
