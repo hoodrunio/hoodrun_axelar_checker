@@ -2,7 +2,7 @@ import { AppDb } from "@database/database";
 import { TelegramChatType } from "@database/models/telegram_user/telegram_user.interface";
 import { Context, NextFunction } from "grammy";
 
-export async function chatSaver(
+export async function chatSaverMiddleware(
   ctx: Context,
   next: NextFunction,
   db: AppDb
