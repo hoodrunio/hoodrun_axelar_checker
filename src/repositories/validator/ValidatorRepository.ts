@@ -6,4 +6,12 @@ export class ValidatorRepository extends BaseRepository<IValidator> {
   constructor() {
     super(ValidatorDbModel);
   }
+
+  async isOperatorExist(operatorAddress: string): Promise<boolean> {
+    const validator = await this.findOne({
+      operator_address: operatorAddress.toLowerCase(),
+    });
+
+    return !!validator;
+  }
 }
