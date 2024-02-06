@@ -32,7 +32,7 @@ services:
       - data:/data/db
       - ./init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js
     ports:
-      - "27017:27017"
+      - "27020:27017"
     networks:
       - backend
 
