@@ -5,7 +5,6 @@
     "sourceMap": true,
     "outDir": "./dist/",
     "lib": ["es2017", "es7", "es6", "DOM"],
-    "baseUrl": ".",
     "resolveJsonModule": true,
     "moduleResolution": "node",
     "esModuleInterop": true,
@@ -17,11 +16,13 @@
     "strictNullChecks": true,
     "strictFunctionTypes": true,
     "forceConsistentCasingInFileNames": true,
+    "baseUrl": "src",
     "paths": {
-      "@databases/*": ["./database/*"],
-      "@translations/*": ["./app/translations/*"],
-      "@configs/*": ["./app/configs/*"],
-      "@app/*": ["./app/*"]
+      "@database/*": ["database/*"],
+      "@config/*": ["config/*"],
+      "@repositories/*": ["repositories/*"],
+      "@services/*": ["services/*"],
+      "@utils/*": ["utils/*"]
     },
     "typeRoots": ["app/**/types", "node_modules/@types"],
     "plugins": [
