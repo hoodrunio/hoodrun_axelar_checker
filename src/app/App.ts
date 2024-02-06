@@ -1,6 +1,7 @@
 import { connectDb } from "@database/index";
 import { AxelarQueryService } from "../services/rest/AxelarQueryService";
 import { Validator } from "../services/rest/interfaces/validators/validator";
+import { TGBot } from "bot/tg/TGBot";
 
 class App {
   axelarQueryService: AxelarQueryService;
@@ -10,14 +11,18 @@ class App {
     this.env = process.env.NODE_ENV ?? "development";
 
     this.axelarQueryService = new AxelarQueryService();
-    this.initalizeApplication();
   }
-  private async initalizeApplication() {
+  async initalizeApplication() {
     await this.initDbConn();
+    await this.initTgBot();
   }
 
   private async initDbConn() {
     await connectDb(this.env);
+  }
+
+  private async initTgBot() {
+    await TGBot.getInstance();
   }
 
   async getAxelarLatestValidators(): Promise<Validator[]> {
