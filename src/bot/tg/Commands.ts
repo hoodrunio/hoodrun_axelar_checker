@@ -4,6 +4,10 @@ export const Commands = {
   AddOperatorAddress: {
     command: "add_operator_address",
     description:
-      "Add operator address to monitor, example usage: /add_operator_address axelarvaloper18qydpumkn244ska4xw8890nc67l9e5qqm7c36r",
+      "Add operator address to monitor.Usage -> /add_operator_address axelarvaloper1...",
+    validate: (text: string): boolean => {
+      const regex = /\/add_operator_address\saxelarvaloper.{39}$/;
+      return regex.test(text);
+    },
   },
 };
