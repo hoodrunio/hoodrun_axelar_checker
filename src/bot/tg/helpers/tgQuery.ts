@@ -18,10 +18,8 @@ export const queryBuilder = (
   return `${prefix}${separator}${value}`;
 };
 
-export const eventBuilder = (prefix: string, value: string) => {
-  return new RegExp(
-    `^${TgQuery.UpTime.prefix}${TgQuery.UpTime.separator}(.+)$`
-  );
+export const eventBuilder = (prefix: string, separator: string) => {
+  return new RegExp(`^${prefix}${separator}(.+)$`);
 };
 
 export const uptimeQueryExtractor = (text: string): string | null => {
