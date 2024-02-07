@@ -21,4 +21,8 @@ export const TgQuery = {
     prefix: "uptime",
     separator: ":",
   },
+  ValActions: {
+    prefix: "valActions",
+    separator: ":",
+  },
 };
