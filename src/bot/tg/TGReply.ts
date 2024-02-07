@@ -6,4 +6,11 @@ export class TgReply {
   successFullAddOperatorAddress(operatorAddress: string) {
     return `Operator address ${operatorAddress} has been added to the chat`;
   }
+
+  listMessage(list: string[]) {
+    const htmlMessage = list
+      .map((platform, index) => `<b>${index + 1}. ${platform}</b>`)
+      .join("\n");
+    return htmlMessage;
+  }
 }
