@@ -15,14 +15,3 @@ export const Commands = {
     description: "List all validators",
   },
 };
-
-export const TgQuery = {
-  UpTime: {
-    prefix: "uptime",
-    separator: ":",
-  },
-  ValActions: {
-    prefix: "valActions",
-    separator: ":",
-  },
-};
