@@ -10,4 +10,15 @@ export const Commands = {
       return regex.test(text);
     },
   },
+  ListValidators: {
+    command: "list_validators",
+    description: "List all validators",
+  },
+};
+
+export const TgQuery = {
+  UpTime: {
+    prefix: "uptime",
+    separator: ":",
+  },
 };
