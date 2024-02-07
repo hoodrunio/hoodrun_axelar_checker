@@ -1,4 +1,4 @@
-import { TgQuery } from "../Commands";
+import { TgQuery } from "../constants";
 
 const queryExtractor = (
   prefix: string,
