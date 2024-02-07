@@ -33,6 +33,7 @@ const ValidatorSchema: Schema<IValidatorDocument> =
       update_time: { type: String, required: true },
     },
     min_self_delegation: { type: String, required: true },
+    supported_evm_chains: { type: [String], required: true, default: [] },
   });
 
 ValidatorSchema.statics.buildModel = (args: IValidatorDocument) => {

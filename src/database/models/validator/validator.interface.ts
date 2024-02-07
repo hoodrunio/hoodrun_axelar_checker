@@ -18,6 +18,7 @@ export interface IValidator extends IBaseInterface {
   unbonding_time: string;
   commission: Commission;
   min_self_delegation: string;
+  supported_evm_chains: string[];
 }
 
 export interface IValidatorDocument extends Document, IValidator {}
