@@ -51,6 +51,19 @@ class BaseRepository<T extends IBaseInterface> {
       .exec();
   }
 
+  async updateOne(
+    query: FilterQuery<T>,
+    data: Partial<CRUDDoc<T>>
+  ): Promise<TDoc<T> | null> {
+    return await this._model
+      .findOneAndUpdate(
+        query,
+        { ...data, updatedAt: new Date() },
+        { new: true }
+      )
+      .exec();
+  }
+
   async updateById(
     id: string | null,
     data: Partial<CRUDDoc<T>>
