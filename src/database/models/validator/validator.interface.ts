@@ -8,6 +8,7 @@ import { Document } from "mongoose";
 
 export interface IValidator extends IBaseInterface {
   operator_address: string;
+  consensus_address: string;
   consensus_pubkey: ConsensusPubkey;
   jailed: boolean;
   status: string;
@@ -19,6 +20,7 @@ export interface IValidator extends IBaseInterface {
   commission: Commission;
   min_self_delegation: string;
   supported_evm_chains: string[];
+  uptime: number;
 }
 
 export interface IValidatorDocument extends Document, IValidator {}

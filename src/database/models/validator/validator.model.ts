@@ -1,12 +1,13 @@
-import { model, Schema } from "mongoose";
+import { model, Schema, Types } from "mongoose";
 import { IValidatorDocument } from "./validator.interface";
-import { createAppSchema } from "@database/helper";
+import { createAppSchema, modelNumberPrecisionFixer } from "@database/helper";
 
 const VALIDATOR_COLLECTION_NAME = "validators";
 
 const ValidatorSchema: Schema<IValidatorDocument> =
   createAppSchema<IValidatorDocument>({
     operator_address: { type: String, required: true, unique: true },
+    consensus_address: { type: String, required: true },
     consensus_pubkey: {
       "@type": { type: String, required: true },
       key: { type: String, required: true },
@@ -34,6 +35,11 @@ const ValidatorSchema: Schema<IValidatorDocument> =
     },
     min_self_delegation: { type: String, required: true },
     supported_evm_chains: { type: [String], required: true, default: [] },
+    uptime: {
+      type: Types.Decimal128,
+      default: 0.0,
+      set: (value: number) => modelNumberPrecisionFixer({ value }),
+    },
   });
 
 ValidatorSchema.statics.buildModel = (args: IValidatorDocument) => {
