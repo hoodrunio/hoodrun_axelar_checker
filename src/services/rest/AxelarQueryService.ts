@@ -22,4 +22,29 @@ export class AxelarQueryService {
 
     return response?.data;
   }
+
+  private async getAxelarEvmChains(): Promise<AxelarEvmChainsGetResponse> {
+    const response = await this.restClient.request<AxelarEvmChainsGetResponse>({
+      method: "GET",
+      url: "/axelar/evm/v1beta1/chains",
+    });
+
+    return response?.data;
+  }
+
+  private async getAxelarChainMaintainers({
+    chain,
+  }: {
+    chain: string;
+  }): Promise<AxelarEvmChainMaintainersGetResponse> {
+    const targetChain = chain;
+    const response =
+      await this.restClient.request<AxelarEvmChainMaintainersGetResponse>({
+        method: "GET",
+        url: `https://axelar-lcd.quantnode.tech/axelar/nexus/v1beta1/chain_maintainers/${targetChain}`,
+      });
+
+    return response?.data;
+  }
+
 }
