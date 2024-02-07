@@ -1,9 +1,17 @@
+import { ValidatorRepository } from "@repositories/validator/ValidatorRepository";
+import {
+  ADDRESS_TYPE_PREFIX,
+  convertPubKeyToBech32,
+} from "@utils/cosmos/cosmosConverter";
+import BigNumber from "bignumber.js";
 import appConfig from "../../config";
 import { AxiosService } from "./axios/AxiosService";
+import { AxelarEvmChainMaintainersGetResponse } from "./interfaces/evm/AxelarEvmChainMaintainersGetResponse";
+import { AxelarEvmChainsGetResponse } from "./interfaces/evm/AxelarEvmChainsGetResponse";
+import { SlashingParamsGetResponse } from "./interfaces/slashing/SlashingParamsGetResponse";
+import { ValSigningInfoGetResponse } from "./interfaces/slashing/ValSigningInfoGetResponse";
 import { ValidatorsGetResponse } from "./interfaces/validators/ValidatorsGetResponse";
 import { AxelarPaginationRequest } from "./pagination/AxelarPaginationRequest";
-import { AxelarEvmChainsGetResponse } from "./interfaces/evm/AxelarEvmChainsGetResponse";
-import { AxelarEvmChainMaintainersGetResponse } from "./interfaces/evm/AxelarEvmChainMaintainersGetResponse";
 
 export class AxelarQueryService {
   restClient: AxiosService;
