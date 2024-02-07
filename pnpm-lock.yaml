@@ -17,6 +17,9 @@ dependencies:
   axios-retry:
     specifier: ^4.0.0
     version: 4.0.0(axios@1.6.7)
+  bignumber.js:
+    specifier: ^9.1.2
+    version: 9.1.2
   dotenv:
     specifier: ^16.3.1
     version: 16.4.1
@@ -293,6 +296,10 @@ packages:
 
   /bech32@1.1.4:
     resolution: {integrity: sha512-s0IrSOzLlbvX7yp4WBfPITzpAU8sqQcpsmwXDiKwrG4r491vwCO/XpejasRNl0piBMe/DvP4Tz0mIS/X1DPJBQ==}
+    dev: false
+
+  /bignumber.js@9.1.2:
+    resolution: {integrity: sha512-2/mKyZH9K85bzOEfhXDBFZTGd1CTs+5IHpeFQo9luiBG7hghdC851Pj2WAhb6E3R6b9tZj/XKhbg4fum+Kepug==}
     dev: false
 
   /binary-extensions@2.2.0:
