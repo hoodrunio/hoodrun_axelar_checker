@@ -2,9 +2,13 @@ import appConfig from "@config/index";
 import { AppDb } from "@database/database";
 import { logger } from "@utils/logger";
 import { Bot, InlineKeyboard } from "grammy";
-import { Commands, TgQuery } from "./constants";
 import { TgReply } from "./TGReply";
-import { uptimeQueryBuilder, uptimeQueryExtractor } from "./helpers/tgQuery";
+import { Commands, TgQuery } from "./constants";
+import {
+  eventBuilder,
+  uptimeQueryBuilder,
+  uptimeQueryExtractor,
+} from "./helpers/tgQuery";
 import { chatSaverMiddleware } from "./middlewares/chatSaverMiddleware";
 
 export class TGBot {
@@ -86,11 +90,26 @@ export class TGBot {
       const operatorAdresses = chatTgUser?.operator_addresses ?? [];
       const keyboard = new InlineKeyboard();
       for (const operatorAddress of operatorAdresses) {
-        keyboard.text(
-          `🚜 ${operatorAddress}`,
-          `${uptimeQueryBuilder(operatorAddress)}` // uptime:axelarvaloper1...
-        );
+        let moniker = "Validator";
+        try {
+          const validator = await this.appDb.validatorRepository.findOne({
+            operator_address: operatorAddress,
+          });
+          moniker = validator?.description.moniker ?? "";
+        } catch (error) {
+          logger.error(
+            `While listing tg user validators moniker fetch ${error}`
+          );
+        }
+
+        keyboard
+          .text(
+            `🚜 ${moniker} - ${operatorAddress}`,
+            `${uptimeQueryBuilder(operatorAddress)}` // uptime:axelarvaloper1...
+          )
+          .row();
       }
+
       ctx.reply("*Validator List*", {
         reply_markup: keyboard,
         parse_mode: "Markdown",
@@ -99,7 +118,8 @@ export class TGBot {
   }
 
   private _uptimeValidatorCMD() {
-    this.bot.callbackQuery(/uptime:.*/, async (ctx) => {
+    const event = eventBuilder(TgQuery.UpTime.prefix, TgQuery.UpTime.separator);
+    this.bot.callbackQuery(event, async (ctx) => {
       const input = ctx.update.callback_query?.data;
 
       const operatorAddressInput = uptimeQueryExtractor(input);
