@@ -147,6 +147,36 @@ export class TGBot {
     });
   }
 
+  private _evmSupportedChainsCMD() {
+    const event = TgQuery.EvmSupChains.event;
+    this.bot.callbackQuery(event, async (ctx) => {
+      const input = ctx.update.callback_query?.data;
+
+      const operatorAddressInput = TgQuery.EvmSupChains.queryExtractor(input);
+
+      if (!operatorAddressInput) {
+        ctx.reply("Invalid operator address");
+        return;
+      }
+
+      const validator = await this.appDb.validatorRepository.findOne({
+        operator_address: operatorAddressInput,
+      });
+
+      if (!validator) {
+        ctx.reply("Invalid operator address");
+        return;
+      }
+
+      const upperCaseResult = validator?.supported_evm_chains.map((chain) =>
+        chain.toUpperCase()
+      );
+
+      ctx.reply(this.tgReply.listMessage(upperCaseResult ?? []), {
+        parse_mode: "HTML",
+      });
+    });
+  }
   private _uptimeValidatorCMD() {
     const event = TgQuery.UpTime.event;
     this.bot.callbackQuery(event, async (ctx) => {
@@ -174,11 +204,18 @@ export class TGBot {
   }
 
   private _initCMDS() {
+    // Start Bot And Brief Introduction
     this._initStartCMD();
-    this._addOperatorAddressCMD();
-    this._listValidatorsCMD();
-    this._showValidatorMenuCMD();
 
+    // Add Operator Address
+    this._addOperatorAddressCMD();
+
+    // Validator List
+    this._listValidatorsCMD();
+
+    // Validator Actions
+    this._evmSupportedChainsCMD();
+    this._showValidatorMenuCMD();
     this._uptimeValidatorCMD();
   }
 
