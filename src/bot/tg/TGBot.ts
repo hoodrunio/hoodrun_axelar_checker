@@ -101,13 +101,10 @@ export class TGBot {
             `While listing tg user validators moniker fetch ${error}`
           );
         }
+        const buttonText = `🚜 ${moniker} | ${operatorAddress}`; // 🚜 HoodRun axelarvaloper1...
+        const callBackQueryData = `${uptimeQueryBuilder(operatorAddress)}`; // uptime:axelarvaloper1...
 
-        keyboard
-          .text(
-            `🚜 ${moniker} - ${operatorAddress}`,
-            `${uptimeQueryBuilder(operatorAddress)}` // uptime:axelarvaloper1...
-          )
-          .row();
+        keyboard.text(buttonText, callBackQueryData).row();
       }
 
       ctx.reply("*Validator List*", {
