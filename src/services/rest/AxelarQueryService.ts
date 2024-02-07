@@ -62,6 +62,49 @@ export class AxelarQueryService {
     return chainsMaintainers;
   }
 
+  public async getValidatorUptime(consensusAddress: string): Promise<number> {
+    let uptime = new BigNumber(0);
+
+    const [signingInfo, slashingParams] = await Promise.all([
+      this.getValidatorSigningInfo({ consensusAddress }),
+      this.getSlahsingParams(),
+    ]);
+    const missedBlocksCounter = new BigNumber(
+      signingInfo.val_signing_info.missed_blocks_counter
+    );
+    const signedBlocksWindow = new BigNumber(
+      slashingParams.params.signed_blocks_window
+    );
+
+    uptime = new BigNumber(1).minus(
+      missedBlocksCounter.dividedBy(signedBlocksWindow)
+    );
+
+    return uptime.decimalPlaces(4).toNumber();
+  }
+
+  private async getValidatorSigningInfo({
+    consensusAddress,
+  }: {
+    consensusAddress: string;
+  }): Promise<ValSigningInfoGetResponse> {
+    const response = await this.restClient.request<ValSigningInfoGetResponse>({
+      method: "GET",
+      url: `/cosmos/slashing/v1beta1/signing_infos/${consensusAddress}`,
+    });
+
+    return response?.data;
+  }
+
+  private async getSlahsingParams(): Promise<SlashingParamsGetResponse> {
+    const response = await this.restClient.request<SlashingParamsGetResponse>({
+      method: "GET",
+      url: `/cosmos/slashing/v1beta1/params`,
+    });
+
+    return response?.data;
+  }
+
   private async getAxelarEvmChains(): Promise<AxelarEvmChainsGetResponse> {
     const response = await this.restClient.request<AxelarEvmChainsGetResponse>({
       method: "GET",
