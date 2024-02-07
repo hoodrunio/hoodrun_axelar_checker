@@ -1,9 +1,10 @@
 import appConfig from "@config/index";
 import { AppDb } from "@database/database";
 import { logger } from "@utils/logger";
-import { Bot } from "grammy";
-import { Commands } from "./Commands";
+import { Bot, InlineKeyboard } from "grammy";
+import { Commands, TgQuery } from "./constants";
 import { TgReply } from "./TGReply";
+import { uptimeQueryBuilder, uptimeQueryExtractor } from "./helpers/tgQuery";
 import { chatSaverMiddleware } from "./middlewares/chatSaverMiddleware";
 
 export class TGBot {
@@ -33,8 +34,7 @@ export class TGBot {
 
   private appendBaseSubscribers() {
     this._initMiddlewares();
-    this._initStartCMD();
-    this._addOperatorAddressCMD();
+    this._initCMDS();
   }
 
   private _addOperatorAddressCMD() {
@@ -75,6 +75,59 @@ export class TGBot {
         ctx.reply("Error while adding operator address to chat");
       }
     });
+  }
+
+  private _listValidatorsCMD() {
+    const listValidatorsCommand = Commands.ListValidators;
+    this.bot.command(listValidatorsCommand.command, async (ctx) => {
+      const chatTgUser = await this.appDb.telegramUserRepo.findOne({
+        chat_id: ctx.chat?.id ?? 0,
+      });
+      const operatorAdresses = chatTgUser?.operator_addresses ?? [];
+      const keyboard = new InlineKeyboard();
+      for (const operatorAddress of operatorAdresses) {
+        keyboard.text(
+          `🚜 ${operatorAddress}`,
+          `${uptimeQueryBuilder(operatorAddress)}` // uptime:axelarvaloper1...
+        );
+      }
+      ctx.reply("*Validator List*", {
+        reply_markup: keyboard,
+        parse_mode: "Markdown",
+      });
+    });
+  }
+
+  private _uptimeValidatorCMD() {
+    this.bot.callbackQuery(/uptime:.*/, async (ctx) => {
+      const input = ctx.update.callback_query?.data;
+
+      const operatorAddressInput = uptimeQueryExtractor(input);
+
+      if (!operatorAddressInput) {
+        ctx.reply("Invalid operator address");
+        return;
+      }
+
+      const validator = await this.appDb.validatorRepository.findOne({
+        operator_address: operatorAddressInput,
+      });
+
+      const tempUptime = 0.99;
+      const moniker = validator?.description.moniker ?? "";
+      ctx.reply(
+        `Uptime for ${moniker} - ${operatorAddressInput} is ${(
+          tempUptime * 100
+        ).toFixed(2)}%`
+      );
+    });
+  }
+
+  private _initCMDS() {
+    this._initStartCMD();
+    this._addOperatorAddressCMD();
+    this._listValidatorsCMD();
+    this._uptimeValidatorCMD();
   }
 
   private _initStartCMD() {
