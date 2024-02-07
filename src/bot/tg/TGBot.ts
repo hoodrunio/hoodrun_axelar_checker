@@ -3,13 +3,9 @@ import { AppDb } from "@database/database";
 import { logger } from "@utils/logger";
 import { Bot, InlineKeyboard } from "grammy";
 import { TgReply } from "./TGReply";
-import { Commands, TgQuery } from "./constants";
-import {
-  eventBuilder,
-  uptimeQueryBuilder,
-  uptimeQueryExtractor,
-} from "./helpers/tgQuery";
+import { Commands } from "./constants";
 import { chatSaverMiddleware } from "./middlewares/chatSaverMiddleware";
+import { TgQuery } from "./helpers/tgQuery";
 
 export class TGBot {
   private static _instance: TGBot;
@@ -89,6 +85,7 @@ export class TGBot {
       });
       const operatorAdresses = chatTgUser?.operator_addresses ?? [];
       const keyboard = new InlineKeyboard();
+
       for (const operatorAddress of operatorAdresses) {
         let moniker = "Validator";
         try {
@@ -101,8 +98,10 @@ export class TGBot {
             `While listing tg user validators moniker fetch ${error}`
           );
         }
+
         const buttonText = `🚜 ${moniker} | ${operatorAddress}`; // 🚜 HoodRun axelarvaloper1...
-        const callBackQueryData = `${uptimeQueryBuilder(operatorAddress)}`; // uptime:axelarvaloper1...
+        const callBackQueryData =
+          TgQuery.ValActions.queryBuilder(operatorAddress); // valActions:axelarvaloper1...
 
         keyboard.text(buttonText, callBackQueryData).row();
       }
@@ -114,12 +113,46 @@ export class TGBot {
     });
   }
 
+  private _showValidatorMenuCMD() {
+    const event = TgQuery.ValActions.event;
+
+    this.bot.callbackQuery(event, async (ctx) => {
+      const input = ctx.update.callback_query?.data;
+      const operatorAddressInput = TgQuery.ValActions.queryExtractor(input);
+
+      if (!operatorAddressInput) {
+        ctx.reply("Invalid operator address");
+        return;
+      }
+
+      console.log({ operatorAddressInput, input });
+
+      const keyboard = new InlineKeyboard();
+      const uptimeButton = `🕒 Uptime`;
+      const uptimeCallBackQueryData =
+        TgQuery.UpTime.queryBuilder(operatorAddressInput);
+
+      const evmSupprtedChainsButton = `⛓ Evm Supprted Chains`;
+      const evmSupChainsCallBackQueryData =
+        TgQuery.EvmSupChains.queryBuilder(operatorAddressInput);
+
+      keyboard
+        .text(uptimeButton, uptimeCallBackQueryData)
+        .text(evmSupprtedChainsButton, evmSupChainsCallBackQueryData);
+
+      ctx.reply("*Validator Actions*", {
+        reply_markup: keyboard,
+        parse_mode: "Markdown",
+      });
+    });
+  }
+
   private _uptimeValidatorCMD() {
-    const event = eventBuilder(TgQuery.UpTime.prefix, TgQuery.UpTime.separator);
+    const event = TgQuery.UpTime.event;
     this.bot.callbackQuery(event, async (ctx) => {
       const input = ctx.update.callback_query?.data;
 
-      const operatorAddressInput = uptimeQueryExtractor(input);
+      const operatorAddressInput = TgQuery.UpTime.queryExtractor(input);
 
       if (!operatorAddressInput) {
         ctx.reply("Invalid operator address");
@@ -144,6 +177,8 @@ export class TGBot {
     this._initStartCMD();
     this._addOperatorAddressCMD();
     this._listValidatorsCMD();
+    this._showValidatorMenuCMD();
+
     this._uptimeValidatorCMD();
   }
 
