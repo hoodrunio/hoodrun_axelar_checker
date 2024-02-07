@@ -2,6 +2,8 @@ import appConfig from "../../config";
 import { AxiosService } from "./axios/AxiosService";
 import { ValidatorsGetResponse } from "./interfaces/validators/ValidatorsGetResponse";
 import { AxelarPaginationRequest } from "./pagination/AxelarPaginationRequest";
+import { AxelarEvmChainsGetResponse } from "./interfaces/evm/AxelarEvmChainsGetResponse";
+import { AxelarEvmChainMaintainersGetResponse } from "./interfaces/evm/AxelarEvmChainMaintainersGetResponse";
 
 export class AxelarQueryService {
   restClient: AxiosService;
@@ -21,6 +23,43 @@ export class AxelarQueryService {
     });
 
     return response?.data;
+  }
+
+  /*
+  A function that fetches all supported EVM chains and their maintainers from the Axelar API
+  with keys being the chain name and values being an array of maintainers
+  */
+  public async getAxelarAllEvmChainsWithMaintainers(): Promise<
+    Map<string, string[]>
+  > {
+    const supportedChains = (await this.getAxelarEvmChains()).chains;
+
+    const chainsMaintainers: Map<string, string[]> = new Map();
+
+    const promises: Promise<{ chain: string; maintainers: string[] } | null>[] =
+      supportedChains.map(async (supportedChain) => {
+        try {
+          const response = await this.getAxelarChainMaintainers({
+            chain: supportedChain,
+          });
+          return { chain: supportedChain, maintainers: response.maintainers };
+        } catch (error) {
+          console.error(
+            `Could not fetch maintainers for chain ${supportedChain}`
+          );
+          return null; // Resolve to null if a request fails
+        }
+      });
+
+    const results = await Promise.all(promises);
+
+    for (const result of results) {
+      if (result !== null) {
+        chainsMaintainers.set(result.chain, result.maintainers);
+      }
+    }
+
+    return chainsMaintainers;
   }
 
   private async getAxelarEvmChains(): Promise<AxelarEvmChainsGetResponse> {
