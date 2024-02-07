@@ -1,31 +1,29 @@
-import { TgQuery } from "../constants";
+class QueryHelper {
+  constructor(private prefix: string, private separator: string) {
+    if (prefix.length + separator.length > 12) {
+      throw new Error(
+        "Prefix and separator length should be less than 12 characters"
+      );
+    }
+  }
 
-const queryExtractor = (
-  prefix: string,
-  separator: string,
-  text: string
-): string | null => {
-  const regex = new RegExp(`^${prefix}${separator}(.+)`);
-  const match = text.match(regex);
-  return match ? match[1] : null;
-};
+  queryExtractor(text: string): string | null {
+    const regex = new RegExp(`^${this.prefix}${this.separator}(.+)`);
+    const match = text.match(regex);
+    return match ? match[1] : null;
+  }
 
-export const queryBuilder = (
-  prefix: string,
-  separator: string,
-  value: string
-): string => {
-  return `${prefix}${separator}${value}`;
-};
+  queryBuilder(value: string): string {
+    return `${this.prefix}${this.separator}${value}`;
+  }
 
-export const eventBuilder = (prefix: string, separator: string) => {
-  return new RegExp(`^${prefix}${separator}(.+)$`);
-};
+  get event() {
+    return new RegExp(`^${this.prefix}${this.separator}(.+)$`);
+  }
+}
 
-export const uptimeQueryExtractor = (text: string): string | null => {
-  return queryExtractor(TgQuery.UpTime.prefix, TgQuery.UpTime.separator, text);
-};
-
-export const uptimeQueryBuilder = (text: string): string | null => {
-  return queryBuilder(TgQuery.UpTime.prefix, TgQuery.UpTime.separator, text);
+export const TgQuery = {
+  UpTime: new QueryHelper("upTime", ":"),
+  ValActions: new QueryHelper("valActions", ":"),
+  EvmSupChains: new QueryHelper("evmChains", ":"),
 };
