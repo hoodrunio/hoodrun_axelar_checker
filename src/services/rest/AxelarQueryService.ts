@@ -12,6 +12,7 @@ import { SlashingParamsGetResponse } from "./interfaces/slashing/SlashingParamsG
 import { ValSigningInfoGetResponse } from "./interfaces/slashing/ValSigningInfoGetResponse";
 import { ValidatorsGetResponse } from "./interfaces/validators/ValidatorsGetResponse";
 import { AxelarPaginationRequest } from "./pagination/AxelarPaginationRequest";
+import { logger } from "@utils/logger";
 
 export class AxelarQueryService {
   restClient: AxiosService;
@@ -150,5 +151,65 @@ export class AxelarQueryService {
     }
 
     return uptime;
+  }
+
+  async updateValidatorsPropsOnDb() {
+    const validatorRepo = new ValidatorRepository();
+    const [validatorsRes, allEvmChainsWithMaintainersRes] = await Promise.all([
+      this.getAllValidators(),
+      this.getAxelarAllEvmChainsWithMaintainers(),
+    ]);
+    const validators = validatorsRes.validators;
+    const chainsMaintainers = allEvmChainsWithMaintainersRes;
+
+    const promises = validators.map(async (validator) => {
+      const valEvmSupportedChains: string[] = [];
+      const operatorAddress = validator.operator_address;
+
+      for (const [chain, maintainers] of chainsMaintainers.entries()) {
+        if (maintainers.includes(operatorAddress)) {
+          valEvmSupportedChains.push(chain);
+        }
+      }
+
+      const consensusAddress = convertPubKeyToBech32(
+        validator.consensus_pubkey,
+        ADDRESS_TYPE_PREFIX.VALCONSENSUS
+      );
+
+      const uptime = await this.getSafeValidatorUptime(consensusAddress);
+      const is_active = validator.status == "BOND_STATUS_BONDED";
+
+      try {
+        await validatorRepo.upsertOne(
+          { operator_address: operatorAddress },
+          {
+            operator_address: operatorAddress,
+            consensus_address: consensusAddress,
+            consensus_pubkey: validator.consensus_pubkey,
+            jailed: validator.jailed,
+            status: validator.status,
+            tokens: validator.tokens,
+            delegator_shares: validator.delegator_shares,
+            description: validator.description,
+            unbonding_height: validator.unbonding_height,
+            unbonding_time: validator.unbonding_time,
+            commission: validator.commission,
+            min_self_delegation: validator.min_self_delegation,
+            supported_evm_chains: valEvmSupportedChains,
+            uptime,
+            is_active,
+          }
+        );
+      } catch (error) {
+        logger.error(`Failed to create validator: ${error}`);
+      }
+    });
+
+    try {
+      await Promise.all(promises);
+    } catch (error) {
+      logger.error(`Failed to concurrent update validators: ${error}`);
+    }
   }
 }
