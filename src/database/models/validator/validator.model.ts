@@ -40,6 +40,7 @@ const ValidatorSchema: Schema<IValidatorDocument> =
       default: 0.0,
       set: (value: number) => modelNumberPrecisionFixer({ value }),
     },
+    is_active: { type: Boolean, required: true, default: false },
   });
 
 ValidatorSchema.statics.buildModel = (args: IValidatorDocument) => {

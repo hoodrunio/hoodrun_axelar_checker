@@ -21,6 +21,7 @@ export interface IValidator extends IBaseInterface {
   min_self_delegation: string;
   supported_evm_chains: string[];
   uptime: number;
+  is_active: boolean;
 }
 
 export interface IValidatorDocument extends Document, IValidator {}
