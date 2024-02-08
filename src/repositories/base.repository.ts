@@ -40,8 +40,8 @@ class BaseRepository<T extends IBaseInterface> {
   }
 
   async upsertOne(
-    data: Partial<CRUDDoc<T>>,
-    query?: FilterQuery<T>
+    query: FilterQuery<T>,
+    data: Partial<CRUDDoc<T>>
   ): Promise<TDoc<T> | null> {
     return await this._model
       .findOneAndUpdate(query, data as UpdateQuery<TDoc<T>>, {
