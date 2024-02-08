@@ -1,11 +1,13 @@
 import appConfig from "@config/index";
 import { AppDb } from "@database/database";
 import { logger } from "@utils/logger";
+import BigNumber from "bignumber.js";
 import { Bot, InlineKeyboard } from "grammy";
 import { TgReply } from "./TGReply";
 import { Commands } from "./constants";
-import { chatSaverMiddleware } from "./middlewares/chatSaverMiddleware";
 import { TgQuery } from "./helpers/tgQuery";
+import { elipsized } from "./helpers/validator";
+import { chatSaverMiddleware } from "./middlewares/chatSaverMiddleware";
 
 export class TGBot {
   private static _instance: TGBot;
@@ -125,25 +127,38 @@ export class TGBot {
         return;
       }
 
-      console.log({ operatorAddressInput, input });
+      const validator = await this.appDb.validatorRepository.findOne({
+        operator_address: operatorAddressInput,
+      });
+      if (!validator) {
+        ctx.reply("Invalid operator address");
+        return;
+      }
+
+      const moniker = validator?.description.moniker ?? "";
+      const operatorAddress = validator?.operator_address ?? "";
+      const elipsizedOperatorAddress = elipsized(operatorAddress, 40);
 
       const keyboard = new InlineKeyboard();
       const uptimeButton = `🕒 Uptime`;
       const uptimeCallBackQueryData =
-        TgQuery.UpTime.queryBuilder(operatorAddressInput);
+        TgQuery.UpTime.queryBuilder(operatorAddress);
 
       const evmSupprtedChainsButton = `⛓ Evm Supprted Chains`;
       const evmSupChainsCallBackQueryData =
-        TgQuery.EvmSupChains.queryBuilder(operatorAddressInput);
+        TgQuery.EvmSupChains.queryBuilder(operatorAddress);
 
       keyboard
         .text(uptimeButton, uptimeCallBackQueryData)
         .text(evmSupprtedChainsButton, evmSupChainsCallBackQueryData);
 
-      ctx.reply("*Validator Actions*", {
-        reply_markup: keyboard,
-        parse_mode: "Markdown",
-      });
+      ctx.reply(
+        `🚜 *${moniker} ${elipsizedOperatorAddress} Validator Actions*`,
+        {
+          reply_markup: keyboard,
+          parse_mode: "Markdown",
+        }
+      );
     });
   }
 
@@ -193,12 +208,17 @@ export class TGBot {
         operator_address: operatorAddressInput,
       });
 
-      const tempUptime = 0.99;
+      const elipsizedOperatorAddress = elipsized(operatorAddressInput, 40);
+
+      const uptime = validator?.uptime ?? 0.0;
+      const uptimeRatio = new BigNumber(uptime)
+        .times(100)
+        .decimalPlaces(2)
+        .toNumber();
+
       const moniker = validator?.description.moniker ?? "";
       ctx.reply(
-        `Uptime for ${moniker} - ${operatorAddressInput} is ${(
-          tempUptime * 100
-        ).toFixed(2)}%`
+        `Uptime for ${moniker} | ${elipsizedOperatorAddress} is ${uptimeRatio}%`
       );
     });
   }
@@ -214,8 +234,8 @@ export class TGBot {
     this._listValidatorsCMD();
 
     // Validator Actions
-    this._evmSupportedChainsCMD();
     this._showValidatorMenuCMD();
+    this._evmSupportedChainsCMD();
     this._uptimeValidatorCMD();
   }
 
