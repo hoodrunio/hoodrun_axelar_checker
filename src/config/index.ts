@@ -13,7 +13,13 @@ const {
   DB_PORT,
   LOG_FORMAT,
   LOG_DIR,
+  REDIS_HOST,
+  REDIS_PORT,
 } = process.env;
+
+const isDev = process.env.NODE_ENV === "development";
+const defatultRedisHost = "localhost";
+const defaultRedisPort = "6379";
 
 const appConfig = {
   tgToken: TG_TOKEN as string,
@@ -27,6 +33,8 @@ const appConfig = {
   dbPort: DB_PORT as string,
   logFormat: LOG_FORMAT as string,
   logDir: LOG_DIR as string,
+  redisHost: isDev ? defatultRedisHost : (REDIS_HOST as string),
+  redisPort: parseInt(REDIS_PORT ?? defaultRedisPort),
 };
 
 export default appConfig;
