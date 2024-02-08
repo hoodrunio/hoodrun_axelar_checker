@@ -16,7 +16,7 @@ export const initValAllInfoCheckerQueue = async () => {
     AppQueueFactory.createQueue(VAL_ALL_INFO_CHECKER);
 
   valAllInfoCheckerQueue.process(1, async (_) => {
-    console.log("Processing valAllInfoCheckerQueue");
+    logger.info("Processing valAllInfoCheckerQueue");
     try {
       const validatorRepo = new ValidatorRepository();
       const axelarQService = new AxelarQueryService();

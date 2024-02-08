@@ -55,7 +55,7 @@ class App {
       const response = await this.axelarQueryService.getAllValidators();
       return response?.validators;
     } catch (error) {
-      console.error(`Axelar Query Service getAllValidators failed: ${error}`);
+      logger.error(`Axelar Query Service getAllValidators failed: ${error}`);
       throw error;
     }
   }

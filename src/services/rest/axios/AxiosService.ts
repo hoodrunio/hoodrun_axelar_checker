@@ -1,3 +1,4 @@
+import { logger } from "@utils/logger";
 import axios, { AxiosInstance, AxiosResponse, Method } from "axios";
 import axiosRetry, { isNetworkOrIdempotentRequestError } from "axios-retry";
 
@@ -33,7 +34,7 @@ export class AxiosService {
       });
       return axiosResponse;
     } catch (error) {
-      console.error(`Axios Service Request to ${url} failed: ${error}`);
+      logger.error(`Axios Service Request to ${url} failed: ${error}`);
       throw error;
     }
   }

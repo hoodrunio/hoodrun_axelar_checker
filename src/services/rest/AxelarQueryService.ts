@@ -53,7 +53,7 @@ export class AxelarQueryService {
           });
           return { chain: supportedChain, maintainers: response.maintainers };
         } catch (error) {
-          console.error(
+          logger.error(
             `Could not fetch maintainers for chain ${supportedChain}`
           );
           return null; // Resolve to null if a request fails
@@ -146,7 +146,7 @@ export class AxelarQueryService {
     try {
       uptime = await this.getValidatorUptime(consensusAddress);
     } catch (error) {
-      console.error(`Could not fetch uptime for ${consensusAddress}`);
+      logger.error(`Could not fetch uptime for ${consensusAddress}`);
       uptime = 0.0;
     }
 

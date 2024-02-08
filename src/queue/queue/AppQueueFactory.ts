@@ -1,4 +1,5 @@
 import appConfig from "@config/index";
+import { logger } from "@utils/logger";
 import Queue from "bull";
 
 const { redisHost, redisPort } = appConfig;
@@ -44,13 +45,13 @@ class AppQueueFactory {
 
   onQueueError(queue: Queue.Queue, name: string) {
     queue.on("error", (error) => {
-      console.error(`Queue ${name} error:`, error);
+      logger.error(`Queue ${name} error:`, error);
     });
   }
 
   onQueueCompleted(queue: Queue.Queue, name: string) {
     queue.on("completed", (job) => {
-      console.log(`Queue ${name} job completed:`, job.data);
+      logger.log(`Queue ${name} job completed:`, job.data);
     });
   }
 }
