@@ -12,7 +12,7 @@ export const createAppSchema = <T extends Document>(
       ...definition,
       createdAt: { type: Date, default: Date.now },
       updatedAt: { type: Date, default: Date.now },
-      deletedAt: { type: Date, default: Date.now },
+      deletedAt: { type: Date, default: null },
     },
     { timestamps: true }
   );
