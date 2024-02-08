@@ -1,21 +1,20 @@
 import { IBaseInterface } from "@database/base/model.interface";
 import { FilterQuery, Model, Document, UpdateQuery } from "mongoose";
 
-type TDoc<T> = Document & T;
 type CRUDDoc<T> = Omit<T, keyof IBaseInterface>;
 
-class BaseRepository<T extends IBaseInterface> {
-  private _model: Model<TDoc<T>>;
+class BaseRepository<T extends IBaseInterface, TD extends T & Document> {
+  private _model: Model<TD>;
 
-  constructor(model: Model<TDoc<T>>) {
+  constructor(model: Model<TD>) {
     this._model = model;
   }
 
-  getModel(): Model<TDoc<T>> {
+  getModel(): Model<TD> {
     return this._model;
   }
 
-  async create(data: CRUDDoc<T>): Promise<TDoc<T>> {
+  async create(data: CRUDDoc<T>): Promise<TD> {
     return await this._model.create({
       ...data,
       createdAt: new Date(),
@@ -23,28 +22,28 @@ class BaseRepository<T extends IBaseInterface> {
     });
   }
 
-  async findAll(query?: FilterQuery<T>): Promise<T[]> {
+  async findAll(query?: FilterQuery<T>): Promise<TD[]> {
     const { sort, ...filter } = query ?? { sort: {} };
     return await this._model
-      .find(filter as FilterQuery<TDoc<T>>)
+      .find(filter as FilterQuery<TD>)
       .sort(sort)
       .exec();
   }
 
-  async findById(id: string): Promise<TDoc<T> | null> {
+  async findById(id: string): Promise<TD | null> {
     return await this._model.findById(id).exec();
   }
 
-  async findOne(query?: FilterQuery<T>): Promise<TDoc<T> | null> {
+  async findOne(query?: FilterQuery<T>): Promise<TD | null> {
     return await this._model.findOne(query).exec();
   }
 
   async upsertOne(
     query: FilterQuery<T>,
     data: Partial<CRUDDoc<T>>
-  ): Promise<TDoc<T> | null> {
+  ): Promise<TD | null> {
     return await this._model
-      .findOneAndUpdate(query, data as UpdateQuery<TDoc<T>>, {
+      .findOneAndUpdate(query, data as UpdateQuery<TD>, {
         new: true,
         upsert: true,
       })
@@ -54,7 +53,7 @@ class BaseRepository<T extends IBaseInterface> {
   async updateOne(
     query: FilterQuery<T>,
     data: Partial<CRUDDoc<T>>
-  ): Promise<TDoc<T> | null> {
+  ): Promise<TD | null> {
     return await this._model
       .findOneAndUpdate(
         query,
@@ -67,13 +66,13 @@ class BaseRepository<T extends IBaseInterface> {
   async updateById(
     id: string | null,
     data: Partial<CRUDDoc<T>>
-  ): Promise<TDoc<T> | null> {
+  ): Promise<TD | null> {
     return await this._model
       .findByIdAndUpdate(id, { ...data, updatedAt: new Date() }, { new: true })
       .exec();
   }
 
-  async deleteById(id: string): Promise<TDoc<T> | null> {
+  async deleteById(id: string): Promise<TD | null> {
     return await this._model
       .findByIdAndUpdate(id, { updatedAt: new Date() }, { new: true })
       .exec();

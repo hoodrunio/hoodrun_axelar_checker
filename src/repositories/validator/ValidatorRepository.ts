@@ -5,9 +5,16 @@ import {
 import ValidatorDbModel from "@database/models/validator/validator.model";
 import BaseRepository from "@repositories/base.repository";
 
-export class ValidatorRepository extends BaseRepository<IValidator> {
+export class ValidatorRepository extends BaseRepository<
+  IValidator,
+  IValidatorDocument
+> {
   constructor() {
     super(ValidatorDbModel);
+  }
+
+  async activeValidators(): Promise<IValidator[]> {
+    return this.findAll({ is_active: true });
   }
 
   async isOperatorExist(operatorAddress: string): Promise<boolean> {

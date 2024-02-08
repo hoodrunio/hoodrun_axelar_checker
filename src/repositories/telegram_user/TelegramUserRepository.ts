@@ -1,10 +1,14 @@
-import { ITelegramUser } from "@database/models/telegram_user/telegram_user.interface";
+import {
+  ITelegramUser,
+  ITelegramUserDocument,
+} from "@database/models/telegram_user/telegram_user.interface";
 import TelegramUserDbModel from "@database/models/telegram_user/telegram_user.model";
-import { IValidator } from "@database/models/validator/validator.interface";
-import ValidatorDbModel from "@database/models/validator/validator.model";
 import BaseRepository from "@repositories/base.repository";
 
-export class TelegramUserRepository extends BaseRepository<ITelegramUser> {
+export class TelegramUserRepository extends BaseRepository<
+  ITelegramUser,
+  ITelegramUserDocument
+> {
   constructor() {
     super(TelegramUserDbModel);
   }
