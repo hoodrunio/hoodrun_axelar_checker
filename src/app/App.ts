@@ -5,9 +5,13 @@ import { TGBot } from "bot/tg/TGBot";
 import {
   addValUptimeCheckerJob,
   initValsUptimeCheckerQueue,
-} from "queue/jobs/validators/ValUptimeJob";
+} from "queue/jobs/validators/ValUptimeCheckerJob";
 import { AxelarQueryService } from "../services/rest/AxelarQueryService";
 import { Validator } from "../services/rest/interfaces/validators/validator";
+import {
+  addValAllInfoCheckerJob,
+  initValAllInfoCheckerQueue,
+} from "queue/jobs/validators/ValAllInfoCheckerJob";
 
 class App {
   axelarQueryService: AxelarQueryService;
@@ -37,10 +41,12 @@ class App {
   }
 
   private async initQueue() {
+    await initValAllInfoCheckerQueue();
     await initValsUptimeCheckerQueue();
   }
 
   private async initJobs() {
+    await addValAllInfoCheckerJob();
     await addValUptimeCheckerJob();
   }
 
