@@ -36,6 +36,15 @@ services:
     networks:
       - backend
 
+  redis: # Define Redis service
+    container_name: redis
+    image: redis
+    ports:
+      - "6379:6379" # Expose Redis port
+    restart: "unless-stopped"
+    networks:
+      - backend
+
 networks:
   backend:
     driver: bridge
