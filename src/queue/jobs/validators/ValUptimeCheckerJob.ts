@@ -1,15 +1,15 @@
-import AppQueueFactory from "../../queue/AppQueueFactory";
-import { logger } from "@utils/logger";
 import { AppDb } from "@database/database";
-import appJobProducer from "queue/producer/AppJobProducer";
-import { TGBot } from "bot/tg/TGBot";
-import { createUptimeCondition } from "notification/condition/uptime";
 import {
   NotificationEvent,
   NotificationType,
   UptimeNotificationDataType,
 } from "@database/models/notification/notification.interface";
 import { ITelegramUser } from "@database/models/telegram_user/telegram_user.interface";
+import { logger } from "@utils/logger";
+import { createUptimeCondition } from "notification/condition/uptime";
+import appJobProducer from "queue/producer/AppJobProducer";
+import AppQueueFactory from "../../queue/AppQueueFactory";
+import { xSeconds } from "queue/jobHelper";
 
 export const VALIDATOR_UPTIME_CHECKER = "valUptimeChecker";
 
@@ -119,7 +119,7 @@ export const addValUptimeCheckerJob = async () => {
     VALIDATOR_UPTIME_CHECKER,
     {},
     {
-      repeat: { every: 10000 },
+      repeat: { every: xSeconds(5) },
     }
   );
 };
