@@ -137,4 +137,18 @@ export class AxelarQueryService {
     return response?.data;
   }
 
+  async getSafeValidatorUptime(
+    consensusAddress: string,
+    defaultValue?: number
+  ): Promise<number> {
+    let uptime = defaultValue ?? 0.0;
+    try {
+      uptime = await this.getValidatorUptime(consensusAddress);
+    } catch (error) {
+      console.error(`Could not fetch uptime for ${consensusAddress}`);
+      uptime = 0.0;
+    }
+
+    return uptime;
+  }
 }
