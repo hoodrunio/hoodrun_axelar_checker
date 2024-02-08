@@ -4,7 +4,25 @@
     {
       "type": "pwa-node",
       "request": "launch",
-      "name": "Launch via Nodemon",
+      "name": "Dev Debug via Nodemon",
+      "runtimeExecutable": "nodemon",
+      "runtimeArgs": [
+        "--exec",
+        "ts-node -r tsconfig-paths/register --transpile-only",
+        "${workspaceFolder}/src/index.ts"
+      ],
+      "restart": true,
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen",
+      "skipFiles": ["<node_internals>/**"],
+      "env": {
+        "NODE_ENV": "development"
+      }
+    },
+    {
+      "type": "pwa-node",
+      "request": "launch",
+      "name": "Prod Launch via Nodemon",
       "runtimeExecutable": "nodemon",
       "runtimeArgs": [
         "--exec",
