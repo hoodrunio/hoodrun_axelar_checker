@@ -1,10 +1,13 @@
+import { AppDb } from "@database/database";
 import { connectDb } from "@database/index";
+import { logger } from "@utils/logger";
+import { TGBot } from "bot/tg/TGBot";
+import {
+  addValUptimeCheckerJob,
+  initValsUptimeCheckerQueue,
+} from "queue/jobs/validators/ValUptimeJob";
 import { AxelarQueryService } from "../services/rest/AxelarQueryService";
 import { Validator } from "../services/rest/interfaces/validators/validator";
-import { TGBot } from "bot/tg/TGBot";
-import { logger } from "@utils/logger";
-import { AppDb } from "@database/database";
-import { addValUptimeCheckerJob } from "queue/jobs/validators/ValUptimeJob";
 
 class App {
   axelarQueryService: AxelarQueryService;
@@ -18,6 +21,10 @@ class App {
   async initalizeApplication() {
     await this.initDbConn();
     await this.initTgBot();
+
+    //Init queues before jobs
+    await this.initQueue();
+    // ------------------------------ //
     await this.initJobs();
   }
 
@@ -29,8 +36,12 @@ class App {
     await TGBot.getInstance();
   }
 
+  private async initQueue() {
+    await initValsUptimeCheckerQueue();
+  }
+
   private async initJobs() {
-    addValUptimeCheckerJob();
+    await addValUptimeCheckerJob();
   }
 
   async getAxelarLatestValidators(): Promise<Validator[]> {
