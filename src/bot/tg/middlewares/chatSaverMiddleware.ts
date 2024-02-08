@@ -7,11 +7,14 @@ export async function chatSaverMiddleware(
   next: NextFunction,
   db: AppDb
 ): Promise<void> {
-  db.telegramUserRepo.upsertOne({
-    chat_id: ctx.chat?.id,
-    type: ctx.chat?.type as TelegramChatType,
-    _chat: ctx.chat,
-  });
+  db.telegramUserRepo.upsertOne(
+    { chat_id: ctx.chat?.id },
+    {
+      chat_id: ctx.chat?.id,
+      type: ctx.chat?.type as TelegramChatType,
+      _chat: ctx.chat,
+    }
+  );
 
   await next();
 }
