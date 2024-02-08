@@ -39,6 +39,18 @@ export class TGBot {
     this._initCMDS();
   }
 
+  public async sendMessageToUsers(
+    { chat_id }: { chat_id: number },
+    message: string
+  ) {
+    try {
+      await this.bot.api.sendMessage(chat_id, message);
+      logger.info(`Message sent to user ${chat_id}`);
+    } catch (error) {
+      logger.error(`Error while sending message to user ${chat_id}`, error);
+    }
+  }
+
   private _addOperatorAddressCMD() {
     const addAddressCommand = Commands.AddOperatorAddress;
     this.bot.command(addAddressCommand.command, async (ctx) => {
