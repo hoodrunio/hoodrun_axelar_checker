@@ -11,16 +11,6 @@ export enum NotificationType {
   EMAIL = "EMAIL",
 }
 
-export interface UptimeNotificationDataType {
-  operatorAddress: string;
-  currentUptime: number;
-  threshold: number;
-}
-
-export interface PoolNotificationDataType {
-  poolId: string;
-}
-
 export interface INotification extends IBaseInterface {
   notification_id: string;
   event: NotificationEvent;
@@ -35,3 +25,13 @@ export interface INotificationDocument extends Document, INotification {}
 
 export interface INotificationModel
   extends IBaselModel<INotification, INotificationDocument> {}
+
+export interface UptimeNotificationDataType {
+  operatorAddress: string;
+  currentUptime: number;
+  threshold: number;
+}
+
+export interface PoolNotificationDataType {
+  poolId: string;
+}
