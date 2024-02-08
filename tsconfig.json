@@ -22,7 +22,8 @@
       "@config/*": ["config/*"],
       "@repositories/*": ["repositories/*"],
       "@services/*": ["services/*"],
-      "@utils/*": ["utils/*"]
+      "@utils/*": ["utils/*"],
+      "@extensions/*": ["extensions/*"]
     },
     "typeRoots": ["app/**/types", "node_modules/@types"],
     "plugins": [
