@@ -3,8 +3,9 @@ config({ path: `.env` });
 
 const {
   TG_TOKEN,
-  MAINNET_AXELAR_REST_BASE_URL,
-  TESTNET_AXELAR_REST_BASE_URL,
+  MAINNET_AXELAR_REST_BASE_URLS,
+  MAINNET_AXELAR_LCD_REST_BASE_URLS,
+  TESTNET_AXELAR_REST_BASE_URLS,
   DB_CONNECTION_STRING,
   DB_NAME,
   DB_USER,
@@ -23,8 +24,11 @@ const defaultRedisPort = "6379";
 
 const appConfig = {
   tgToken: TG_TOKEN as string,
-  mainnetAxelarRestBaseUrl: MAINNET_AXELAR_REST_BASE_URL as string,
-  testnetAxelarRestBaseUrl: TESTNET_AXELAR_REST_BASE_URL as string,
+  mainnetAxelarRestBaseUrls: parseStringArray(MAINNET_AXELAR_REST_BASE_URLS),
+  mainnetAxelarLCDRestBaseUrls: parseStringArray(
+    MAINNET_AXELAR_LCD_REST_BASE_URLS
+  ),
+  testnetAxelarRestBaseUrls: parseStringArray(TESTNET_AXELAR_REST_BASE_URLS),
   dbConnectionString: DB_CONNECTION_STRING,
   dbName: DB_NAME as string,
   dbUser: DB_USER as string,
@@ -36,5 +40,9 @@ const appConfig = {
   redisHost: isDev ? defatultRedisHost : (REDIS_HOST as string),
   redisPort: parseInt(REDIS_PORT ?? defaultRedisPort),
 };
+
+function parseStringArray(str?: string): string[] {
+  return JSON.parse(str ?? "[]");
+}
 
 export default appConfig;

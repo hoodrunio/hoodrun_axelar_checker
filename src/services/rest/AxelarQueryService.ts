@@ -19,7 +19,7 @@ export class AxelarQueryService {
 
   constructor() {
     this.restClient = new AxiosService({
-      baseUrl: appConfig.mainnetAxelarRestBaseUrl,
+      baseUrls: appConfig.mainnetAxelarRestBaseUrls,
     });
   }
 
