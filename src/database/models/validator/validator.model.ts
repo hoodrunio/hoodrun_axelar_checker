@@ -8,6 +8,7 @@ const ValidatorSchema: Schema<IValidatorDocument> =
   createAppSchema<IValidatorDocument>({
     operator_address: { type: String, required: true, unique: true },
     consensus_address: { type: String, required: true },
+    voter_address: { type: String, required: true },
     consensus_pubkey: {
       "@type": { type: String, required: true },
       key: { type: String, required: true },
