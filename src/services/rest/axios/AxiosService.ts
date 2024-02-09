@@ -5,49 +5,58 @@ import axiosRetry, { isNetworkOrIdempotentRequestError } from "axios-retry";
 const AXIOS_REQ_RETRY_COUNT = 3;
 
 export class AxiosService {
-  axiosInstance: AxiosInstance;
+  axiosInstances: AxiosInstance[];
 
   constructor(params: AxiosServiceParams) {
-    const { baseUrl, prefix = "" } = params;
+    const { baseUrls, prefix = "" } = params;
 
-    this.axiosInstance = axios.create({
-      baseURL: `${baseUrl}${prefix}`,
-      headers: {
-        "Content-Type": "application/json",
-      },
+    this.axiosInstances = baseUrls.map((baseUrl: string) => {
+      const instance = axios.create({
+        baseURL: `${baseUrl}${prefix}`,
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      this.setRetryMechanism(instance, AXIOS_REQ_RETRY_COUNT);
+      this.setInterceptors(instance);
+
+      return instance;
     });
-
-    this.setRetryMechanism(AXIOS_REQ_RETRY_COUNT);
-    this.setInterceptors();
   }
 
   async request<R>(params: AxiosRequestParams): Promise<AxiosResponse<R, any>> {
     const { method, url, body, params: queryParams, rest } = params;
 
-    try {
-      const axiosResponse = await this.axiosInstance<R>({
-        method,
-        url,
-        data: body,
-        params: queryParams,
-        ...rest,
-      });
-      return axiosResponse;
-    } catch (error) {
-      logger.error(`Axios Service Request to ${url} failed: ${error}`);
-      throw error;
+    for (const instance of this.axiosInstances) {
+      try {
+        const axiosResponse = await instance<R>({
+          method,
+          url,
+          data: body,
+          params: queryParams,
+          ...rest,
+        });
+        return axiosResponse;
+      } catch (error) {
+        logger.error(
+          `Axios Service Request to ${instance.getUri()}${url} failed: ${error}`
+        );
+      }
     }
+
+    throw new Error("All instances requests failed");
   }
 
-  private setRetryMechanism(retryCount: number) {
-    axiosRetry(this.axiosInstance, {
+  private setRetryMechanism(instance: AxiosInstance, retryCount: number) {
+    axiosRetry(instance, {
       retries: retryCount,
       retryCondition: isNetworkOrIdempotentRequestError,
     });
   }
 
-  private setInterceptors() {
-    this.axiosInstance.interceptors.response.use(
+  private setInterceptors(instance: AxiosInstance) {
+    instance.interceptors.response.use(
       (response) => {
         return response;
       },
@@ -59,7 +68,7 @@ export class AxiosService {
 }
 
 interface AxiosServiceParams {
-  baseUrl: string;
+  baseUrls: string[];
   prefix?: string;
 }
 
