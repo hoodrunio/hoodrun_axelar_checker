@@ -119,7 +119,7 @@ export const addValUptimeCheckerJob = async () => {
     VALIDATOR_UPTIME_CHECKER,
     {},
     {
-      repeat: { every: xSeconds(5) },
+      repeat: { every: xSeconds(15) },
     }
   );
 };

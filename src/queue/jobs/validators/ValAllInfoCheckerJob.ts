@@ -1,4 +1,5 @@
 import { ValidatorRepository } from "@repositories/validator/ValidatorRepository";
+import { AxelarLCDQueryService } from "@services/rest/AxelarLCDQueryService";
 import { AxelarQueryService } from "@services/rest/AxelarQueryService";
 import {
   ADDRESS_TYPE_PREFIX,
@@ -20,6 +21,8 @@ export const initValAllInfoCheckerQueue = async () => {
     try {
       const validatorRepo = new ValidatorRepository();
       const axelarQService = new AxelarQueryService();
+      const axelarLCDService = new AxelarLCDQueryService();
+
       const [validatorsRes, allEvmChainsWithMaintainersRes] = await Promise.all(
         [
           axelarQService.getAllValidators(),
@@ -45,6 +48,16 @@ export const initValAllInfoCheckerQueue = async () => {
           ADDRESS_TYPE_PREFIX.VALCONSENSUS
         );
 
+        let voterAddress = null;
+
+        try {
+          voterAddress = await axelarLCDService.getValidatorVoterAddress(
+            operatorAddress
+          );
+        } catch (error) {
+          logger.error(`Failed to get voter address: ${error}`);
+        }
+
         const uptime = await axelarQService.getSafeValidatorUptime(
           consensusAddress
         );
@@ -67,6 +80,7 @@ export const initValAllInfoCheckerQueue = async () => {
               commission: validator.commission,
               min_self_delegation: validator.min_self_delegation,
               supported_evm_chains: valEvmSupportedChains,
+              ...(voterAddress ? { voter_address: voterAddress } : {}),
               uptime,
               is_active,
             }
@@ -94,6 +108,6 @@ export const addValAllInfoCheckerJob = async () => {
   await appJobProducer.addJob(
     VAL_ALL_INFO_CHECKER,
     {},
-    { repeat: { every: xSeconds(10) } }
+    { repeat: { every: xSeconds(20) } }
   );
 };
