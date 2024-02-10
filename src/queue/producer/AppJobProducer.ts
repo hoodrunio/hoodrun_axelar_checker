@@ -2,16 +2,16 @@ import Queue from "bull";
 import AppQueueFactory from "queue/queue/AppQueueFactory";
 
 class JobProducer {
-  addJob(
+  addJob<T>(
     queueName: string,
-    data: any,
+    data: T,
     options: Queue.JobOptions = {
       attempts: 2,
       removeOnComplete: true,
       removeOnFail: true,
     }
   ): Promise<Queue.Job> {
-    const queue = AppQueueFactory.createQueue(queueName);
+    const queue = AppQueueFactory.createQueue<T>(queueName);
     return queue.add(data, options);
   }
 }

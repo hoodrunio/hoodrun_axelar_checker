@@ -45,13 +45,13 @@ class AppQueueFactory {
 
   onQueueError(queue: Queue.Queue, name: string) {
     queue.on("error", (error) => {
-      logger.error(`Queue ${name} error:`, error);
+      logger.error(`Queue ${name} error: ${error}`);
     });
   }
 
   onQueueCompleted(queue: Queue.Queue, name: string) {
     queue.on("completed", (job) => {
-      logger.log(`Queue ${name} job completed:`, job.data);
+      logger.info(`Queue ${name} job completed: ${job.data}`);
     });
   }
 }
