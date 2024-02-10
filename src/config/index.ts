@@ -5,6 +5,7 @@ const {
   TG_TOKEN,
   MAINNET_AXELAR_REST_BASE_URLS,
   MAINNET_AXELAR_LCD_REST_BASE_URLS,
+  MAINNET_AXELAR_WS_URLS,
   TESTNET_AXELAR_REST_BASE_URLS,
   DB_CONNECTION_STRING,
   DB_NAME,
@@ -28,6 +29,7 @@ const appConfig = {
   mainnetAxelarLCDRestBaseUrls: parseStringArray(
     MAINNET_AXELAR_LCD_REST_BASE_URLS
   ),
+  mainnetAxelarWsUrls: parseStringArray(MAINNET_AXELAR_WS_URLS),
   testnetAxelarRestBaseUrls: parseStringArray(TESTNET_AXELAR_REST_BASE_URLS),
   dbConnectionString: DB_CONNECTION_STRING,
   dbName: DB_NAME as string,
