@@ -26,7 +26,7 @@ const parseWsMessageEvent = (event: MessageEvent): string => {
   return data;
 };
 
-export const parseAxelarEventMessage = <T>(
+export const parseAxlEventMessage = <T>(
   event: MessageEvent
 ): IWsEventData<T> | undefined => {
   try {

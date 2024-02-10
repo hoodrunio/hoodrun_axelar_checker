@@ -7,7 +7,7 @@ import {
 import { IWsEventMessageTxResult } from "ws/interface/IWsEventMessageTx";
 import { PollTxMessageResultHandler } from "ws/message/PollTxMessageResultHandler";
 import { WsMessageTxResult } from "ws/message/WsMessageTxResult";
-import { parseAxelarEventMessage } from "./helper";
+import { parseAxlEventMessage } from "./helper";
 
 export class AxelarWsClient {
   ws: WebSocket;
@@ -22,8 +22,7 @@ export class AxelarWsClient {
     };
 
     this.ws.onmessage = (event) => {
-      const messageData =
-        parseAxelarEventMessage<IWsEventMessageTxResult>(event);
+      const messageData = parseAxlEventMessage<IWsEventMessageTxResult>(event);
 
       if (!messageData) return;
 
