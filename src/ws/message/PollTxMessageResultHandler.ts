@@ -1,4 +1,4 @@
-import { PollState } from "@database/models/poll/poll.interface";
+import { PollState } from "@database/models/polls/poll/poll.interface";
 import { addNewWsPollAddJob } from "queue/jobs/poll/NewWsPollAddJob";
 import { NewWsPollDto } from "queue/jobs/poll/NewWsPollDto";
 import { IParticipantsData } from "ws/event/ParticipantsData";
