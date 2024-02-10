@@ -19,4 +19,21 @@ export class WsMessageTxResult implements IWsEventMessageTxResult {
   getEventByKey(key: string): string | undefined {
     return this?.events?.[key]?.[0];
   }
+
+  getTxHeight(): number | undefined {
+    const txHeightString = this.getEventByKey(this.txHeightKey());
+    return txHeightString ? parseInt(txHeightString) : undefined;
+  }
+
+  getTxHash(): string | undefined {
+    return this.getEventByKey(this.txHashKey());
+  }
+
+  private txHeightKey(): string {
+    return "tx.height";
+  }
+
+  private txHashKey(): string {
+    return "tx.hash";
+  }
 }
