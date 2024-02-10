@@ -1,3 +1,3 @@
-import { IPoll } from "@database/models/poll/poll.interface";
+import { IPoll } from "@database/models/polls/poll/poll.interface";
 
 export interface NewWsPollDto extends IPoll {}
