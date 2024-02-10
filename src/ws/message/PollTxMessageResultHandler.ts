@@ -1,4 +1,7 @@
-import { IParticipantsData, ParticipantsData } from "ws/event/ParticipantsData";
+import { PollState } from "@database/models/poll/poll.interface";
+import { addNewWsPollAddJob } from "queue/jobs/poll/NewWsPollAddJob";
+import { NewWsPollDto } from "queue/jobs/poll/NewWsPollDto";
+import { IParticipantsData } from "ws/event/ParticipantsData";
 import {
   ActivePollEvents,
   ActivePollVotedEvents,
@@ -50,16 +53,14 @@ export class PollTxMessageResultHandler {
   private handleOnPollVotedMessage(result: WsMessageTxResult) {
     const pollIdKey = "axelar.vote.v1beta1.Voted.poll";
     const pollStateKey = "axelar.vote.v1beta1.Voted.state";
-    const txHeightKey = "tx.height";
-    const txHashKey = "tx.hash";
     const voterAddressKey = "axelar.vote.v1beta1.Voted.voter";
 
     // POLL_STATE_COMPLETED, POLL_STATE_PENDING, POLL_STATE_FAILED maybe more don't know
     // Check if state not pending
     const pollState = result?.getEventByKey(pollStateKey);
     const pollId = result?.getEventByKey(pollIdKey);
-    const txHeight = result?.getEventByKey(txHeightKey);
-    const txHash = result?.getEventByKey(txHashKey);
+    const txHash = result?.getTxHash();
+    const txHeight = result?.getTxHeight();
     const voterAddress = result?.getEventByKey(voterAddressKey);
     if (!pollId || !pollState || !txHeight || !txHash || !voterAddress) {
       console.log("missing data one of the keys", {
@@ -71,7 +72,6 @@ export class PollTxMessageResultHandler {
       });
       return;
     }
-    console.log({ pollState });
   }
 
   private handleOnPollTxMessage(
@@ -80,12 +80,10 @@ export class PollTxMessageResultHandler {
   ) {
     const chainKey = pollEvent.axelarEvmVKeyWithSuffix("chain");
     const partsObjKey = pollEvent.axelarEvmVKeyWithSuffix("participants");
-    const txHeightKey = `tx.height`;
-    const txHashKey = "tx.hash";
 
     const pollChain = result?.getEventByKey(chainKey);
-    const txHash = result?.getEventByKey(txHashKey);
-    const txHeight = result?.getEventByKey(txHeightKey);
+    const txHash = result?.getTxHash();
+    const txHeight = result?.getTxHeight();
     const participantObject = result?.getEventByKey(partsObjKey);
     if (!pollChain || !txHeight || !participantObject || !txHash) {
       console.log("missing data one of the keys", {
@@ -97,17 +95,24 @@ export class PollTxMessageResultHandler {
       return;
     }
 
-    const { participants, poll_id }: IParticipantsData =
+    const { participants, poll_id: pollId }: IParticipantsData =
       JSON.parse(participantObject);
-    if (!participants || !poll_id) {
+    if (!participants || !pollId) {
       console.log("missing data one of the keys", {
         participants,
-        poll_id,
+        pollId,
       });
       return;
     }
+    const newPollJobDto: NewWsPollDto = {
+      pollId,
+      pollChain,
+      pollState: PollState.POLL_STATE_PENDING,
+      participants,
+      txHash,
+      txHeight,
+    };
 
-    const participantData = new ParticipantsData(poll_id, participants);
-    //Need to send queue to store on db
+    addNewWsPollAddJob(newPollJobDto);
   }
 }
