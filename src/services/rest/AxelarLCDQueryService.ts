@@ -28,15 +28,15 @@ export class AxelarLCDQueryService {
   ): Promise<string> {
     const response = await this.getValidatorRegisterProxyInfo(operatorAddress);
     if (response?.txs.length === 0) {
-      return Promise.reject("No RegisterProxy tx found");
+      return Promise.reject(new Error("No RegisterProxy tx found"));
     }
 
     const firstMessage = response?.txs?.[0]?.body?.messages?.[0];
 
     if (!firstMessage) {
-      return Promise.reject("No message found in RegisterProxy tx");
+      return Promise.reject(new Error("No message found in RegisterProxy tx"));
     }
 
-    return firstMessage.proxy_addr;
+    return firstMessage.proxy_addr as string;
   }
 }
