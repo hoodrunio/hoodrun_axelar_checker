@@ -13,6 +13,7 @@ import { ValSigningInfoGetResponse } from "./interfaces/slashing/ValSigningInfoG
 import { ValidatorsGetResponse } from "./interfaces/validators/ValidatorsGetResponse";
 import { AxelarPaginationRequest } from "./pagination/AxelarPaginationRequest";
 import { logger } from "@utils/logger";
+import { TransactionGetResponse } from "./interfaces/tx/TransactionGetResponse";
 
 export class AxelarQueryService {
   restClient: AxiosService;
@@ -136,6 +137,20 @@ export class AxelarQueryService {
       });
 
     return response?.data;
+  }
+
+  async getTxWithHash(txHash: string): Promise<TransactionGetResponse> {
+    try {
+      const response = await this.restClient.request<TransactionGetResponse>({
+        method: "GET",
+        url: `/cosmos/tx/v1beta1/txs/${txHash}`,
+      });
+
+      return response?.data;
+    } catch (error) {
+      logger.error(`Could not fetch uptime for ${txHash}`);
+      throw new Error(`Could not fetch transaction with hash ${txHash}`);
+    }
   }
 
   async getSafeValidatorUptime(
