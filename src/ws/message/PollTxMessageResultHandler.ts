@@ -1,4 +1,4 @@
-import { PollState } from "@database/models/polls/poll/poll.interface";
+import { PollStateEnum } from "@database/models/polls/poll/poll.interface";
 import { addNewWsPollAndVoteAddJob } from "queue/jobs/poll/NewWsPollAndVoteAddJob";
 import {
   NewWsPollDataTypeEnum,
@@ -124,7 +124,7 @@ export class PollTxMessageResultHandler {
     const newPollJobDto: NewWsPollDto = {
       pollId,
       pollChain,
-      pollState: PollState.POLL_STATE_PENDING,
+      pollState: PollStateEnum.POLL_STATE_PENDING,
       participants,
       txHash,
       txHeight,

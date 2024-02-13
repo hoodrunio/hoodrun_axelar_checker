@@ -1,7 +1,6 @@
 import { createAppSchema } from "@database/helper";
 import { model, Schema } from "mongoose";
 import { IPollVoteDocument, PollVoteType } from "./poll_vote.interface";
-import { PollState } from "../poll/poll.interface";
 
 const POLL_VOTES_COLLECTION_NAME = "poll_votes";
 

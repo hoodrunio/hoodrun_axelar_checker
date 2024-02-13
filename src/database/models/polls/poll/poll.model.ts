@@ -1,6 +1,6 @@
 import { createAppSchema } from "@database/helper";
 import { model, Schema } from "mongoose";
-import { IPollDocument, PollState } from "./poll.interface";
+import { IPollDocument } from "./poll.interface";
 
 const POLL_COLLECTION_NAME = "polls";
 
@@ -16,7 +16,6 @@ const PollSchema: Schema<IPollDocument> = createAppSchema<IPollDocument>({
   },
   pollState: {
     type: String,
-    enum: Object.values(PollState),
     required: true,
   },
   participants: {

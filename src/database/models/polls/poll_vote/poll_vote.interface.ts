@@ -1,6 +1,5 @@
 import { IBaseInterface, IBaselModel } from "@database/base/model.interface";
 import { Document } from "mongoose";
-import { PollState } from "../poll/poll.interface";
 
 export enum PollVoteType {
   YES = "YES",
