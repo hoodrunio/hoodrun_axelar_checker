@@ -51,5 +51,36 @@ interface Body {
 interface Message {
   "@type": string;
   sender: string;
-  proxy_addr: string;
+  proxy_addr?: string;
+  inner_message?: InnerMessage;
+}
+
+interface InnerMessage {
+  "@type": string;
+  sender: string;
+  poll_id: string;
+  vote?: Vote;
+}
+
+interface Vote {
+  "@type": string;
+  chain: string;
+  events: Event[];
+}
+
+interface Event {
+  chain: string;
+  tx_id: number[];
+  index: string;
+  status: string;
+  contract_call_with_token: ContractCallWithToken;
+}
+
+interface ContractCallWithToken {
+  sender: number[];
+  destination_chain: string;
+  contract_address: string;
+  payload_hash: number[];
+  symbol: string;
+  amount: string;
 }
