@@ -51,7 +51,7 @@ class AppQueueFactory {
 
   onQueueCompleted(queue: Queue.Queue, name: string) {
     queue.on("completed", (job) => {
-      logger.info(`Queue ${name} job completed: ${job.data}`);
+      logger.info(`Queue ${name} job completed`);
     });
   }
 }

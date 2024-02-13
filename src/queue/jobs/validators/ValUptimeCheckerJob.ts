@@ -114,7 +114,7 @@ async function processTgUser(params: ProcessTgUserParams) {
   }
 }
 
-export const addValUptimeCheckerJob = async () => {
+export const addValUptimeCheckerJob = () => {
   appJobProducer.addJob(
     VALIDATOR_UPTIME_CHECKER,
     {},

@@ -104,8 +104,8 @@ export const initValAllInfoCheckerQueue = async () => {
   });
 };
 
-export const addValAllInfoCheckerJob = async () => {
-  await appJobProducer.addJob(
+export const addValAllInfoCheckerJob = () => {
+  appJobProducer.addJob(
     VAL_ALL_INFO_CHECKER,
     {},
     { repeat: { every: xSeconds(20) } }
