@@ -29,6 +29,6 @@ export const pollStateEnumFromString = (state: string): PollState => {
     case "POLL_STATE_COMPLETED":
       return PollState.POLL_STATE_COMPLETED;
     default:
-      return "POLL_STATE_UNKNOWN" as never;
+      return state as never;
   }
 };

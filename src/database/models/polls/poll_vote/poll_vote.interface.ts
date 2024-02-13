@@ -10,7 +10,7 @@ export enum PollVoteType {
 
 export interface IPollVote extends IBaseInterface {
   pollId: string;
-  pollState: PollState;
+  pollState: string;
   voter_address: string;
   vote: PollVoteType;
   txHash: string;

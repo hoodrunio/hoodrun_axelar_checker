@@ -14,7 +14,6 @@ const PollVoteSchema: Schema<IPollVoteDocument> =
     pollState: {
       type: String,
       required: true,
-      enum: Object.values(PollState),
     },
     voter_address: {
       type: String,
