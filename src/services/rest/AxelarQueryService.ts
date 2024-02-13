@@ -148,7 +148,7 @@ export class AxelarQueryService {
 
       return response?.data;
     } catch (error) {
-      logger.error(`Could not fetch uptime for ${txHash}`);
+      logger.error(`Could not fetch tx for ${txHash}`);
       throw new Error(`Could not fetch transaction with hash ${txHash}`);
     }
   }
