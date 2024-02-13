@@ -2,16 +2,19 @@ import { AppDb } from "@database/database";
 import { connectDb } from "@database/index";
 import { logger } from "@utils/logger";
 import { TGBot } from "bot/tg/TGBot";
-import {
-  addValUptimeCheckerJob,
-  initValsUptimeCheckerQueue,
-} from "queue/jobs/validators/ValUptimeCheckerJob";
-import { AxelarQueryService } from "../services/rest/AxelarQueryService";
-import { Validator } from "../services/rest/interfaces/validators/validator";
+import { initWsMessageResultHandlerQueue } from "queue/jobs/WsMessageHandler";
+import { initNewWsPollAndVoteJobAddQueue } from "queue/jobs/poll/NewWsPollAndVoteAddJob";
 import {
   addValAllInfoCheckerJob,
   initValAllInfoCheckerQueue,
 } from "queue/jobs/validators/ValAllInfoCheckerJob";
+import {
+  addValUptimeCheckerJob,
+  initValsUptimeCheckerQueue,
+} from "queue/jobs/validators/ValUptimeCheckerJob";
+import { AxelarWsClient } from "ws/client/AxelarWsClient";
+import { AxelarQueryService } from "../services/rest/AxelarQueryService";
+import { Validator } from "../services/rest/interfaces/validators/validator";
 
 class App {
   axelarQueryService: AxelarQueryService;
@@ -23,13 +26,17 @@ class App {
     this.axelarQueryService = new AxelarQueryService();
   }
   async initalizeApplication() {
+    await this.initAxelarWS();
     await this.initDbConn();
-    await this.initTgBot();
+    // await this.initTgBot();
 
-    //Init queues before jobs
+    // //Init queues before jobs
     await this.initQueue();
     // ------------------------------ //
     await this.initJobs();
+  }
+  private async initAxelarWS() {
+    const _ = new AxelarWsClient();
   }
 
   private async initDbConn() {
@@ -43,11 +50,13 @@ class App {
   private async initQueue() {
     await initValAllInfoCheckerQueue();
     await initValsUptimeCheckerQueue();
+    await initNewWsPollAndVoteJobAddQueue();
+    await initWsMessageResultHandlerQueue();
   }
 
   private async initJobs() {
-    await addValAllInfoCheckerJob();
-    await addValUptimeCheckerJob();
+    addValAllInfoCheckerJob();
+    addValUptimeCheckerJob();
   }
 
   async getAxelarLatestValidators(): Promise<Validator[]> {
