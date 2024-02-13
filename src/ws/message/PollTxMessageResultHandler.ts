@@ -1,6 +1,10 @@
 import { PollState } from "@database/models/polls/poll/poll.interface";
-import { addNewWsPollAddJob } from "queue/jobs/poll/NewWsPollAddJob";
-import { NewWsPollDto } from "queue/jobs/poll/NewWsPollDto";
+import { addNewWsPollAndVoteAddJob } from "queue/jobs/poll/NewWsPollAndVoteAddJob";
+import {
+  NewWsPollDataTypeEnum,
+  NewWsPollDto,
+  NewWsPollVoteDto,
+} from "queue/jobs/poll/dto/NewWsPollDtos";
 import { IParticipantsData } from "ws/event/ParticipantsData";
 import {
   ActivePollEvents,
@@ -72,6 +76,19 @@ export class PollTxMessageResultHandler {
       });
       return;
     }
+
+    const newPollVoteData: Omit<NewWsPollVoteDto, "vote"> = {
+      pollId,
+      pollState,
+      voter_address: voterAddress,
+      txHash,
+      txHeight,
+    };
+
+    addNewWsPollAndVoteAddJob({
+      type: NewWsPollDataTypeEnum.NEW_POLL_VOTE,
+      data: newPollVoteData,
+    });
   }
 
   private handleOnPollTxMessage(
@@ -113,6 +130,9 @@ export class PollTxMessageResultHandler {
       txHeight,
     };
 
-    addNewWsPollAddJob(newPollJobDto);
+    addNewWsPollAndVoteAddJob({
+      type: NewWsPollDataTypeEnum.NEW_POLL,
+      data: newPollJobDto,
+    });
   }
 }

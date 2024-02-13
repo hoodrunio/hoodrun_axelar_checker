@@ -17,7 +17,8 @@ export class WsMessageTxResult implements IWsEventMessageTxResult {
   }
 
   getEventByKey(key: string): string | undefined {
-    return this?.events?.[key]?.[0];
+    const event = this?.events?.[key]?.[0]?.replace(/^"|"$/g, "");
+    return event;
   }
 
   getTxHeight(): number | undefined {

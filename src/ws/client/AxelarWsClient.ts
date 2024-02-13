@@ -1,13 +1,10 @@
 import appConfig from "@config/index";
+import { addWsMessageResultHandlerJob } from "queue/jobs/WsMessageHandler";
 import { WebSocket } from "ws";
 import {
   ActivePollEvents,
   ActivePollVotedEvents,
 } from "ws/event/PollSendEvent";
-import { IWsEventMessageTxResult } from "ws/interface/IWsEventMessageTx";
-import { PollTxMessageResultHandler } from "ws/message/PollTxMessageResultHandler";
-import { WsMessageTxResult } from "ws/message/WsMessageTxResult";
-import { parseAxlEventMessage } from "./helper";
 
 export class AxelarWsClient {
   ws: WebSocket;
@@ -22,13 +19,7 @@ export class AxelarWsClient {
     };
 
     this.ws.onmessage = (event) => {
-      const messageData = parseAxlEventMessage<IWsEventMessageTxResult>(event);
-
-      if (!messageData) return;
-
-      const pollTxHandler = new PollTxMessageResultHandler();
-      const result = new WsMessageTxResult(messageData.result);
-      pollTxHandler.handle(result);
+      addWsMessageResultHandlerJob({ messageData: event?.data });
     };
 
     this.ws.onclose = () => {

@@ -1,36 +1,35 @@
-import { MessageEvent } from "ws";
+import { Data } from "ws";
 import { IWsEventData } from "ws/interface/IWsEventMessage";
 
-const parseWsMessageEvent = (event: MessageEvent): string => {
+const parseWsMessageEventData = (messageData: Data): string => {
   let data: string = "Unknown data type received from ws";
-
   switch (true) {
-    case typeof event.data === "string":
-      data = event.data;
+    case typeof messageData === "string":
+      data = messageData;
       break;
-    case event.data instanceof Buffer:
-      data = event.data.toString();
+    case messageData instanceof Buffer:
+      data = messageData.toString();
       break;
-    case event.data instanceof ArrayBuffer:
-      data = new TextDecoder().decode(event.data);
+    case messageData instanceof ArrayBuffer:
+      data = new TextDecoder().decode(messageData);
       break;
-    case Array.isArray(event.data) &&
-      event.data.every((item) => item instanceof Buffer):
-      data = event.data.map((buffer) => buffer.toString()).join("");
+    case Array.isArray(messageData) &&
+      messageData.every((item) => item instanceof Buffer):
+      data = messageData.map((buffer) => buffer.toString()).join("");
       break;
     default:
-      console.error("Unexpected data type:", typeof event.data);
+      console.error("Unexpected data type:", typeof messageData);
       return data;
   }
 
   return data;
 };
 
-export const parseAxlEventMessage = <T>(
-  event: MessageEvent
+export const parseAxlEventMessageData = <T>(
+  messageData: Data
 ): IWsEventData<T> | undefined => {
   try {
-    const data = parseWsMessageEvent(event);
+    const data = parseWsMessageEventData(messageData);
     return JSON.parse(data);
   } catch (error) {
     console.error("Error parsing ws message:", error);
