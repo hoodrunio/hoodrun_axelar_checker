@@ -32,7 +32,10 @@ class AppQueueFactory {
 
   createQueue<T>(name: string): Queue.Queue<T> {
     if (!this.queues[name]) {
-      const queue = new Queue(name, { ...redisConfig });
+      const queue = new Queue(name, {
+        ...redisConfig,
+        limiter: { max: 5000, duration: 1000 },
+      });
       this.onQueueError(queue, name);
       this.onQueueCompleted(queue, name);
       queue.empty();

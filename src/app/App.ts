@@ -1,17 +1,12 @@
 import { connectDb } from "@database/index";
 import { TGBot } from "bot/tg/TGBot";
 import { initWsMessageResultHandlerQueue } from "queue/jobs/WsMessageHandler";
-import { initNewWsPollAndVoteJobAddQueue } from "queue/jobs/poll/NewWsPollAndVoteAddJob";
-import {
-  addValAllInfoCheckerJob,
-  initValAllInfoCheckerQueue,
-} from "queue/jobs/validators/ValAllInfoCheckerJob";
-import {
-  addValUptimeCheckerJob,
-  initValsUptimeCheckerQueue,
-} from "queue/jobs/validators/ValUptimeCheckerJob";
+import { addValAllInfoCheckerJob } from "queue/jobs/validators/ValAllInfoCheckerJob";
+import { addValUptimeCheckerJob } from "queue/jobs/validators/ValUptimeCheckerJob";
 import { AxelarWsClient } from "ws/client/AxelarWsClient";
 import { AxelarQueryService } from "../services/rest/AxelarQueryService";
+import { initNewWsAllPollDataQueue } from "queue/jobs/poll/NewWsAllPollDataJob";
+import { AppDb } from "@database/database";
 
 class App {
   axelarQueryService: AxelarQueryService;
@@ -23,8 +18,8 @@ class App {
     this.axelarQueryService = new AxelarQueryService();
   }
   async initalizeApplication() {
-    await this.initAxelarWS();
     await this.initDbConn();
+    await this.initAxelarWS();
     // await this.initTgBot();
 
     // //Init queues before jobs
@@ -33,7 +28,9 @@ class App {
     await this.initJobs();
   }
   private async initAxelarWS() {
-    const _ = new AxelarWsClient();
+    const db = new AppDb();
+    const vals = await db.validatorRepository.findAll();
+    const ws = new AxelarWsClient(vals);
   }
 
   private async initDbConn() {
@@ -45,15 +42,15 @@ class App {
   }
 
   private async initQueue() {
-    await initValAllInfoCheckerQueue();
-    await initValsUptimeCheckerQueue();
-    await initNewWsPollAndVoteJobAddQueue();
     await initWsMessageResultHandlerQueue();
+    await initNewWsAllPollDataQueue();
+    // await initPollAndVoteCheckerJobQueue();
   }
 
   private async initJobs() {
     addValAllInfoCheckerJob();
     addValUptimeCheckerJob();
+    // addPollAndVoteCheckerJob();
   }
 }
 
