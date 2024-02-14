@@ -18,7 +18,7 @@ export const initValsUptimeCheckerQueue = async () => {
     VALIDATOR_UPTIME_CHECKER
   );
 
-  validatorUptimeCheckerQueue.process(4, async (job) => {
+  validatorUptimeCheckerQueue.process(1, async (job) => {
     const db = new AppDb();
     const activeValidators = await db.validatorRepository.activeValidators();
 

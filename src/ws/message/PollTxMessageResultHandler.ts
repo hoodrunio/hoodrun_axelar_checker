@@ -1,4 +1,5 @@
 import { PollStateEnum } from "@database/models/polls/poll/poll.interface";
+import { addNewWsPollAndVoteAddJob } from "queue/jobs/poll/NewWsPollAndVoteAddJob";
 import {
   NewWsPollDataTypeEnum,
   NewWsPollDto,
@@ -11,7 +12,6 @@ import {
   PollSendEvent,
 } from "ws/event/PollSendEvent";
 import { WsMessageTxResult } from "./WsMessageTxResult";
-import { addNewWsAllPollDataJob } from "queue/jobs/poll/NewWsAllPollDataJob";
 
 export class PollTxMessageResultHandler {
   public handle(messageTxResult: WsMessageTxResult) {
@@ -85,7 +85,7 @@ export class PollTxMessageResultHandler {
       txHeight,
     };
 
-    addNewWsAllPollDataJob({
+    addNewWsPollAndVoteAddJob({
       type: NewWsPollDataTypeEnum.NEW_POLL_VOTE,
       data: newPollVoteData,
     });
@@ -130,7 +130,7 @@ export class PollTxMessageResultHandler {
       txHeight,
     };
 
-    addNewWsAllPollDataJob({
+    addNewWsPollAndVoteAddJob({
       type: NewWsPollDataTypeEnum.NEW_POLL,
       data: newPollJobDto,
     });

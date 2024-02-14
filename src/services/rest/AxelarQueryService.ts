@@ -14,8 +14,6 @@ import { ValidatorsGetResponse } from "./interfaces/validators/ValidatorsGetResp
 import { AxelarPaginationRequest } from "./pagination/AxelarPaginationRequest";
 import { logger } from "@utils/logger";
 import { TransactionGetResponse } from "./interfaces/tx/TransactionGetResponse";
-import { AxlBlockChainGetResponse } from "./interfaces/blockchain/BlockChainGetResponse";
-import { BlockResultGetResponse } from "./interfaces/block/BlockResultGetResponse";
 
 export class AxelarQueryService {
   restClient: AxiosService;
@@ -135,7 +133,7 @@ export class AxelarQueryService {
     const response =
       await this.restClient.request<AxelarEvmChainMaintainersGetResponse>({
         method: "GET",
-        url: `axelar/nexus/v1beta1/chain_maintainers/${targetChain}`,
+        url: `https://axelar-lcd.quantnode.tech/axelar/nexus/v1beta1/chain_maintainers/${targetChain}`,
       });
 
     return response?.data;
@@ -145,7 +143,7 @@ export class AxelarQueryService {
     try {
       const response = await this.restClient.request<TransactionGetResponse>({
         method: "GET",
-        url: `cosmos/tx/v1beta1/txs/${txHash}`,
+        url: `/cosmos/tx/v1beta1/txs/${txHash}`,
       });
 
       return response?.data;
@@ -170,38 +168,63 @@ export class AxelarQueryService {
     return uptime;
   }
 
-  async getBlockResultWithHeight(
-    height: number
-  ): Promise<BlockResultGetResponse> {
+  async updateValidatorsPropsOnDb() {
+    const validatorRepo = new ValidatorRepository();
+    const [validatorsRes, allEvmChainsWithMaintainersRes] = await Promise.all([
+      this.getAllValidators(),
+      this.getAxelarAllEvmChainsWithMaintainers(),
+    ]);
+    const validators = validatorsRes.validators;
+    const chainsMaintainers = allEvmChainsWithMaintainersRes;
+
+    const promises = validators.map(async (validator) => {
+      const valEvmSupportedChains: string[] = [];
+      const operatorAddress = validator.operator_address;
+
+      for (const [chain, maintainers] of chainsMaintainers.entries()) {
+        if (maintainers.includes(operatorAddress)) {
+          valEvmSupportedChains.push(chain);
+        }
+      }
+
+      const consensusAddress = convertPubKeyToBech32(
+        validator.consensus_pubkey,
+        ADDRESS_TYPE_PREFIX.VALCONSENSUS
+      );
+
+      const uptime = await this.getSafeValidatorUptime(consensusAddress);
+      const is_active = validator.status == "BOND_STATUS_BONDED";
+
+      try {
+        await validatorRepo.upsertOne(
+          { operator_address: operatorAddress },
+          {
+            operator_address: operatorAddress,
+            consensus_address: consensusAddress,
+            consensus_pubkey: validator.consensus_pubkey,
+            jailed: validator.jailed,
+            status: validator.status,
+            tokens: validator.tokens,
+            delegator_shares: validator.delegator_shares,
+            description: validator.description,
+            unbonding_height: validator.unbonding_height,
+            unbonding_time: validator.unbonding_time,
+            commission: validator.commission,
+            min_self_delegation: validator.min_self_delegation,
+            supported_evm_chains: valEvmSupportedChains,
+            uptime,
+            is_active,
+          }
+        );
+      } catch (error) {
+        logger.error(`Failed to create validator: ${error}`);
+      }
+    });
+
     try {
-      const response = await this.restClient.request<BlockResultGetResponse>({
-        method: "GET",
-        url: `block_results?height=${height}`,
-      });
-
-      return response?.data;
+      await Promise.all(promises);
     } catch (error) {
-      logger.error(`Could not fetch block result for height ${height}`);
-      throw new Error(`Could not fetch block result for height ${height}`);
+      logger.error(`Failed to concurrent update validators: ${error}`);
     }
-  }
-
-  async getBlockChain(): Promise<AxlBlockChainGetResponse> {
-    try {
-      const response = await this.restClient.request<AxlBlockChainGetResponse>({
-        method: "GET",
-        url: "blockchain",
-      });
-
-      return response?.data;
-    } catch (error) {
-      logger.error(`Could not fetch block chain`);
-      throw new Error(`Could not fetch block chain`);
-    }
-  }
-
-  async getLatestBlockHeight(): Promise<number> {
-    const response = await this.getBlockChain();
-    return parseInt(response.result.last_height);
   }
 }

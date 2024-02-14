@@ -32,16 +32,3 @@ export const pollStateEnumFromString = (state: string): PollStateEnum => {
       return state as never;
   }
 };
-
-export const stringFromPollStateEnum = (state: PollStateEnum): string => {
-  switch (state) {
-    case PollStateEnum.POLL_STATE_PENDING:
-      return "POLL_STATE_PENDING";
-    case PollStateEnum.POLL_STATE_FAILED:
-      return "POLL_STATE_FAILED";
-    case PollStateEnum.POLL_STATE_COMPLETED:
-      return "POLL_STATE_COMPLETED";
-    default:
-      throw new Error(`Invalid PollStateEnum: ${state}`);
-  }
-};
