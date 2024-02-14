@@ -27,5 +27,14 @@ export const createPollWsEventQuery = (
   participantEvent: PollEvent
 ) =>
   `tm.event='Tx' AND message.action='${action}' AND axelar.evm.v1beta1.${participantEvent}.participants CONTAINS 'participants'`;
-export const createPollVoteWsEventQuery = (action: PollEvent) =>
-  `tm.event='Tx' AND axelar.vote.v1beta1.${action}.action CONTAINS 'vote'`;
+export const createPollVoteWsEventQuery = (
+  action: PollEvent,
+  voterAddress?: string
+) => {
+  if (voterAddress) {
+    const validatorVoteQuery = `tm.event='Tx' AND axelar.vote.v1beta1.${action}.action CONTAINS 'vote' AND axelar.vote.v1beta1.Voted.voter CONTAINS '${voterAddress}'`;
+    return validatorVoteQuery;
+  }
+  const voteQuery = `tm.event='Tx' AND axelar.vote.v1beta1.${action}.action CONTAINS 'vote'`;
+  return voteQuery;
+};

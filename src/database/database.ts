@@ -1,3 +1,4 @@
+import { AxlStateRepository } from "@repositories/axlstate/AxlStateRepository";
 import { NotificationRepository } from "@repositories/notification/NotificationRepository";
 import { PollRepository } from "@repositories/poll/PollRepository";
 import { PollVoteRepository } from "@repositories/poll/PollVoteRepository";
@@ -9,6 +10,7 @@ export class AppDb {
   telegramUserRepo: TelegramUserRepository;
   notificationRepo: NotificationRepository;
   pollRepo: PollRepository;
+  axlStateRepo: AxlStateRepository;
   pollVoteRepo: PollVoteRepository;
   constructor() {
     this.validatorRepository = new ValidatorRepository();
@@ -16,5 +18,6 @@ export class AppDb {
     this.notificationRepo = new NotificationRepository();
     this.pollRepo = new PollRepository();
     this.pollVoteRepo = new PollVoteRepository();
+    this.axlStateRepo = new AxlStateRepository();
   }
 }

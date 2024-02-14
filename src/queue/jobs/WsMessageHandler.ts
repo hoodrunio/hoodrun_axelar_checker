@@ -17,7 +17,7 @@ export const initWsMessageResultHandlerQueue = async () => {
       WS_MESSAGE_RESULT_HANDLER_QUEUE
     );
 
-  wsMessageResultHandlerQueue.process(3000, async (job, done) => {
+  wsMessageResultHandlerQueue.process(async (job) => {
     const messageData = job.data.messageData;
     const parsedData =
       parseAxlEventMessageData<IWsEventMessageTxResult>(messageData);
@@ -28,7 +28,7 @@ export const initWsMessageResultHandlerQueue = async () => {
 
     new PollTxMessageResultHandler().handle(result);
 
-    done();
+    return Promise.resolve();
   });
 };
 

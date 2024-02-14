@@ -10,7 +10,7 @@ export class PollSendEvent {
   query: string = "";
   pollEvent: PollEvent;
 
-  constructor(event: PollEvent) {
+  constructor(event: PollEvent, params?: { voterAddress: string }) {
     this.pollEvent = event;
 
     switch (event) {
@@ -39,7 +39,10 @@ export class PollSendEvent {
         );
         break;
       case PollEvent.Voted:
-        this.query = createPollVoteWsEventQuery(PollEvent.Voted);
+        this.query = createPollVoteWsEventQuery(
+          PollEvent.Voted,
+          params?.voterAddress
+        );
         break;
     }
   }
