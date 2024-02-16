@@ -1,7 +1,7 @@
 import { Data } from "ws";
 import { IWsEventData } from "ws/interface/IWsEventMessage";
 
-const parseWsMessageEventData = (messageData: Data): string => {
+export const parseWsMessageEventData = (messageData: Data): string => {
   let data: string = "Unknown data type received from ws";
   switch (true) {
     case typeof messageData === "string":

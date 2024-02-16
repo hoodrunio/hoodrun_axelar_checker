@@ -28,9 +28,8 @@ class App {
     await this.initJobs();
   }
   private async initAxelarWS() {
-    const db = new AppDb();
-    const vals = await db.validatorRepository.findAll();
-    const ws = new AxelarWsClient(vals);
+    const ws = new AxelarWsClient();
+    await ws.initializeListeners();
   }
 
   private async initDbConn() {

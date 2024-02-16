@@ -6,6 +6,11 @@ const POLL_VOTES_COLLECTION_NAME = "poll_votes";
 
 const PollVoteSchema: Schema<IPollVoteDocument> =
   createAppSchema<IPollVoteDocument>({
+    customId: {
+      type: String,
+      required: true,
+      unique: true,
+    },
     pollId: {
       type: String,
       required: true,
@@ -44,3 +49,6 @@ const PollVoteDbModel = model<IPollVoteDocument>(
 );
 
 export default PollVoteDbModel;
+
+export const genPollVoteCustomId = (pollId: string, voter_address: string) =>
+  `${pollId}_${voter_address}`;

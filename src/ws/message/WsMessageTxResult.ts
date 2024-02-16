@@ -1,16 +1,17 @@
 import {
   IWsEventMessageTxResult,
-  TxResult,
+  ITxResult,
 } from "ws/interface/IWsEventMessageTx";
 
-export class WsMessageTxResult implements IWsEventMessageTxResult {
+export class WsMessageTxResult {
+  raw: string;
   query: string;
-  data: { type: string; value: TxResult };
+  data: { type: string; value: { TxResult: ITxResult } };
   events: { [key: string]: string[] };
 
-  constructor(params: IWsEventMessageTxResult) {
+  constructor(params: IWsEventMessageTxResult, raw: string) {
     const { query, data, events } = params;
-
+    this.raw = raw;
     this.query = query;
     this.data = data;
     this.events = events;
@@ -36,5 +37,45 @@ export class WsMessageTxResult implements IWsEventMessageTxResult {
 
   private txHashKey(): string {
     return "tx.hash";
+  }
+}
+
+export class TxResult {
+  height: string;
+  index: number;
+  tx: string;
+  result: TxResultData;
+  constructor(height: string, index: number, tx: string, result: TxResultData) {
+    this.height = height;
+    this.index = index;
+    this.tx = tx;
+    this.result = result;
+  }
+}
+
+export class TxResultData {
+  constructor(
+    public data: string,
+    public log: string,
+    public gas_wanted: string,
+    public gas_used: string,
+    public events: Event[]
+  ) {}
+}
+
+export class EventAttribute {
+  constructor(
+    public key: string,
+    public value: string,
+    public index?: boolean
+  ) {}
+}
+
+export class Event {
+  "@type": string;
+  attributes: EventAttribute[];
+  constructor(type: string, attributes: EventAttribute[]) {
+    this["@type"] = type;
+    this.attributes = attributes;
   }
 }

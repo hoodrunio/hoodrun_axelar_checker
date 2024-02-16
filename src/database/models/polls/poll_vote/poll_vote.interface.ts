@@ -8,6 +8,7 @@ export enum PollVoteType {
 }
 
 export interface IPollVote extends IBaseInterface {
+  customId: string;
   pollId: string;
   pollState: string;
   voter_address: string;

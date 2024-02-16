@@ -16,12 +16,12 @@ export const initNewWsAllPollDataQueue = async () => {
   const newWsAllPollDataJobQueue =
     AppQueueFactory.createQueue<NewWsPollAndVoteDto>(NEW_WS_ALL_POLL_DATA_JOB);
 
-  newWsAllPollDataJobQueue.process(async (job) => {
+  newWsAllPollDataJobQueue.process(4, async (job) => {
     const { type, data } = job.data;
 
     if (type == NewWsPollDataTypeEnum.NEW_POLL) {
       try {
-        // await handleOnNewPoll(data);
+        await handleOnNewPoll(data);
       } catch (error) {
         logger.error("Error in handleOnNewPoll", error);
       }
@@ -29,27 +29,11 @@ export const initNewWsAllPollDataQueue = async () => {
 
     if (type == NewWsPollDataTypeEnum.NEW_POLL_VOTE) {
       try {
-        // await handleOnNewPollVote(data);
+        await handleOnNewPollVote(data);
       } catch (error) {
         logger.error("Error in handleOnNewPollVote", error);
       }
     }
-
-    //DEBUGGING PURPOSES
-
-    if (type == NewWsPollDataTypeEnum.NEW_POLL) {
-      polls[data.pollId] = [];
-    }
-
-    if (type == NewWsPollDataTypeEnum.NEW_POLL_VOTE) {
-      if (polls[data.pollId]) {
-        polls[data.pollId].push(data);
-      }
-    }
-
-    Object.keys(polls).forEach((key) => {
-      logger.info(`Poll ${key} Votes ${polls[key].length}`);
-    });
 
     return Promise.resolve();
   });

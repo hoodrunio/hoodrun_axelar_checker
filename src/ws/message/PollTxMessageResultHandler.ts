@@ -12,6 +12,9 @@ import {
 } from "ws/event/PollSendEvent";
 import { WsMessageTxResult } from "./WsMessageTxResult";
 import { addNewWsAllPollDataJob } from "queue/jobs/poll/NewWsAllPollDataJob";
+import { genPollVoteCustomId } from "@database/models/polls/poll_vote/poll_vote.model";
+
+const pollsSemih: { [x: string]: string[] } = {};
 
 export class PollTxMessageResultHandler {
   public handle(messageTxResult: WsMessageTxResult) {
@@ -31,8 +34,8 @@ export class PollTxMessageResultHandler {
     result: WsMessageTxResult
   ): PollSendEvent | undefined {
     const allEvents = { ...ActivePollEvents, ...ActivePollVotedEvents };
-    const pollEvent = Object.values(allEvents).find(
-      (event) => event.getQuery() === result.query
+    const pollEvent = Object.values(allEvents).find((event) =>
+      result.raw.includes(event.pollEvent)
     );
     return pollEvent;
   }
@@ -41,8 +44,8 @@ export class PollTxMessageResultHandler {
     result: WsMessageTxResult,
     events: { [x: string]: PollSendEvent }
   ) {
-    return Object.values(events).some(
-      (event) => event.getQuery() === result.query
+    return Object.values(events).some((event) =>
+      result.raw.includes(event.pollEvent)
     );
   }
 
@@ -51,7 +54,7 @@ export class PollTxMessageResultHandler {
   }
 
   private isPollEventVotedMessage(result: WsMessageTxResult) {
-    return ActivePollVotedEvents.Voted.getQuery() === result.query;
+    return result.raw.includes(ActivePollVotedEvents.Voted.pollEvent);
   }
 
   private handleOnPollVotedMessage(result: WsMessageTxResult) {
@@ -77,9 +80,20 @@ export class PollTxMessageResultHandler {
       return;
     }
 
+    if (pollsSemih[pollId]) {
+      pollsSemih[pollId].push(voterAddress);
+    } else {
+      console.log("noPoll");
+    }
+
+    Object.keys(pollsSemih).forEach((key) => {
+      console.log("Poll ID: ", key, "VotersLength: ", pollsSemih[key].length);
+    });
+
     const newPollVoteData: Omit<NewWsPollVoteDto, "vote"> = {
       pollId,
       pollState,
+      customId: genPollVoteCustomId(pollId, voterAddress),
       voter_address: voterAddress,
       txHash,
       txHeight,
@@ -129,6 +143,8 @@ export class PollTxMessageResultHandler {
       txHash,
       txHeight,
     };
+
+    pollsSemih[pollId] = [];
 
     addNewWsAllPollDataJob({
       type: NewWsPollDataTypeEnum.NEW_POLL,

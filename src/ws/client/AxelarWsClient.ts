@@ -8,36 +8,39 @@ import {
   PollSendEvent,
 } from "ws/event/PollSendEvent";
 import { PollEvent } from "ws/event/eventHelper";
-
 export class AxelarWsClient {
   ws: WebSocket;
-  constructor(valList: IValidator[]) {
+  constructor() {
     const url = appConfig.mainnetAxelarWsUrls[0];
     console.log(url);
 
-    this.ws = new WebSocket(
-      url,
-      {
-        headers: {
-          connection: "Upgrade",
-          upgrade: "websocket",
-          "sec-websocket-version": "13",
-          "Sec-WebSocket-Extensions":
-            "permessage-deflate; client_max_window_bits",
+    this.ws = new WebSocket(url, {
+      headers: {
+        connection: "Upgrade",
+        upgrade: "websocket",
+        "sec-websocket-version": "13",
+        "Sec-WebSocket-Extensions":
+          "permessage-deflate; client_max_window_bits",
+      },
+      perMessageDeflate: {
+        zlibDeflateOptions: {
+          chunkSize: 5 * 1024,
+          memLevel: 9,
+          level: 8,
         },
-      }
+        zlibInflateOptions: {
+          chunkSize: 5 * 1024,
+          memLevel: 9,
+          level: 8,
+        },
 
-      //   {
-      //   perMessageDeflate: {
-      //     zlibDeflateOptions: {
-      //       chunkSize: 5 * 1024,
-      //       memLevel: 9,
-      //       level: 8,
-      //     },
-      //     concurrencyLimit: 100,
-      //   },
-      // }
-    );
+        concurrencyLimit: 2000,
+      },
+      maxPayload: 200 * 1024 * 1024,
+    });
+  }
+
+  public async initializeListeners() {
     this.ws.onopen = (params) => {
       console.log("connected to Axelar ws", params.target.url);
       this.initOnOpen();
@@ -53,15 +56,20 @@ export class AxelarWsClient {
   }
 
   private initOnOpen() {
-    this.subscribeAllEvents();
+    // this.subscribeAllEvents();
+    this.ws.send(
+      JSON.stringify({
+        jsonrpc: "2.0",
+        method: "subscribe",
+        id: "0",
+        params: { query: `tm.event='Tx'` },
+      })
+    );
   }
 
   private subscribeAllEvents() {
-    // this.subscribeToPollEvents();
-    // this.subscribeToPollVoteEvent();
-    this.subscribeToValidatorVoteEvents({
-      voterAddress: "axelar19eunkl0sfuljh604hgf6xy9lc6cs6sf9xr2gq6",
-    });
+    this.subscribeToPollEvents();
+    this.subscribeToPollVoteEvent();
   }
   private subscribeToPollEvents() {
     const pollSendEvents = [
@@ -79,7 +87,7 @@ export class AxelarWsClient {
     this.ws.send(ActivePollVotedEvents.Voted.asWsSubscribeEventString());
   }
 
-  public subscribeToValidatorVoteEvents({
+  private subscribeToValidatorVoteEvents({
     voterAddress,
   }: {
     voterAddress: string;
