@@ -1,9 +1,10 @@
 import { IBaseInterface, IBaselModel } from "@database/base/model.interface";
 import { Document } from "mongoose";
+import { PollVoteType } from "../polls/poll_vote/poll_vote.interface";
 
 export enum NotificationEvent {
   UPTIME = "UPTIME_EVENT",
-  POOL = "POOL_EVENT",
+  POOL_VOTE = "POOL_VOTE_EVENT",
 }
 
 export enum NotificationType {
@@ -14,7 +15,7 @@ export enum NotificationType {
 export interface INotification extends IBaseInterface {
   notification_id: string;
   event: NotificationEvent;
-  data: UptimeNotificationDataType | PoolNotificationDataType;
+  data: UptimeNotificationDataType | PollVoteNotificationDataType;
   condition: string;
   type: NotificationType;
   recipient: string;
@@ -32,6 +33,7 @@ export interface UptimeNotificationDataType {
   threshold: number;
 }
 
-export interface PoolNotificationDataType {
+export interface PollVoteNotificationDataType {
   poolId: string;
+  vote: PollVoteType;
 }
