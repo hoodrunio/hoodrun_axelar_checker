@@ -1,5 +1,5 @@
 import appConfig from "@config/index";
-import { IValidator } from "@database/models/validator/validator.interface";
+import { logger } from "@utils/logger";
 import { addWsMessageResultHandlerJob } from "queue/jobs/WsMessageHandler";
 import { WebSocket } from "ws";
 import {
@@ -9,35 +9,23 @@ import {
 } from "ws/event/PollSendEvent";
 import { PollEvent } from "ws/event/eventHelper";
 
+const { axelarVoterAddress: userVoterAddress } = appConfig;
+
 export class AxelarWsClient {
   ws: WebSocket;
-  constructor(valList: IValidator[]) {
+  constructor() {
     const url = appConfig.mainnetAxelarWsUrls[0];
     console.log(url);
 
-    this.ws = new WebSocket(
-      url,
-      {
-        headers: {
-          connection: "Upgrade",
-          upgrade: "websocket",
-          "sec-websocket-version": "13",
-          "Sec-WebSocket-Extensions":
-            "permessage-deflate; client_max_window_bits",
-        },
-      }
-
-      //   {
-      //   perMessageDeflate: {
-      //     zlibDeflateOptions: {
-      //       chunkSize: 5 * 1024,
-      //       memLevel: 9,
-      //       level: 8,
-      //     },
-      //     concurrencyLimit: 100,
-      //   },
-      // }
-    );
+    this.ws = new WebSocket(url, {
+      headers: {
+        connection: "Upgrade",
+        upgrade: "websocket",
+        "sec-websocket-version": "13",
+        "Sec-WebSocket-Extensions":
+          "permessage-deflate; client_max_window_bits",
+      },
+    });
     this.ws.onopen = (params) => {
       console.log("connected to Axelar ws", params.target.url);
       this.initOnOpen();
@@ -57,10 +45,10 @@ export class AxelarWsClient {
   }
 
   private subscribeAllEvents() {
-    // this.subscribeToPollEvents();
+    this.subscribeToPollEvents();
     // this.subscribeToPollVoteEvent();
     this.subscribeToValidatorVoteEvents({
-      voterAddress: "axelar19eunkl0sfuljh604hgf6xy9lc6cs6sf9xr2gq6",
+      voterAddress: userVoterAddress,
     });
   }
   private subscribeToPollEvents() {
@@ -87,12 +75,13 @@ export class AxelarWsClient {
     const event = new PollSendEvent(PollEvent.Voted, {
       voterAddress,
     });
-
     this.ws.send(event.asWsSubscribeEventString(), (err) => {
-      console.log(
-        `Error on subscribe voter ws votes for ${voterAddress} `,
-        err
-      );
+      if (err) {
+        logger.error(
+          `Error on subscribe voter ws votes for ${voterAddress} `,
+          err
+        );
+      }
     });
   }
 }
