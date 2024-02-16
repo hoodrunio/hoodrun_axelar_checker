@@ -1,12 +1,15 @@
 import { connectDb } from "@database/index";
 import { TGBot } from "bot/tg/TGBot";
 import { initWsMessageResultHandlerQueue } from "queue/jobs/WsMessageHandler";
+import { initNewWsAllPollDataQueue } from "queue/jobs/poll/NewWsAllPollDataJob";
+import {
+  addPollVoteNotificationJob,
+  initPollVoteNotificationQueue,
+} from "queue/jobs/poll/notification/PollVoteNotificationJob";
 import { addValAllInfoCheckerJob } from "queue/jobs/validators/ValAllInfoCheckerJob";
 import { addValUptimeCheckerJob } from "queue/jobs/validators/ValUptimeCheckerJob";
 import { AxelarWsClient } from "ws/client/AxelarWsClient";
 import { AxelarQueryService } from "../services/rest/AxelarQueryService";
-import { initNewWsAllPollDataQueue } from "queue/jobs/poll/NewWsAllPollDataJob";
-import { AppDb } from "@database/database";
 
 class App {
   axelarQueryService: AxelarQueryService;
@@ -20,17 +23,11 @@ class App {
   async initalizeApplication() {
     await this.initDbConn();
     await this.initAxelarWS();
-    // await this.initTgBot();
-
-    // //Init queues before jobs
-    await this.initQueue();
-    // ------------------------------ //
-    await this.initJobs();
+    await this.initTgBot();
+    await this.initJobsAndQueues();
   }
   private async initAxelarWS() {
-    const db = new AppDb();
-    const vals = await db.validatorRepository.findAll();
-    const ws = new AxelarWsClient(vals);
+    new AxelarWsClient();
   }
 
   private async initDbConn() {
@@ -40,17 +37,23 @@ class App {
   private async initTgBot() {
     await TGBot.getInstance();
   }
+  private async initJobsAndQueues() {
+    // //Init queues before jobs
+    await this.initQueue();
+    // ------------------------------ //
+    await this.initJobs();
+  }
 
   private async initQueue() {
     await initWsMessageResultHandlerQueue();
     await initNewWsAllPollDataQueue();
-    // await initPollAndVoteCheckerJobQueue();
+    await initPollVoteNotificationQueue();
   }
 
   private async initJobs() {
     addValAllInfoCheckerJob();
     addValUptimeCheckerJob();
-    // addPollAndVoteCheckerJob();
+    addPollVoteNotificationJob();
   }
 }
 
