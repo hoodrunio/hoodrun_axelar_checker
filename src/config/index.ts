@@ -1,6 +1,6 @@
 import { validateEnv } from "./validateEnv";
 
-let appConfig = {};
+let appConfig: AppConfigType | {} = {};
 
 try {
   appConfig = validateEnv();
@@ -8,6 +8,22 @@ try {
   throw error;
 }
 
-console.log(appConfig);
+export default appConfig as AppConfigType;
 
-export default appConfig;
+export interface AppConfigType {
+  axelarVoterAddress: string;
+  mainnetAxelarRestBaseUrls: string[];
+  mainnetAxelarLCDRestBaseUrls: string[];
+  mainnetAxelarWsUrls: string[];
+  tgToken: string;
+  dbConnectionString: string | undefined;
+  dbName: string;
+  dbUser: string;
+  dbPwd: string;
+  dbHost: string;
+  dbPort: string;
+  logFormat: string;
+  logDir: string;
+  redisHost: string;
+  redisPort: number;
+}

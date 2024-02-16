@@ -1,6 +1,7 @@
 import { isValidVoterAddress } from "@utils/cosmos/axelar/addressUtil";
 import { isSafeUrl } from "@utils/url";
 import { config } from "dotenv";
+import { AppConfigType } from ".";
 config({ path: `.env` });
 
 const {
@@ -26,7 +27,7 @@ const isDev = process.env.NODE_ENV === "development";
 const defatultRedisHost = "localhost";
 const defaultRedisPort = "6379";
 
-export const validateEnv = () => {
+export const validateEnv = (): AppConfigType => {
   const urlArrays: { [x: string]: string[] } = {
     mainnetAxelarRestBaseUrls: parseStringArray(MAINNET_AXELAR_REST_BASE_URLS),
     mainnetAxelarLCDRestBaseUrls: parseStringArray(
