@@ -15,6 +15,7 @@ export interface IPollVote extends IBaseInterface {
   vote: PollVoteType;
   txHash: string;
   txHeight: number;
+  checkedForNotification?: boolean;
 }
 
 export interface IPollVoteDocument extends Document, IPollVote {}

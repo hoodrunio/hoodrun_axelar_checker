@@ -37,6 +37,10 @@ const PollVoteSchema: Schema<IPollVoteDocument> =
       type: Number,
       required: true,
     },
+    checkedForNotification: {
+      type: Boolean,
+      default: false,
+    },
   });
 
 PollVoteSchema.statics.buildModel = (args: IPollVoteDocument) => {
