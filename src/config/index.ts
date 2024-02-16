@@ -4,6 +4,7 @@ config({ path: `.env` });
 const {
   TG_TOKEN,
   MAINNET_AXELAR_REST_BASE_URLS,
+  AXELAR_VOTER_ADDRESS,
   MAINNET_AXELAR_LCD_REST_BASE_URLS,
   MAINNET_AXELAR_WS_URLS,
   TESTNET_AXELAR_REST_BASE_URLS,
@@ -25,6 +26,7 @@ const defaultRedisPort = "6379";
 
 const appConfig = {
   tgToken: TG_TOKEN as string,
+  axelarVoterAddress: AXELAR_VOTER_ADDRESS as string,
   mainnetAxelarRestBaseUrls: parseStringArray(MAINNET_AXELAR_REST_BASE_URLS),
   mainnetAxelarLCDRestBaseUrls: parseStringArray(
     MAINNET_AXELAR_LCD_REST_BASE_URLS
