@@ -9,12 +9,12 @@ import {
 } from "ws/event/PollSendEvent";
 import { PollEvent } from "ws/event/eventHelper";
 
-const { axelarVoterAddress: userVoterAddress } = appConfig;
+const { axelarVoterAddress: userVoterAddress, mainnetAxelarWsUrls } = appConfig;
 
 export class AxelarWsClient {
   ws: WebSocket;
   constructor() {
-    const url = appConfig.mainnetAxelarWsUrls[0];
+    const url = mainnetAxelarWsUrls[0];
     console.log(url);
 
     this.ws = new WebSocket(url, {
@@ -46,7 +46,6 @@ export class AxelarWsClient {
 
   private subscribeAllEvents() {
     this.subscribeToPollEvents();
-    // this.subscribeToPollVoteEvent();
     this.subscribeToValidatorVoteEvents({
       voterAddress: userVoterAddress,
     });
