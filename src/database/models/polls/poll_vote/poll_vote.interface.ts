@@ -8,6 +8,7 @@ export enum PollVoteType {
 }
 
 export interface IPollVote extends IBaseInterface {
+  customId: string;
   pollId: string;
   pollState: string;
   voter_address: string;
@@ -20,3 +21,6 @@ export interface IPollVoteDocument extends Document, IPollVote {}
 
 export interface IPollVoteVoteModel
   extends IBaselModel<IPollVote, IPollVoteDocument> {}
+
+export const genPollVoteCustomId = (pollId: string, voter_address: string) =>
+  `${pollId}_${voter_address}`;

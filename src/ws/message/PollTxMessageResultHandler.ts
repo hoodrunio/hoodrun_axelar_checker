@@ -12,6 +12,8 @@ import {
 } from "ws/event/PollSendEvent";
 import { WsMessageTxResult } from "./WsMessageTxResult";
 import { addNewWsAllPollDataJob } from "queue/jobs/poll/NewWsAllPollDataJob";
+import { logger } from "@utils/logger";
+import { genPollVoteCustomId } from "@database/models/polls/poll_vote/poll_vote.interface";
 
 export class PollTxMessageResultHandler {
   public handle(messageTxResult: WsMessageTxResult) {
@@ -31,8 +33,8 @@ export class PollTxMessageResultHandler {
     result: WsMessageTxResult
   ): PollSendEvent | undefined {
     const allEvents = { ...ActivePollEvents, ...ActivePollVotedEvents };
-    const pollEvent = Object.values(allEvents).find(
-      (event) => event.getQuery() === result.query
+    const pollEvent = Object.values(allEvents).find((event) =>
+      result.query.includes(event.getQuery())
     );
     return pollEvent;
   }
@@ -41,8 +43,8 @@ export class PollTxMessageResultHandler {
     result: WsMessageTxResult,
     events: { [x: string]: PollSendEvent }
   ) {
-    return Object.values(events).some(
-      (event) => event.getQuery() === result.query
+    return Object.values(events).some((event) =>
+      result.query.includes(event.getQuery())
     );
   }
 
@@ -51,7 +53,7 @@ export class PollTxMessageResultHandler {
   }
 
   private isPollEventVotedMessage(result: WsMessageTxResult) {
-    return ActivePollVotedEvents.Voted.getQuery() === result.query;
+    return result.query.includes(ActivePollVotedEvents.Voted.getQuery());
   }
 
   private handleOnPollVotedMessage(result: WsMessageTxResult) {
@@ -59,7 +61,6 @@ export class PollTxMessageResultHandler {
     const pollStateKey = "axelar.vote.v1beta1.Voted.state";
     const voterAddressKey = "axelar.vote.v1beta1.Voted.voter";
 
-    // POLL_STATE_COMPLETED, POLL_STATE_PENDING, POLL_STATE_FAILED maybe more don't know
     // Check if state not pending
     const pollState = result?.getEventByKey(pollStateKey);
     const pollId = result?.getEventByKey(pollIdKey);
@@ -67,7 +68,7 @@ export class PollTxMessageResultHandler {
     const txHeight = result?.getTxHeight();
     const voterAddress = result?.getEventByKey(voterAddressKey);
     if (!pollId || !pollState || !txHeight || !txHash || !voterAddress) {
-      console.log("missing data one of the keys", {
+      logger.error("missing data one of the keys", {
         pollId,
         pollState,
         txHeight,
@@ -78,6 +79,7 @@ export class PollTxMessageResultHandler {
     }
 
     const newPollVoteData: Omit<NewWsPollVoteDto, "vote"> = {
+      customId: genPollVoteCustomId(pollId, voterAddress),
       pollId,
       pollState,
       voter_address: voterAddress,
@@ -103,7 +105,7 @@ export class PollTxMessageResultHandler {
     const txHeight = result?.getTxHeight();
     const participantObject = result?.getEventByKey(partsObjKey);
     if (!pollChain || !txHeight || !participantObject || !txHash) {
-      console.log("missing data one of the keys", {
+      logger.error("Missing data handling on poll vote one of the keys", {
         pollChain,
         txHeight,
         participantObject,
@@ -115,7 +117,7 @@ export class PollTxMessageResultHandler {
     const { participants, poll_id: pollId }: IParticipantsData =
       JSON.parse(participantObject);
     if (!participants || !pollId) {
-      console.log("missing data one of the keys", {
+      logger.error("Missing data handling on poll vote one of the keys", {
         participants,
         pollId,
       });

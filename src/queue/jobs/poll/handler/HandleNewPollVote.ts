@@ -1,9 +1,11 @@
 import { AppDb } from "@database/database";
-import { NewWsPollVoteDto } from "../dto/NewWsPollDtos";
-import { AxelarQueryService } from "@services/rest/AxelarQueryService";
-import { PollVoteType } from "@database/models/polls/poll_vote/poll_vote.interface";
-import { logger } from "@utils/logger";
 import { PollStateEnum } from "@database/models/polls/poll/poll.interface";
+import {
+  PollVoteType,
+  genPollVoteCustomId,
+} from "@database/models/polls/poll_vote/poll_vote.interface";
+import { AxelarQueryService } from "@services/rest/AxelarQueryService";
+import { NewWsPollVoteDto } from "../dto/NewWsPollDtos";
 
 export const handleOnNewPollVote = async (
   data: Omit<NewWsPollVoteDto, "vote">
@@ -27,9 +29,11 @@ export const handleOnNewPollVote = async (
     voteState = PollVoteType.NO;
   }
 
+  const customId = genPollVoteCustomId(pollId, voter_address);
   await pollVoteRepo.upsertOne(
-    { pollId },
+    { customId },
     {
+      customId,
       pollId,
       pollState,
       voter_address,
