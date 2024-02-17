@@ -28,7 +28,7 @@ export interface IWsEventMessageTxResult {
   query: string;
   data: {
     type: string;
-    value: TxResult;
+    value: { TxResult: TxResult };
   };
   events: { [key: string]: string[] };
 
