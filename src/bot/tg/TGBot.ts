@@ -1,23 +1,22 @@
 import appConfig from "@config/index";
 import { AppDb } from "@database/database";
-import { logger } from "@utils/logger";
-import BigNumber from "bignumber.js";
-import { Bot, InlineKeyboard } from "grammy";
-import { Commands } from "./constants";
-import { TgQuery } from "./helpers/tgQuery";
-import { elipsized } from "./helpers/validator";
-import { chatSaverMiddleware } from "./middlewares/chatSaverMiddleware";
-import {
-  PollVoteNotification,
-  UptimeNotification,
-} from "./interface/notification";
 import {
   INotification,
   NotificationEvent,
   PollVoteNotificationDataType,
   UptimeNotificationDataType,
 } from "@database/models/notification/notification.interface";
+import { logger } from "@utils/logger";
+import { Bot, InlineKeyboard } from "grammy";
 import { TgReply } from "./TGReply";
+import { Commands } from "./constants";
+import { TgQuery } from "./helpers/tgQuery";
+import { elipsized } from "./helpers/validator";
+import {
+  PollVoteNotification,
+  UptimeNotification,
+} from "./interface/notification";
+import { chatSaverMiddleware } from "./middlewares/chatSaverMiddleware";
 
 export class TGBot {
   private static _instance: TGBot;
@@ -97,56 +96,12 @@ export class TGBot {
     }
   }
 
-  // private _addOperatorAddressCMD() {
-  //   const addAddressCommand = Commands.AddOperatorAddress;
-  //   this.bot.command(addAddressCommand.command, async (ctx) => {
-  //     const { message: { text } = {}, chat } = ctx;
-  //     const valRepo = this.appDb.validatorRepository;
-  //     const tgUserRepo = this.appDb.telegramUserRepo;
-
-  //     const validMessage = addAddressCommand.validate(text ?? "");
-  //     if (!validMessage) {
-  //       ctx.reply(
-  //         `Please use correct command format: ${addAddressCommand.command}`
-  //       );
-  //       return;
-  //     }
-
-  //     const operatorAddress = text?.split(" ")[1] as string;
-  //     const existInDb = await valRepo.isOperatorExist(operatorAddress);
-  //     if (!existInDb) {
-  //       ctx.reply(
-  //         `Operator address ${operatorAddress} does not exist in Network`
-  //       );
-  //       return;
-  //     }
-
-  //     try {
-  //       await tgUserRepo.addOperatorAddressToChat({
-  //         chat_id: chat?.id,
-  //         operator_address: operatorAddress,
-  //       });
-
-  //       ctx.reply(this.tgReply.successFullAddOperatorAddress(operatorAddress), {
-  //         parse_mode: "HTML",
-  //       });
-  //     } catch (error) {
-  //       logger.error(error);
-  //       ctx.reply("Error while adding operator address to chat");
-  //     }
-  //   });
-  // }
-
   private _listValidatorsCMD() {
     const listValidatorsCommand = Commands.ListValidators;
     this.bot.command(listValidatorsCommand.command, async (ctx) => {
       const envValidator = await this.appDb.validatorRepository.findOne({
         voter_address: appConfig.axelarVoterAddress,
       });
-      // const chatTgUser = await this.appDb.telegramUserRepo.findOne({
-      //   chat_id: ctx.chat?.id ?? 0,
-      // });
-      // const operatorAdresses = chatTgUser?.operator_addresses ?? [];
 
       const operatorAdresses = [];
 
@@ -184,7 +139,9 @@ export class TGBot {
   }
 
   private _helpCMD() {
-    this.bot.command("help", (ctx) => {
+    const helpCommand = Commands.Help;
+
+    this.bot.command(helpCommand.command, (ctx) => {
       ctx.reply(this.tgReply.startReply(), { parse_mode: "HTML" });
     });
   }

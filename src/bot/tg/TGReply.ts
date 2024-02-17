@@ -16,12 +16,9 @@ export class TgReply {
 
 
 - /list_validators - List your validators
+- /help - To see how bot works
     `;
   }
-
-  //- /add_operator_address - Add your operator address
-  // - /uptime - Check uptime for your operator address
-  // - /help - Get help
 
   uptimeReply(params: UptimeNotification): string {
     const { moniker, operatorAddress, currentUptime } = params;

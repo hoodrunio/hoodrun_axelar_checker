@@ -14,4 +14,8 @@ export const Commands = {
     command: "list_validators",
     description: "📋 List all validators",
   },
+  Help: {
+    command: "help",
+    description: "📚 To See how bot works",
+  },
 };
