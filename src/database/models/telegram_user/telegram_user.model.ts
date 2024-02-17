@@ -1,9 +1,10 @@
 import { model, Schema } from "mongoose";
+
+import { createAppSchema } from "@database/helper";
 import {
   ITelegramUserDocument,
   TelegramChatType,
-} from "./telegram_user.interface";
-import { createAppSchema } from "@database/helper";
+} from "@/database/models/telegram_user/telegram_user.interface";
 
 const TELEGRA_USER_COLLECTION_NAME = "telegram_users";
 

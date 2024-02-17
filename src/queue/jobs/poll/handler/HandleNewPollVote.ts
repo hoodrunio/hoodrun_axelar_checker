@@ -1,3 +1,4 @@
+import { NewWsPollVoteDto } from "@/queue/jobs/poll/dto/NewWsPollDtos";
 import { AppDb } from "@database/database";
 import { PollStateEnum } from "@database/models/polls/poll/poll.interface";
 import {
@@ -5,7 +6,6 @@ import {
   genPollVoteCustomId,
 } from "@database/models/polls/poll_vote/poll_vote.interface";
 import { AxelarQueryService } from "@services/rest/AxelarQueryService";
-import { NewWsPollVoteDto } from "../dto/NewWsPollDtos";
 
 export const handleOnNewPollVote = async (
   data: Omit<NewWsPollVoteDto, "vote">

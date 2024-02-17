@@ -1,10 +1,10 @@
-import { IWsSubscribeEventType } from "ws/interface/IWsSubscribeEvent";
 import {
   PollEvent,
-  createPollVoteWsEventQuery,
   createPollWsEventQuery,
+  createPollVoteWsEventQuery,
   getStartedPollEvent,
-} from "./eventHelper";
+} from "@/ws/event/eventHelper";
+import { IWsSubscribeEventType } from "@/ws/interface/IWsSubscribeEvent";
 
 export class PollSendEvent {
   query: string = "";

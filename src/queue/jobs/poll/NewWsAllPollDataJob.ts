@@ -1,13 +1,12 @@
-import { logger } from "@utils/logger";
-import appJobProducer from "queue/producer/AppJobProducer";
-import AppQueueFactory from "queue/queue/AppQueueFactory";
 import {
   NewWsPollAndVoteDto,
   NewWsPollDataTypeEnum,
-} from "./dto/NewWsPollDtos";
-import { handleOnNewPollVote } from "./handler/HandleNewPollVote";
-import { handleOnNewPoll } from "./handler/HandleOnNewPoll";
-
+} from "@/queue/jobs/poll/dto/NewWsPollDtos";
+import { handleOnNewPollVote } from "@/queue/jobs/poll/handler/HandleNewPollVote";
+import { handleOnNewPoll } from "@/queue/jobs/poll/handler/HandleOnNewPoll";
+import appJobProducer from "@/queue/producer/AppJobProducer";
+import AppQueueFactory from "@/queue/queue/AppQueueFactory";
+import { logger } from "@utils/logger";
 const NEW_WS_ALL_POLL_DATA_JOB = "NewWsAllPollDataJob";
 
 export const initNewWsAllPollDataQueue = async () => {

@@ -1,6 +1,6 @@
-import appConfig from "../../config";
-import { AxiosService } from "./axios/AxiosService";
-import { RegisterProxyGetResponse } from "./interfaces/tx/RegisterProxyGetResponse";
+import appConfig from "@/config/index";
+import { AxiosService } from "@/services/rest/axios/AxiosService";
+import { RegisterProxyGetResponse } from "@/services/rest/interfaces/tx/RegisterProxyGetResponse";
 
 export class AxelarLCDQueryService {
   restClient: AxiosService;

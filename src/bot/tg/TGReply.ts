@@ -1,8 +1,9 @@
-import { PollVoteType } from "@database/models/polls/poll_vote/poll_vote.interface";
 import {
   PollVoteNotification,
   UptimeNotification,
-} from "./interface/notification";
+} from "@/bot/tg/interface/notification";
+import { PollVoteType } from "@database/models/polls/poll_vote/poll_vote.interface";
+
 import BigNumber from "bignumber.js";
 
 export class TgReply {

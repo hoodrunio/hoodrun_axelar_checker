@@ -1,4 +1,4 @@
-import { validateEnv } from "./validateEnv";
+import { validateEnv } from "@/config/validateEnv";
 
 let appConfig: AppConfigType | {} = {};
 

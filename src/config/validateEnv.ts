@@ -1,7 +1,7 @@
+import { AppConfigType } from "@/config/index";
 import { isValidVoterAddress } from "@utils/cosmos/axelar/addressUtil";
 import { isSafeUrl } from "@utils/url";
 import { config } from "dotenv";
-import { AppConfigType } from ".";
 config({ path: `.env` });
 
 const {

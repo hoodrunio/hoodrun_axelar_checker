@@ -1,5 +1,5 @@
+import { NewWsPollDto } from "@/queue/jobs/poll/dto/NewWsPollDtos";
 import { AppDb } from "@database/database";
-import { NewWsPollDto } from "../dto/NewWsPollDtos";
 
 export const handleOnNewPoll = async (data: NewWsPollDto) => {
   const { pollChain, pollId, txHash, txHeight, participants, pollState } = data;

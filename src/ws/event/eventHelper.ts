@@ -1,4 +1,4 @@
-import { IncludedPollEvents } from "./PollSendEvent";
+import { IncludedPollEvents } from "@/ws/event/PollSendEvent";
 
 export enum PollEvent {
   ConfirmDeposit = "ConfirmDeposit",

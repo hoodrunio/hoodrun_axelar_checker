@@ -1,6 +1,6 @@
+import { IAxlStateDocument } from "@/database/models/axlstate/axlstate.interface";
 import { createAppSchema } from "@database/helper";
 import { model, Schema } from "mongoose";
-import { IAxlStateDocument } from "./axlstate.interface";
 
 const AXLSTATE_COLLECTION_NAME = "axlstate";
 

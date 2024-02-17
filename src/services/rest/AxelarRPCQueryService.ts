@@ -1,7 +1,7 @@
+import appConfig from "@/config/index";
+import { AxiosService } from "@/services/rest/axios/AxiosService";
+import { AxlBlockChainGetResponse } from "@/services/rest/interfaces/blockchain/BlockChainGetResponse";
 import { logger } from "@utils/logger";
-import appConfig from "../../config";
-import { AxiosService } from "./axios/AxiosService";
-import { AxlBlockChainGetResponse } from "./interfaces/blockchain/BlockChainGetResponse";
 
 export class AxelarRPCQueryService {
   restClient: AxiosService;

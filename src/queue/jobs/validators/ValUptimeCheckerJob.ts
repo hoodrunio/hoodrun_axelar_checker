@@ -6,11 +6,12 @@ import {
 } from "@database/models/notification/notification.interface";
 import { ITelegramUser } from "@database/models/telegram_user/telegram_user.interface";
 import { logger } from "@utils/logger";
-import { createUptimeCondition } from "notification/condition/uptime";
-import appJobProducer from "queue/producer/AppJobProducer";
-import AppQueueFactory from "../../queue/AppQueueFactory";
-import { xSeconds } from "queue/jobHelper";
+
 import appConfig from "@config/index";
+import { createUptimeCondition } from "@/notification/condition/uptime";
+import { xSeconds } from "@/queue/jobHelper";
+import appJobProducer from "@/queue/producer/AppJobProducer";
+import AppQueueFactory from "@/queue/queue/AppQueueFactory";
 
 export const VALIDATOR_UPTIME_CHECKER = "valUptimeChecker";
 

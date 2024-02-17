@@ -1,5 +1,5 @@
-import App from "./app/App";
-import { logger } from "./utils/logger";
+import App from "@/app/App";
+import { logger } from "@/utils/logger";
 
 import "@extensions/array.extensions";
 

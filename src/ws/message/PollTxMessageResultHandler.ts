@@ -10,10 +10,11 @@ import {
   ActivePollVotedEvents,
   PollSendEvent,
 } from "ws/event/PollSendEvent";
-import { WsMessageTxResult } from "./WsMessageTxResult";
+
 import { addNewWsAllPollDataJob } from "queue/jobs/poll/NewWsAllPollDataJob";
 import { logger } from "@utils/logger";
 import { genPollVoteCustomId } from "@database/models/polls/poll_vote/poll_vote.interface";
+import { WsMessageTxResult } from "@/ws/message/WsMessageTxResult";
 
 export class PollTxMessageResultHandler {
   public handle(messageTxResult: WsMessageTxResult) {

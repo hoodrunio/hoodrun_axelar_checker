@@ -1,14 +1,14 @@
+import appConfig from "@/config/index";
+import { AxiosService } from "@/services/rest/axios/AxiosService";
+import { AxelarEvmChainMaintainersGetResponse } from "@/services/rest/interfaces/evm/AxelarEvmChainMaintainersGetResponse";
+import { AxelarEvmChainsGetResponse } from "@/services/rest/interfaces/evm/AxelarEvmChainsGetResponse";
+import { SlashingParamsGetResponse } from "@/services/rest/interfaces/slashing/SlashingParamsGetResponse";
+import { ValSigningInfoGetResponse } from "@/services/rest/interfaces/slashing/ValSigningInfoGetResponse";
+import { TransactionGetResponse } from "@/services/rest/interfaces/tx/TransactionGetResponse";
+import { ValidatorsGetResponse } from "@/services/rest/interfaces/validators/ValidatorsGetResponse";
+import { AxelarPaginationRequest } from "@/services/rest/pagination/AxelarPaginationRequest";
 import { logger } from "@utils/logger";
 import BigNumber from "bignumber.js";
-import appConfig from "../../config";
-import { AxiosService } from "./axios/AxiosService";
-import { AxelarEvmChainMaintainersGetResponse } from "./interfaces/evm/AxelarEvmChainMaintainersGetResponse";
-import { AxelarEvmChainsGetResponse } from "./interfaces/evm/AxelarEvmChainsGetResponse";
-import { SlashingParamsGetResponse } from "./interfaces/slashing/SlashingParamsGetResponse";
-import { ValSigningInfoGetResponse } from "./interfaces/slashing/ValSigningInfoGetResponse";
-import { TransactionGetResponse } from "./interfaces/tx/TransactionGetResponse";
-import { ValidatorsGetResponse } from "./interfaces/validators/ValidatorsGetResponse";
-import { AxelarPaginationRequest } from "./pagination/AxelarPaginationRequest";
 
 export class AxelarQueryService {
   restClient: AxiosService;

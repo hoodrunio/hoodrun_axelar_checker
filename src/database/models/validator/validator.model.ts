@@ -1,6 +1,7 @@
 import { model, Schema, Types } from "mongoose";
-import { IValidatorDocument } from "./validator.interface";
+
 import { createAppSchema, modelNumberPrecisionFixer } from "@database/helper";
+import { IValidatorDocument } from "@/database/models/validator/validator.interface";
 
 const VALIDATOR_COLLECTION_NAME = "validators";
 

@@ -1,6 +1,6 @@
 import { SchemaDefinition, Schema, Document } from "mongoose";
-import { IBaseInterface } from "./base/model.interface";
 import BigNumber from "bignumber.js";
+import { IBaseInterface } from "@/database/base/model.interface";
 
 type AppSchemaBuilderReturnType<T> = T & IBaseInterface;
 

@@ -1,6 +1,6 @@
+import { PollVoteType } from "@/database/models/polls/poll_vote/poll_vote.interface";
 import { IBaseInterface, IBaselModel } from "@database/base/model.interface";
 import { Document } from "mongoose";
-import { PollVoteType } from "../polls/poll_vote/poll_vote.interface";
 
 export enum NotificationEvent {
   UPTIME = "UPTIME_EVENT",

@@ -1,3 +1,12 @@
+import { TgReply } from "@/bot/tg/TGReply";
+import { Commands } from "@/bot/tg/constants";
+import { TgQuery } from "@/bot/tg/helpers/tgQuery";
+import { elipsized } from "@/bot/tg/helpers/validator";
+import {
+  PollVoteNotification,
+  UptimeNotification,
+} from "@/bot/tg/interface/notification";
+import { chatSaverMiddleware } from "@/bot/tg/middlewares/chatSaverMiddleware";
 import appConfig from "@config/index";
 import { AppDb } from "@database/database";
 import {
@@ -8,15 +17,6 @@ import {
 } from "@database/models/notification/notification.interface";
 import { logger } from "@utils/logger";
 import { Bot, InlineKeyboard } from "grammy";
-import { TgReply } from "./TGReply";
-import { Commands } from "./constants";
-import { TgQuery } from "./helpers/tgQuery";
-import { elipsized } from "./helpers/validator";
-import {
-  PollVoteNotification,
-  UptimeNotification,
-} from "./interface/notification";
-import { chatSaverMiddleware } from "./middlewares/chatSaverMiddleware";
 
 export class TGBot {
   private static _instance: TGBot;

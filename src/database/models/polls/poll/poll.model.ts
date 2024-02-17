@@ -1,6 +1,6 @@
+import { IPollDocument } from "@/database/models/polls/poll/poll.interface";
 import { createAppSchema } from "@database/helper";
 import { model, Schema } from "mongoose";
-import { IPollDocument } from "./poll.interface";
 
 const POLL_COLLECTION_NAME = "polls";
 
