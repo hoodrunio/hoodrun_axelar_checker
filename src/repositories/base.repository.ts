@@ -23,11 +23,14 @@ class BaseRepository<T extends IBaseInterface, TD extends T & Document> {
   }
 
   async findAll(query?: FilterQuery<T>): Promise<TD[]> {
-    const { sort, ...filter } = query ?? { sort: {} };
-    return await this._model
-      .find(filter as FilterQuery<TD>)
-      .sort(sort)
-      .exec();
+    const { sort, limit, ...filter } = query ?? { sort: {} };
+    let findQuery = this._model.find(filter as FilterQuery<TD>).sort(sort);
+
+    if (limit) {
+      findQuery = findQuery.limit(limit);
+    }
+
+    return await findQuery.exec();
   }
 
   async findById(id: string): Promise<TD | null> {
