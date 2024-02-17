@@ -33,7 +33,7 @@ export const initPollVoteNotificationQueue = async () => {
         xHourAgoDate.getHours() - appConfig.maxLastXHourPollVoteNotification
       );
 
-      const vote = PollVoteType.YES;
+      const vote = PollVoteType.NO;
       const allNoPollVotes = await pollVoteRepo.findAll({
         vote,
         createdAt: { $gte: xHourAgoDate },
