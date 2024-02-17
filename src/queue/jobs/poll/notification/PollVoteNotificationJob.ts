@@ -29,24 +29,23 @@ export const initPollVoteNotificationQueue = async () => {
       } = new AppDb();
 
       const axlRpcQueryService = new AxelarRPCQueryService();
-      const latestHeight = await axlRpcQueryService.getLatestBlockHeight();
+      // const latestHeight = await axlRpcQueryService.getLatestBlockHeight();
 
-      const vote = PollVoteType.YES;
-      const allNoPollVotes =
-        (await pollVoteRepo.findAll({
-          vote,
-          checkedForNotification: false,
-          sort: { pollId: -1 },
-        })) ?? [];
+      const vote = PollVoteType.NO;
+      const allNoPollVotes = await pollVoteRepo.findAll({
+        vote,
+        checkedForNotification: false,
+        sort: { createdAt: -1 },
+      });
 
       const promisses = allNoPollVotes?.map(async (pollVote) => {
-        const shouldSendNotification = pollVote.txHeight + 16 < latestHeight;
-        if (!shouldSendNotification) Promise.resolve();
+        // const shouldSendNotification = pollVote.txHeight + 10 < latestHeight;
+        // if (!shouldSendNotification) return Promise.resolve();
 
         const voterValidator = await validatorRepository.findOne({
           voter_address: pollVote.voter_address,
         });
-        if (!voterValidator) Promise.resolve();
+        if (!voterValidator) return Promise.resolve();
 
         const tgUsers = await telegramUserRepo.findAll({});
         if (!tgUsers || tgUsers.length < 1) Promise.resolve();
@@ -56,11 +55,13 @@ export const initPollVoteNotificationQueue = async () => {
           const data: PollVoteNotificationDataType = {
             poolId: pollVote.pollId,
             vote: pollVote.vote,
+            operatorAddress: voterValidator.operator_address,
+            moniker: voterValidator.description.moniker,
           };
-          const notificationId = `poll_vote-${pollVote.voter_address}-${chatId}`;
+          const notificationId = `poll_vote-${pollVote.pollId}-${pollVote.voter_address}-${chatId}`;
 
-          notificationRepo.upsertOne(
-            { condition: pollVoteCondition },
+          await notificationRepo.upsertOne(
+            { notification_id: notificationId },
             {
               data,
               type: NotificationType.TELEGRAM,
@@ -78,7 +79,7 @@ export const initPollVoteNotificationQueue = async () => {
         });
       });
 
-      await Promise.all(promisses);
+      await Promise.allSettled(promisses);
     } catch (error) {
       logger.error("Error in Poll Vote Notification Job", error);
       return Promise.resolve(error);
@@ -92,7 +93,7 @@ export const addPollVoteNotificationJob = () => {
     POLL_VOTE_NOTIFICATION_JOB,
     {},
     {
-      repeat: { every: xSeconds(10) },
+      repeat: { every: xSeconds(20) },
     }
   );
 };

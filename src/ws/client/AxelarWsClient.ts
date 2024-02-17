@@ -1,6 +1,6 @@
 import appConfig from "@config/index";
 import { logger } from "@utils/logger";
-import { addWsMessageResultHandlerJob } from "queue/jobs/WsMessageHandler";
+import { addWsMessageResultHandlerJob } from "queue/jobs/WsMessageResultHandler";
 import { WebSocket } from "ws";
 import {
   ActivePollEvents,

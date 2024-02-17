@@ -46,6 +46,4 @@ export const handleOnNewPollVote = async (
   if (pollState !== PollStateEnum.POLL_STATE_PENDING) {
     await pollRepo.updateOne({ pollId }, { pollState });
   }
-
-  // logger.info(`New poll vote added pollId: ${poll?.pollId} ${voter_address}`);
 };
