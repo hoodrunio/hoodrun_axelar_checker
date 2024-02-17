@@ -1,3 +1,5 @@
+import { AppDb } from "@database/database";
+import { logger } from "@utils/logger";
 import appJobProducer from "queue/producer/AppJobProducer";
 import AppQueueFactory from "queue/queue/AppQueueFactory";
 import { Data } from "ws";
@@ -25,8 +27,18 @@ export const initWsMessageResultHandlerQueue = async () => {
     if (!parsedData) return;
 
     const result = new WsMessageTxResult(parsedData.result);
+    const { txRepo } = new AppDb();
 
-    new PollTxMessageResultHandler().handle(result);
+    try {
+      await txRepo.create({
+        height: parseInt(result.data.value.height),
+        tx_raw: JSON.stringify(parsedData),
+      });
+    } catch (error) {
+      logger.error("Error creating tx", error);
+    }
+
+    // new PollTxMessageResultHandler().handle(result);
 
     return Promise.resolve();
   });

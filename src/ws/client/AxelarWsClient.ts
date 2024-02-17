@@ -45,10 +45,22 @@ export class AxelarWsClient {
   }
 
   private subscribeAllEvents() {
-    this.subscribeToPollEvents();
-    this.subscribeToValidatorVoteEvents({
-      voterAddress: userVoterAddress,
-    });
+    this.subscribeToAllTxEvents();
+    // this.subscribeToPollEvents();
+    // this.subscribeToValidatorVoteEvents({
+    //   voterAddress: userVoterAddress,
+    // });
+  }
+  private subscribeToAllTxEvents() {
+    const txEvent = {
+      jsonrpc: "2.0",
+      method: "subscribe",
+      id: "0",
+      params: {
+        query: `tm.event='Tx'`,
+      },
+    };
+    this.ws.send(JSON.stringify(txEvent));
   }
   private subscribeToPollEvents() {
     const pollSendEvents = [
@@ -66,7 +78,7 @@ export class AxelarWsClient {
     this.ws.send(ActivePollVotedEvents.Voted.asWsSubscribeEventString());
   }
 
-  public subscribeToValidatorVoteEvents({
+  private subscribeToValidatorVoteEvents({
     voterAddress,
   }: {
     voterAddress: string;

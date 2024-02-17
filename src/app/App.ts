@@ -55,13 +55,13 @@ class App {
   }
 
   private async initQueue() {
-    await initValAllInfoCheckerQueue();
-    await initValsUptimeCheckerQueue();
-    await initPollVoteNotificationQueue();
+    // await initValAllInfoCheckerQueue();
+    // await initValsUptimeCheckerQueue();
+    // await initPollVoteNotificationQueue();
 
-    await initSendNotificationsQueue();
+    // await initSendNotificationsQueue();
     await initWsMessageResultHandlerQueue();
-    await initNewWsAllPollDataQueue();
+    // await initNewWsAllPollDataQueue();
   }
 
   private async initJobs() {
