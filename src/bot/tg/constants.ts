@@ -12,6 +12,6 @@ export const Commands = {
   // },
   ListValidators: {
     command: "list_validators",
-    description: "List all validators",
+    description: "📋 List all validators",
   },
 };
