@@ -1,6 +1,7 @@
 import {
   INotificationDocument,
   NotificationEvent,
+  NotificationType,
 } from "@/database/models/notification/notification.interface";
 import { createAppSchema } from "@database/helper";
 import { model, Schema } from "mongoose";
