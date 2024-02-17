@@ -29,6 +29,7 @@ export interface INotificationModel
 
 export interface UptimeNotificationDataType {
   operatorAddress: string;
+  moniker: string;
   currentUptime: number;
   threshold: number;
 }
@@ -36,4 +37,6 @@ export interface UptimeNotificationDataType {
 export interface PollVoteNotificationDataType {
   poolId: string;
   vote: PollVoteType;
+  operatorAddress: string;
+  moniker: string;
 }
