@@ -108,6 +108,6 @@ export const addValAllInfoCheckerJob = () => {
   appJobProducer.addJob(
     VAL_ALL_INFO_CHECKER,
     {},
-    { repeat: { every: xSeconds(20) } }
+    { repeat: { every: xSeconds(60) } }
   );
 };

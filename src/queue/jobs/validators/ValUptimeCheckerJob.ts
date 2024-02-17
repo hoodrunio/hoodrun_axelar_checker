@@ -10,6 +10,7 @@ import { createUptimeCondition } from "notification/condition/uptime";
 import appJobProducer from "queue/producer/AppJobProducer";
 import AppQueueFactory from "../../queue/AppQueueFactory";
 import { xSeconds } from "queue/jobHelper";
+import appConfig from "@config/index";
 
 export const VALIDATOR_UPTIME_CHECKER = "valUptimeChecker";
 
@@ -20,10 +21,23 @@ export const initValsUptimeCheckerQueue = async () => {
 
   validatorUptimeCheckerQueue.process(4, async (job) => {
     const db = new AppDb();
-    const activeValidators = await db.validatorRepository.activeValidators();
+    // const activeValidators = [await db.validatorRepository.activeValidators()];
+    const activeValidators = [];
 
+    const envValidator = await db.validatorRepository.findOne({
+      voter_address: appConfig.axelarVoterAddress,
+      is_active: true,
+    });
+
+    if (envValidator) {
+      activeValidators.push(envValidator);
+    }
     const promises = activeValidators.map(async (validator) => {
-      const { uptime, operator_address } = validator;
+      const {
+        uptime,
+        operator_address,
+        description: { moniker },
+      } = validator;
 
       const event = NotificationEvent.UPTIME;
       const { value: currentUptimeCondition, threshold: closestThreshold } =
@@ -32,24 +46,28 @@ export const initValsUptimeCheckerQueue = async () => {
           uptime,
         });
 
-      const validatorTgUsers = await db.telegramUserRepo.findAll({
-        operator_addresses: { $in: operator_address },
-      });
+      // const validatorTgUsers = await db.telegramUserRepo.findAll({
+      //   operator_addresses: { $in: operator_address },
+      // });
 
-      const tgUserProcessPromisses = validatorTgUsers.map((tgUser) =>
-        processTgUser({
-          tgUser,
-          operator_address,
-          uptime,
-          closestThreshold,
-          currentUptimeCondition,
-          event,
-        })
+      const tempAllTgUsers = await db.telegramUserRepo.findAll({});
+
+      const tgUserProcessPromisses = tempAllTgUsers.map(
+        async (tgUser) =>
+          await processTgUser({
+            moniker,
+            tgUser,
+            operator_address,
+            uptime,
+            closestThreshold,
+            currentUptimeCondition,
+            event,
+          })
       );
       try {
         await Promise.all(tgUserProcessPromisses);
 
-        return Promise.resolve(validatorTgUsers);
+        return Promise.resolve();
       } catch (error) {
         logger.error("Error in uptime notification creation job", error);
       }
@@ -67,6 +85,7 @@ export const initValsUptimeCheckerQueue = async () => {
 
 interface ProcessTgUserParams {
   tgUser: ITelegramUser;
+  moniker: string;
   operator_address: string;
   uptime: number;
   closestThreshold: number;
@@ -77,6 +96,7 @@ interface ProcessTgUserParams {
 async function processTgUser(params: ProcessTgUserParams) {
   const {
     event,
+    moniker,
     tgUser,
     operator_address,
     uptime,
@@ -90,6 +110,7 @@ async function processTgUser(params: ProcessTgUserParams) {
   const uptimeNotificationData: UptimeNotificationDataType = {
     operatorAddress: operator_address,
     currentUptime: uptime,
+    moniker,
     threshold: closestThreshold,
   };
 
@@ -119,7 +140,7 @@ export const addValUptimeCheckerJob = () => {
     VALIDATOR_UPTIME_CHECKER,
     {},
     {
-      repeat: { every: xSeconds(15) },
+      repeat: { every: xSeconds(10) },
     }
   );
 };
