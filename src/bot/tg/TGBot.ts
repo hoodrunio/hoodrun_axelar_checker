@@ -222,6 +222,10 @@ export class TGBot {
       const evmSupChainsCallBackQueryData =
         TgQuery.EvmSupChains.queryBuilder(operatorAddress);
 
+      const last30PollVoteButton = `🗳 Last 30 Poll Vote`;
+      const last30PollVoteCallBackQueryData =
+        TgQuery.Last30Votes.queryBuilder(operatorAddress);
+
       const rpcHealthButton = `🏥 RPC Health - Soon... 🫡`;
       const rpcHealthCallbackQueryData =
         TgQuery.RpcHealth.queryBuilder(operatorAddress);
@@ -229,6 +233,8 @@ export class TGBot {
       keyboard
         .text(uptimeButton, uptimeCallBackQueryData)
         .text(evmSupprtedChainsButton, evmSupChainsCallBackQueryData)
+        .row()
+        .text(last30PollVoteButton, last30PollVoteCallBackQueryData)
         .row()
         .text(rpcHealthButton, rpcHealthCallbackQueryData);
 
@@ -303,6 +309,54 @@ export class TGBot {
     });
   }
 
+  private _last30PollVoteCMD() {
+    const event = TgQuery.Last30Votes.event;
+    this.bot.callbackQuery(event, async (ctx) => {
+      const input = ctx.update.callback_query?.data;
+      console.log("input", input);
+
+      const operatorAddressInput = TgQuery.Last30Votes.queryExtractor(input);
+
+      if (!operatorAddressInput) {
+        ctx.reply("Invalid operator address");
+        return;
+      }
+
+      const { pollVoteRepo, validatorRepository } = new AppDb();
+      const validator = await validatorRepository.findOne({
+        operator_address: operatorAddressInput,
+      });
+
+      if (!validator) {
+        ctx.reply("Invalid operator address");
+        return;
+      }
+
+      const pollVotes = await pollVoteRepo.findAll({
+        voter_address: validator.voter_address,
+        limit: 30,
+        sort: { createdAt: -1 },
+      });
+
+      const mappedPollVotes: PollVoteNotification[] = pollVotes.map(
+        (pollVote) => ({
+          chat_id: ctx.chat?.id ?? 0,
+          operatorAddress: pollVote.voter_address,
+          vote: pollVote.vote,
+          pollId: pollVote.pollId,
+          chain: pollVote.pollChain,
+          moniker: validator.description.moniker,
+        })
+      );
+
+      const reversed = mappedPollVotes.slice().reverse();
+
+      const reply = this.tgReply.batchValidatorPollVoteReply(reversed);
+      ctx.reply(reply, {
+        parse_mode: "HTML",
+      });
+    });
+  }
   private _rpcHealthCMD() {
     const event = TgQuery.RpcHealth.event;
     this.bot.callbackQuery(event, async (ctx) => {
@@ -329,6 +383,7 @@ export class TGBot {
     this._showValidatorMenuCMD();
     this._evmSupportedChainsCMD();
     this._uptimeValidatorCMD();
+    this._last30PollVoteCMD();
     this._rpcHealthCMD();
   }
 

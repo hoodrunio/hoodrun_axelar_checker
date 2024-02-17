@@ -36,20 +36,16 @@ export class TgReply {
 <b>Uptime:</b> ${uptime}% <b>🤘</b>
 
 <b>🚀 Keep up the good work! </b>
-    `;
+`;
   }
 
   private pollVoteTitleText(params: PollVoteNotification): string {
     const { moniker, operatorAddress } = params;
-    return `
-<b><strong>${moniker} Poll Vote</strong></b>
-
-<b>Operator Address:</b> ${operatorAddress}
-    `;
+    return `<b><strong>${moniker} Poll Vote</strong></b>\n\n<b>Operator Address:</b> ${operatorAddress}`;
   }
 
   private pollVoteContentText(params: PollVoteNotification) {
-    const { moniker, operatorAddress, vote, poolId } = params;
+    const { vote, pollId, chain } = params;
     let voteEmoji = "";
     if (vote == PollVoteType.UNSUBMITTED) {
       voteEmoji = "🤷‍♂️";
@@ -58,35 +54,29 @@ export class TgReply {
     } else {
       voteEmoji = "❌";
     }
-    return `
-<b>Pool ID:</b> ${poolId}
-<b>Vote:</b> ${vote} ${voteEmoji}
-`;
+
+    return `<b>Pool ID:</b> ${pollId}\n<b>Vote:</b> ${vote} ${voteEmoji}\n<b>Chain:</b> ${chain.toUpperCase()}`;
   }
 
   pollVoteReply(params: PollVoteNotification): string {
-    return `
-${this.pollVoteTitleText(params)}
-
-${this.pollVoteContentText(params)}
-<b>🚀 Keep up the good work! </b>
-`;
+    return `${this.pollVoteTitleText(params)}\n${this.pollVoteContentText(
+      params
+    )}\n<b>🚀 Keep up the good work! </b>`;
   }
 
   batchValidatorPollVoteReply(params: PollVoteNotification[]): string {
     if (params.length == 0) {
       return `No poll vote data found`;
     }
-    const contents = params.map((param) => {
-      return `${this.pollVoteContentText(param)}
+    const contents = params
+      .map((param) => {
+        return `\n${this.pollVoteContentText(param)}\n`;
+      })
+      .join(" ");
 
-      `;
-    });
-
-    return `${this.pollVoteTitleText(params[0])}
-
-${contents}
-    `;
+    return `${this.pollVoteTitleText(
+      params[0]
+    )}\n${contents}\n<b>🚀 Keep up the good work! </b>`;
   }
 
   successFullAddOperatorAddress(operatorAddress: string) {

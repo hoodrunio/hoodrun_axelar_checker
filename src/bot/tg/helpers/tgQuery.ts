@@ -26,5 +26,6 @@ export const TgQuery = {
   UpTime: new QueryHelper("upTime", ":"),
   ValActions: new QueryHelper("valActions", ":"),
   EvmSupChains: new QueryHelper("evmChains", ":"),
+  Last30Votes: new QueryHelper("last30Votes", ":"),
   RpcHealth: new QueryHelper("rpcHealth", ":"),
 };
