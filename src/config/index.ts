@@ -26,4 +26,9 @@ export interface AppConfigType {
   logDir: string;
   redisHost: string;
   redisPort: number;
+  uptimeThreshold: {
+    low: number;
+    medium: number;
+    high: number;
+  };
 }

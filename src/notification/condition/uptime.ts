@@ -1,7 +1,12 @@
+import appConfig from "@config/index";
+
+const {
+  uptimeThreshold: { low = 0.7, medium = 0.85, high = 0.985 },
+} = appConfig;
 export enum UptimeThreshold {
-  LOW = 0.7,
-  MEDIUM = 0.85,
-  HIGH = 0.985,
+  LOW = low,
+  MEDIUM = medium,
+  HIGH = high,
 }
 
 export const createUptimeCondition = (params: {

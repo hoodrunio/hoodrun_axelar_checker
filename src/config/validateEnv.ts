@@ -8,6 +8,9 @@ const {
   TG_TOKEN,
   MAINNET_AXELAR_REST_BASE_URLS,
   AXELAR_VOTER_ADDRESS,
+  UPTIME_THRESHOLD_LOW,
+  UPTIME_THRESHOLD_MEDIUM,
+  UPTIME_THRESHOLD_HIGH,
   MAINNET_AXELAR_LCD_REST_BASE_URLS,
   MAINNET_AXELAR_WS_URLS,
   TESTNET_AXELAR_REST_BASE_URLS,
@@ -70,6 +73,11 @@ export const validateEnv = (): AppConfigType => {
     logDir: LOG_DIR as string,
     redisHost: isDev ? defatultRedisHost : (REDIS_HOST as string),
     redisPort: parseInt(REDIS_PORT ?? defaultRedisPort),
+    uptimeThreshold: {
+      low: parseFloat(UPTIME_THRESHOLD_LOW as string),
+      medium: parseFloat(UPTIME_THRESHOLD_MEDIUM as string),
+      high: parseFloat(UPTIME_THRESHOLD_HIGH as string),
+    },
   };
 };
 
