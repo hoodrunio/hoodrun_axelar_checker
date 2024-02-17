@@ -14,12 +14,14 @@ export class TgReply {
 
 <b>🔗 To get started, you can use the following commands:</b>
 
-- /add_operator_address - Add your operator address
-- /list_operators - List your operator addresses
-- /uptime - Check uptime for your operator address
-- /help - Get help
+
+- /list_validators - List your validators
     `;
   }
+
+  //- /add_operator_address - Add your operator address
+  // - /uptime - Check uptime for your operator address
+  // - /help - Get help
 
   uptimeReply(params: UptimeNotification): string {
     const { moniker, operatorAddress, currentUptime } = params;
@@ -37,7 +39,16 @@ export class TgReply {
     `;
   }
 
-  pollVoteReply(params: PollVoteNotification): string {
+  private pollVoteTitleText(params: PollVoteNotification): string {
+    const { moniker, operatorAddress } = params;
+    return `
+<b><strong>${moniker} Poll Vote</strong></b>
+
+<b>Operator Address:</b> ${operatorAddress}
+    `;
+  }
+
+  private pollVoteContentText(params: PollVoteNotification) {
     const { moniker, operatorAddress, vote, poolId } = params;
     let voteEmoji = "";
     if (vote == PollVoteType.UNSUBMITTED) {
@@ -48,13 +59,33 @@ export class TgReply {
       voteEmoji = "❌";
     }
     return `
-<b><strong>${moniker} Poll Vote</strong></b>
-
-<b>Operator Address:</b> ${operatorAddress}
 <b>Pool ID:</b> ${poolId}
 <b>Vote:</b> ${vote} ${voteEmoji}
+`;
+  }
 
+  pollVoteReply(params: PollVoteNotification): string {
+    return `
+${this.pollVoteTitleText(params)}
+
+${this.pollVoteContentText(params)}
 <b>🚀 Keep up the good work! </b>
+`;
+  }
+
+  batchValidatorPollVoteReply(params: PollVoteNotification[]): string {
+    if (params.length == 0) {
+      return `No poll vote data found`;
+    }
+    const contents = params.map((param) => {
+      return `${this.pollVoteContentText(param)}
+
+      `;
+    });
+
+    return `${this.pollVoteTitleText(params[0])}
+
+${contents}
     `;
   }
 
