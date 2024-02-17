@@ -5,7 +5,7 @@ import {
 
 export class WsMessageTxResult implements IWsEventMessageTxResult {
   query: string;
-  data: { type: string; value: TxResult };
+  data: { type: string; value: { TxResult: TxResult } };
   events: { [key: string]: string[] };
 
   constructor(params: IWsEventMessageTxResult) {
@@ -17,7 +17,7 @@ export class WsMessageTxResult implements IWsEventMessageTxResult {
   }
 
   getEventByKey(key: string): string | undefined {
-    const event = this?.events?.[key]?.[0]?.replace(/^"|"$/g, "");
+    const event = this?.events?.[key]?.[0]?.replace(/^(?:"|")$/, "");
     return event;
   }
 
