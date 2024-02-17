@@ -1,8 +1,4 @@
-import { ValidatorRepository } from "@repositories/validator/ValidatorRepository";
-import {
-  ADDRESS_TYPE_PREFIX,
-  convertPubKeyToBech32,
-} from "@utils/cosmos/cosmosConverter";
+import { logger } from "@utils/logger";
 import BigNumber from "bignumber.js";
 import appConfig from "../../config";
 import { AxiosService } from "./axios/AxiosService";
@@ -10,12 +6,9 @@ import { AxelarEvmChainMaintainersGetResponse } from "./interfaces/evm/AxelarEvm
 import { AxelarEvmChainsGetResponse } from "./interfaces/evm/AxelarEvmChainsGetResponse";
 import { SlashingParamsGetResponse } from "./interfaces/slashing/SlashingParamsGetResponse";
 import { ValSigningInfoGetResponse } from "./interfaces/slashing/ValSigningInfoGetResponse";
+import { TransactionGetResponse } from "./interfaces/tx/TransactionGetResponse";
 import { ValidatorsGetResponse } from "./interfaces/validators/ValidatorsGetResponse";
 import { AxelarPaginationRequest } from "./pagination/AxelarPaginationRequest";
-import { logger } from "@utils/logger";
-import { TransactionGetResponse } from "./interfaces/tx/TransactionGetResponse";
-import { AxlBlockChainGetResponse } from "./interfaces/blockchain/BlockChainGetResponse";
-import { BlockResultGetResponse } from "./interfaces/block/BlockResultGetResponse";
 
 export class AxelarQueryService {
   restClient: AxiosService;
@@ -168,21 +161,5 @@ export class AxelarQueryService {
     }
 
     return uptime;
-  }
-
-  async getBlockResultWithHeight(
-    height: number
-  ): Promise<BlockResultGetResponse> {
-    try {
-      const response = await this.restClient.request<BlockResultGetResponse>({
-        method: "GET",
-        url: `block_results?height=${height}`,
-      });
-
-      return response?.data;
-    } catch (error) {
-      logger.error(`Could not fetch block result for height ${height}`);
-      throw new Error(`Could not fetch block result for height ${height}`);
-    }
   }
 }
