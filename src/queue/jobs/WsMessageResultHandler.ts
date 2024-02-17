@@ -29,13 +29,17 @@ export const initWsMessageResultHandlerQueue = async () => {
     const result = new WsMessageTxResult(parsedData.result);
     const { txRepo } = new AppDb();
 
-    try {
-      await txRepo.create({
-        height: parseInt(result.data.value.height),
-        tx_raw: JSON.stringify(parsedData),
-      });
-    } catch (error) {
-      logger.error("Error creating tx", error);
+    if (result.query.includes("tm.event='Tx'")) {
+      try {
+        const messageAction = result.getEventByKey("message.action");
+        await txRepo.create({
+          height: parseInt(result.data.value.TxResult.height),
+          tx_raw: JSON.stringify(parsedData),
+          messageAction: messageAction ?? "",
+        });
+      } catch (error) {
+        logger.error("Error creating tx", error);
+      }
     }
 
     // new PollTxMessageResultHandler().handle(result);

@@ -4,6 +4,7 @@ import { Document } from "mongoose";
 export interface ITx extends IBaseInterface {
   height: number;
   tx_raw: string;
+  messageAction: string;
 }
 
 export interface ITxDocument extends Document, ITx {}

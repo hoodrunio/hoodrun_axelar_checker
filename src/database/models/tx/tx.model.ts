@@ -13,6 +13,10 @@ const TxSchema: Schema<ITxDocument> = createAppSchema<ITxDocument>({
     type: String,
     required: true,
   },
+  messageAction: {
+    type: String,
+    required: true,
+  },
 });
 
 TxSchema.statics.buildModel = (args: ITxDocument) => {
