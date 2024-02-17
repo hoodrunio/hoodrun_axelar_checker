@@ -1,3 +1,4 @@
+import appConfig from "@config/index";
 import { AppDb } from "@database/database";
 import {
   NotificationEvent,
@@ -27,9 +28,15 @@ export const initPollVoteNotificationQueue = async () => {
         notificationRepo,
       } = new AppDb();
 
-      const vote = PollVoteType.NO;
+      const xHourAgoDate = new Date();
+      xHourAgoDate.setHours(
+        xHourAgoDate.getHours() - appConfig.maxLastXHourPollVoteNotification
+      );
+
+      const vote = PollVoteType.YES;
       const allNoPollVotes = await pollVoteRepo.findAll({
         vote,
+        createdAt: { $gte: xHourAgoDate },
         checkedForNotification: false,
         sort: { createdAt: -1 },
       });

@@ -18,6 +18,7 @@ const {
   UPTIME_THRESHOLD_LOW,
   UPTIME_THRESHOLD_MEDIUM,
   UPTIME_THRESHOLD_HIGH,
+  LAST_X_HOUR_POLL_VOTE_NOTIFICATION,
   //DB
   DB_CONNECTION_STRING,
   DB_NAME,
@@ -38,6 +39,8 @@ const defatultRedisHost = "localhost";
 const defaultRedisPort = "6379";
 
 export const validateEnv = (): AppConfigType => {
+  const maxLastXHourPollVoteNotification =
+    LAST_X_HOUR_POLL_VOTE_NOTIFICATION ?? "12";
   const urlArrays: { [x: string]: string[] } = {
     mainnetAxelarRpcBaseUrls: parseStringArray(MAINNET_AXELAR_RPC_BASE_URLS),
     mainnetAxelarRestBaseUrls: parseStringArray(MAINNET_AXELAR_REST_BASE_URLS),
@@ -67,6 +70,9 @@ export const validateEnv = (): AppConfigType => {
 
   return {
     axelarVoterAddress,
+    maxLastXHourPollVoteNotification: parseInt(
+      maxLastXHourPollVoteNotification
+    ),
     mainnetAxelarRestBaseUrls: urlArrays.mainnetAxelarRestBaseUrls,
     mainnetAxelarLCDRestBaseUrls: urlArrays.mainnetAxelarRpcBaseUrls,
     mainnetAxelarRpcBaseUrls: urlArrays.mainnetAxelarRpcBaseUrls,

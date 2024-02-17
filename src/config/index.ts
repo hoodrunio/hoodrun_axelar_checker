@@ -11,6 +11,7 @@ try {
 export default appConfig as AppConfigType;
 
 export interface AppConfigType {
+  maxLastXHourPollVoteNotification: number;
   axelarVoterAddress: string;
   mainnetAxelarRestBaseUrls: string[];
   mainnetAxelarLCDRestBaseUrls: string[];
