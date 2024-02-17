@@ -5,23 +5,30 @@ import { AppConfigType } from ".";
 config({ path: `.env` });
 
 const {
+  //Telegram
   TG_TOKEN,
+  //URLs
   MAINNET_AXELAR_REST_BASE_URLS,
+  MAINNET_AXELAR_RPC_BASE_URLS,
+  MAINNET_AXELAR_LCD_REST_BASE_URLS,
+  MAINNET_AXELAR_WS_URLS,
+  TESTNET_AXELAR_REST_BASE_URLS,
+  //Axelar
   AXELAR_VOTER_ADDRESS,
   UPTIME_THRESHOLD_LOW,
   UPTIME_THRESHOLD_MEDIUM,
   UPTIME_THRESHOLD_HIGH,
-  MAINNET_AXELAR_LCD_REST_BASE_URLS,
-  MAINNET_AXELAR_WS_URLS,
-  TESTNET_AXELAR_REST_BASE_URLS,
+  //DB
   DB_CONNECTION_STRING,
   DB_NAME,
   DB_USER,
   DB_PWD,
   DB_HOST,
   DB_PORT,
+  //Utils
   LOG_FORMAT,
   LOG_DIR,
+  //Redis
   REDIS_HOST,
   REDIS_PORT,
 } = process.env;
@@ -32,11 +39,12 @@ const defaultRedisPort = "6379";
 
 export const validateEnv = (): AppConfigType => {
   const urlArrays: { [x: string]: string[] } = {
+    mainnetAxelarRpcBaseUrls: parseStringArray(MAINNET_AXELAR_RPC_BASE_URLS),
     mainnetAxelarRestBaseUrls: parseStringArray(MAINNET_AXELAR_REST_BASE_URLS),
+    mainnetAxelarWsUrls: parseStringArray(MAINNET_AXELAR_WS_URLS),
     mainnetAxelarLCDRestBaseUrls: parseStringArray(
       MAINNET_AXELAR_LCD_REST_BASE_URLS
     ),
-    mainnetAxelarWsUrls: parseStringArray(MAINNET_AXELAR_WS_URLS),
   };
 
   for (const prop in urlArrays) {
@@ -60,7 +68,8 @@ export const validateEnv = (): AppConfigType => {
   return {
     axelarVoterAddress,
     mainnetAxelarRestBaseUrls: urlArrays.mainnetAxelarRestBaseUrls,
-    mainnetAxelarLCDRestBaseUrls: urlArrays.mainnetAxelarLCDRestBaseUrls,
+    mainnetAxelarLCDRestBaseUrls: urlArrays.mainnetAxelarRpcBaseUrls,
+    mainnetAxelarRpcBaseUrls: urlArrays.mainnetAxelarRpcBaseUrls,
     mainnetAxelarWsUrls: urlArrays.mainnetAxelarWsUrls,
     tgToken: TG_TOKEN as string,
     dbConnectionString: DB_CONNECTION_STRING,

@@ -14,6 +14,7 @@ export interface AppConfigType {
   axelarVoterAddress: string;
   mainnetAxelarRestBaseUrls: string[];
   mainnetAxelarLCDRestBaseUrls: string[];
+  mainnetAxelarRpcBaseUrls: string[];
   mainnetAxelarWsUrls: string[];
   tgToken: string;
   dbConnectionString: string | undefined;
