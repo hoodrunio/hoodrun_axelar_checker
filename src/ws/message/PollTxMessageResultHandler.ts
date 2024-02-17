@@ -82,6 +82,7 @@ export class PollTxMessageResultHandler {
       customId: genPollVoteCustomId(pollId, voterAddress),
       pollId,
       pollState,
+      pollChain: "",
       voter_address: voterAddress,
       txHash,
       txHeight,
