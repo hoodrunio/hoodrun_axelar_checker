@@ -5,9 +5,8 @@ import {
   PollVoteNotificationDataType,
 } from "@database/models/notification/notification.interface";
 import { PollVoteType } from "@database/models/polls/poll_vote/poll_vote.interface";
-import { AxelarQueryService } from "@services/rest/AxelarQueryService";
+import { AxelarRPCQueryService } from "@services/rest/AxelarRPCQueryService";
 import { logger } from "@utils/logger";
-import { TGBot } from "bot/tg/TGBot";
 import { createPollVoteCondition } from "notification/condition/pollVote";
 import { xSeconds } from "queue/jobHelper";
 import appJobProducer from "queue/producer/AppJobProducer";
@@ -28,16 +27,19 @@ export const initPollVoteNotificationQueue = async () => {
         telegramUserRepo,
         notificationRepo,
       } = new AppDb();
-      const axlQService = new AxelarQueryService();
-      const tg = await TGBot.getInstance();
-      const latestHeight = await axlQService.getLatestBlockHeight();
+
+      const axlRpcQueryService = new AxelarRPCQueryService();
+      const latestHeight = await axlRpcQueryService.getLatestBlockHeight();
+
       const vote = PollVoteType.YES;
-      const allNoPollVotes = await pollVoteRepo.findAll({
-        vote,
-        checkedForNotification: false,
-        sort: { pollId: -1 },
-      });
-      const promisses = allNoPollVotes.map(async (pollVote) => {
+      const allNoPollVotes =
+        (await pollVoteRepo.findAll({
+          vote,
+          checkedForNotification: false,
+          sort: { pollId: -1 },
+        })) ?? [];
+
+      const promisses = allNoPollVotes?.map(async (pollVote) => {
         const shouldSendNotification = pollVote.txHeight + 16 < latestHeight;
         if (!shouldSendNotification) Promise.resolve();
 
@@ -48,7 +50,6 @@ export const initPollVoteNotificationQueue = async () => {
 
         const tgUsers = await telegramUserRepo.findAll({});
         if (!tgUsers || tgUsers.length < 1) Promise.resolve();
-        const message = `${voterValidator?.description.moniker} voted poll with id number ${pollVote.pollId} as ${pollVote.vote}`;
         const pollVoteCondition = createPollVoteCondition(pollVote);
         for (const tgUser of tgUsers) {
           const chatId = tgUser.chat_id;
@@ -77,7 +78,7 @@ export const initPollVoteNotificationQueue = async () => {
         });
       });
 
-      await Promise.allSettled(promisses);
+      await Promise.all(promisses);
     } catch (error) {
       logger.error("Error in Poll Vote Notification Job", error);
       return Promise.resolve(error);

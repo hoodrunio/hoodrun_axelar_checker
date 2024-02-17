@@ -1,5 +1,5 @@
 import { AppDb } from "@database/database";
-import { AxelarQueryService } from "@services/rest/AxelarQueryService";
+import { AxelarRPCQueryService } from "@services/rest/AxelarRPCQueryService";
 import { xSeconds } from "queue/jobHelper";
 import appJobProducer from "queue/producer/AppJobProducer";
 import AppQueueFactory from "queue/queue/AppQueueFactory";
@@ -13,9 +13,10 @@ export const initPollAndVoteCheckerJobQueue = async () => {
     AppQueueFactory.createQueue<NewWsPollAndVoteDto>(POLL_AND_VOTE_CHECKER_JOB);
 
   pollAndVoteCheckerQueue.process(100, async (job) => {
-    const axelarQueryService = new AxelarQueryService();
+    const axelarRpcQueryService = new AxelarRPCQueryService();
     const { axlStateRepo } = new AppDb();
-    const chainLatestHeight = await axelarQueryService.getLatestBlockHeight();
+    const chainLatestHeight =
+      await axelarRpcQueryService.getLatestBlockHeight();
     const axlState = await axlStateRepo.getState();
     let stateLatestHeight = axlState?.latestHeight ?? 0;
     if (!axlState || axlState.latestHeight < 1) {
