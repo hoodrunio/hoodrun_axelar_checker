@@ -1,15 +1,25 @@
 import { connectDb } from "@database/index";
 import { TGBot } from "bot/tg/TGBot";
-import { initWsMessageResultHandlerQueue } from "queue/jobs/WsMessageHandler";
+import { initWsMessageResultHandlerQueue } from "queue/jobs/WsMessageResultHandler";
 import { initNewWsAllPollDataQueue } from "queue/jobs/poll/NewWsAllPollDataJob";
 import {
   addPollVoteNotificationJob,
   initPollVoteNotificationQueue,
 } from "queue/jobs/poll/notification/PollVoteNotificationJob";
-import { addValAllInfoCheckerJob } from "queue/jobs/validators/ValAllInfoCheckerJob";
-import { addValUptimeCheckerJob } from "queue/jobs/validators/ValUptimeCheckerJob";
+import {
+  addValAllInfoCheckerJob,
+  initValAllInfoCheckerQueue,
+} from "queue/jobs/validators/ValAllInfoCheckerJob";
+import {
+  addValUptimeCheckerJob,
+  initValsUptimeCheckerQueue,
+} from "queue/jobs/validators/ValUptimeCheckerJob";
 import { AxelarWsClient } from "ws/client/AxelarWsClient";
 import { AxelarQueryService } from "../services/rest/AxelarQueryService";
+import {
+  addSendNotificationsJob,
+  initSendNotificationsQueue,
+} from "queue/jobs/notification/SendNotifications";
 
 class App {
   axelarQueryService: AxelarQueryService;
@@ -45,12 +55,17 @@ class App {
   }
 
   private async initQueue() {
+    await initValAllInfoCheckerQueue();
+    await initValsUptimeCheckerQueue();
+    await initPollVoteNotificationQueue();
+
+    await initSendNotificationsQueue();
     await initWsMessageResultHandlerQueue();
     await initNewWsAllPollDataQueue();
-    await initPollVoteNotificationQueue();
   }
 
   private async initJobs() {
+    await addSendNotificationsJob();
     addValAllInfoCheckerJob();
     addValUptimeCheckerJob();
     addPollVoteNotificationJob();
