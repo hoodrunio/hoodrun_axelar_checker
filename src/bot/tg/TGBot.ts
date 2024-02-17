@@ -97,53 +97,63 @@ export class TGBot {
     }
   }
 
-  private _addOperatorAddressCMD() {
-    const addAddressCommand = Commands.AddOperatorAddress;
-    this.bot.command(addAddressCommand.command, async (ctx) => {
-      const { message: { text } = {}, chat } = ctx;
-      const valRepo = this.appDb.validatorRepository;
-      const tgUserRepo = this.appDb.telegramUserRepo;
+  // private _addOperatorAddressCMD() {
+  //   const addAddressCommand = Commands.AddOperatorAddress;
+  //   this.bot.command(addAddressCommand.command, async (ctx) => {
+  //     const { message: { text } = {}, chat } = ctx;
+  //     const valRepo = this.appDb.validatorRepository;
+  //     const tgUserRepo = this.appDb.telegramUserRepo;
 
-      const validMessage = addAddressCommand.validate(text ?? "");
-      if (!validMessage) {
-        ctx.reply(
-          `Please use correct command format: ${addAddressCommand.command}`
-        );
-        return;
-      }
+  //     const validMessage = addAddressCommand.validate(text ?? "");
+  //     if (!validMessage) {
+  //       ctx.reply(
+  //         `Please use correct command format: ${addAddressCommand.command}`
+  //       );
+  //       return;
+  //     }
 
-      const operatorAddress = text?.split(" ")[1] as string;
-      const existInDb = await valRepo.isOperatorExist(operatorAddress);
-      if (!existInDb) {
-        ctx.reply(
-          `Operator address ${operatorAddress} does not exist in Network`
-        );
-        return;
-      }
+  //     const operatorAddress = text?.split(" ")[1] as string;
+  //     const existInDb = await valRepo.isOperatorExist(operatorAddress);
+  //     if (!existInDb) {
+  //       ctx.reply(
+  //         `Operator address ${operatorAddress} does not exist in Network`
+  //       );
+  //       return;
+  //     }
 
-      try {
-        await tgUserRepo.addOperatorAddressToChat({
-          chat_id: chat?.id,
-          operator_address: operatorAddress,
-        });
+  //     try {
+  //       await tgUserRepo.addOperatorAddressToChat({
+  //         chat_id: chat?.id,
+  //         operator_address: operatorAddress,
+  //       });
 
-        ctx.reply(this.tgReply.successFullAddOperatorAddress(operatorAddress), {
-          parse_mode: "HTML",
-        });
-      } catch (error) {
-        logger.error(error);
-        ctx.reply("Error while adding operator address to chat");
-      }
-    });
-  }
+  //       ctx.reply(this.tgReply.successFullAddOperatorAddress(operatorAddress), {
+  //         parse_mode: "HTML",
+  //       });
+  //     } catch (error) {
+  //       logger.error(error);
+  //       ctx.reply("Error while adding operator address to chat");
+  //     }
+  //   });
+  // }
 
   private _listValidatorsCMD() {
     const listValidatorsCommand = Commands.ListValidators;
     this.bot.command(listValidatorsCommand.command, async (ctx) => {
-      const chatTgUser = await this.appDb.telegramUserRepo.findOne({
-        chat_id: ctx.chat?.id ?? 0,
+      const envValidator = await this.appDb.validatorRepository.findOne({
+        voter_address: appConfig.axelarVoterAddress,
       });
-      const operatorAdresses = chatTgUser?.operator_addresses ?? [];
+      // const chatTgUser = await this.appDb.telegramUserRepo.findOne({
+      //   chat_id: ctx.chat?.id ?? 0,
+      // });
+      // const operatorAdresses = chatTgUser?.operator_addresses ?? [];
+
+      const operatorAdresses = [];
+
+      if (envValidator) {
+        operatorAdresses.push(envValidator.operator_address);
+      }
+
       const keyboard = new InlineKeyboard();
 
       for (const operatorAddress of operatorAdresses) {
@@ -202,7 +212,7 @@ export class TGBot {
       const uptimeCallBackQueryData =
         TgQuery.UpTime.queryBuilder(operatorAddress);
 
-      const evmSupprtedChainsButton = `⛓ Evm Supprted Chains`;
+      const evmSupprtedChainsButton = `⛓ Evm Supported Chains`;
       const evmSupChainsCallBackQueryData =
         TgQuery.EvmSupChains.queryBuilder(operatorAddress);
 
@@ -266,18 +276,18 @@ export class TGBot {
         operator_address: operatorAddressInput,
       });
 
-      const elipsizedOperatorAddress = elipsized(operatorAddressInput, 40);
-
       const uptime = validator?.uptime ?? 0.0;
-      const uptimeRatio = new BigNumber(uptime)
-        .times(100)
-        .decimalPlaces(2)
-        .toNumber();
-
       const moniker = validator?.description.moniker ?? "";
-      ctx.reply(
-        `Uptime for ${moniker} | ${elipsizedOperatorAddress} is ${uptimeRatio}%`
-      );
+      const uptimeNotification: UptimeNotification = {
+        operatorAddress: operatorAddressInput,
+        currentUptime: uptime,
+        threshold: 0,
+        chat_id: ctx.chat?.id ?? 0,
+        moniker,
+      };
+      ctx.reply(this.tgReply.uptimeReply(uptimeNotification), {
+        parse_mode: "HTML",
+      });
     });
   }
 
@@ -286,7 +296,7 @@ export class TGBot {
     this._initStartCMD();
 
     // Add Operator Address
-    this._addOperatorAddressCMD();
+    // this._addOperatorAddressCMD();
 
     // Validator List
     this._listValidatorsCMD();

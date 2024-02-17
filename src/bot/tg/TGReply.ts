@@ -3,6 +3,7 @@ import {
   PollVoteNotification,
   UptimeNotification,
 } from "./interface/notification";
+import BigNumber from "bignumber.js";
 
 export class TgReply {
   startReply() {
@@ -22,11 +23,15 @@ export class TgReply {
 
   uptimeReply(params: UptimeNotification): string {
     const { moniker, operatorAddress, currentUptime } = params;
+    const uptime = new BigNumber(currentUptime)
+      .times(100)
+      .decimalPlaces(2)
+      .toNumber();
     return `
 <b><strong>${moniker} Uptime</strong></b>
 
 <b>Operator Address:</b> ${operatorAddress}
-<b>Uptime:</b> ${currentUptime * 100}% <b>🤘</b>
+<b>Uptime:</b> ${uptime}% <b>🤘</b>
 
 <b>🚀 Keep up the good work! </b>
     `;
