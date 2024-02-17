@@ -3,11 +3,21 @@ import { AppDb } from "@database/database";
 import { logger } from "@utils/logger";
 import BigNumber from "bignumber.js";
 import { Bot, InlineKeyboard } from "grammy";
-import { TgReply } from "./TGReply";
 import { Commands } from "./constants";
 import { TgQuery } from "./helpers/tgQuery";
 import { elipsized } from "./helpers/validator";
 import { chatSaverMiddleware } from "./middlewares/chatSaverMiddleware";
+import {
+  PollVoteNotification,
+  UptimeNotification,
+} from "./interface/notification";
+import {
+  INotification,
+  NotificationEvent,
+  PollVoteNotificationDataType,
+  UptimeNotificationDataType,
+} from "@database/models/notification/notification.interface";
+import { TgReply } from "./TGReply";
 
 export class TGBot {
   private static _instance: TGBot;
@@ -39,28 +49,51 @@ export class TGBot {
     this._initCMDS();
   }
 
-  public async sendMessageToUsers(
+  public async sendMessageToUser(
     { chat_id }: { chat_id: number },
     message: string
   ) {
     try {
-      await this.bot.api.sendMessage(chat_id, message);
+      await this.bot.api.sendMessage(chat_id, message, { parse_mode: "HTML" });
       logger.info(`Message sent to user ${chat_id}`);
     } catch (error) {
       logger.error(`Error while sending message to user ${chat_id}`, error);
     }
   }
 
-  public async sendMessageToAllUsers(
-    message: string,
-    chats: { chat_id: number }[]
+  private async sendUptimeNotification<T extends UptimeNotification>(data: T) {
+    await this.sendMessageToUser(
+      { chat_id: data.chat_id },
+      this.tgReply.uptimeReply(data)
+    );
+  }
+
+  private async sendPollVoteNotification<T extends PollVoteNotification>(
+    data: PollVoteNotification
   ) {
-    try {
-      for (const chat of chats) {
-        await this.sendMessageToUsers(chat, message);
-      }
-    } catch (error) {
-      logger.error(`Error while sending message to all users`, error);
+    await this.sendMessageToUser(
+      { chat_id: data.chat_id },
+      this.tgReply.pollVoteReply(data)
+    );
+  }
+
+  public async sendNotification(notification: INotification) {
+    const { data, event, recipient } = notification;
+    const tgRecipient = parseInt(recipient);
+
+    switch (event) {
+      case NotificationEvent.UPTIME:
+        await this.sendUptimeNotification({
+          ...(data as UptimeNotificationDataType),
+          chat_id: tgRecipient,
+        });
+        break;
+      case NotificationEvent.POOL_VOTE:
+        await this.sendPollVoteNotification({
+          ...(data as PollVoteNotificationDataType),
+          chat_id: tgRecipient,
+        });
+        break;
     }
   }
 
