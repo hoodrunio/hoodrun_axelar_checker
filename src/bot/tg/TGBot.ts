@@ -176,10 +176,16 @@ export class TGBot {
         keyboard.text(buttonText, callBackQueryData).row();
       }
 
-      ctx.reply("*Validator List*", {
+      ctx.reply("📋 *Validator List*", {
         reply_markup: keyboard,
         parse_mode: "Markdown",
       });
+    });
+  }
+
+  private _helpCMD() {
+    this.bot.command("help", (ctx) => {
+      ctx.reply(this.tgReply.startReply(), { parse_mode: "HTML" });
     });
   }
 
@@ -216,9 +222,15 @@ export class TGBot {
       const evmSupChainsCallBackQueryData =
         TgQuery.EvmSupChains.queryBuilder(operatorAddress);
 
+      const rpcHealthButton = `🏥 RPC Health - Soon... 🫡`;
+      const rpcHealthCallbackQueryData =
+        TgQuery.RpcHealth.queryBuilder(operatorAddress);
+
       keyboard
         .text(uptimeButton, uptimeCallBackQueryData)
-        .text(evmSupprtedChainsButton, evmSupChainsCallBackQueryData);
+        .text(evmSupprtedChainsButton, evmSupChainsCallBackQueryData)
+        .row()
+        .text(rpcHealthButton, rpcHealthCallbackQueryData);
 
       ctx.reply(
         `🚜 *${moniker} ${elipsizedOperatorAddress} Validator Actions*`,
@@ -291,12 +303,24 @@ export class TGBot {
     });
   }
 
+  private _rpcHealthCMD() {
+    const event = TgQuery.RpcHealth.event;
+    this.bot.callbackQuery(event, async (ctx) => {
+      ctx.reply(
+        "🙏 We're still brewing up Rpc Health feature like a secret potion... Stay tuned for the magic!"
+      );
+    });
+  }
+
   private _initCMDS() {
     // Start Bot And Brief Introduction
     this._initStartCMD();
 
     // Add Operator Address
     // this._addOperatorAddressCMD();
+
+    // Help
+    this._helpCMD();
 
     // Validator List
     this._listValidatorsCMD();
@@ -305,6 +329,7 @@ export class TGBot {
     this._showValidatorMenuCMD();
     this._evmSupportedChainsCMD();
     this._uptimeValidatorCMD();
+    this._rpcHealthCMD();
   }
 
   private _initStartCMD() {
