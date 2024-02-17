@@ -11,6 +11,7 @@ export interface IPollVote extends IBaseInterface {
   customId: string;
   pollId: string;
   pollState: string;
+  pollChain: string;
   voter_address: string;
   vote: PollVoteType;
   txHash: string;

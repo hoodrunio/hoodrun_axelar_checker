@@ -19,6 +19,10 @@ const PollVoteSchema: Schema<IPollVoteDocument> =
       type: String,
       required: true,
     },
+    pollChain: {
+      type: String,
+      required: true,
+    },
     voter_address: {
       type: String,
       required: true,

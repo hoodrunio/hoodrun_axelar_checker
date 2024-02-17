@@ -35,7 +35,8 @@ export interface UptimeNotificationDataType {
 }
 
 export interface PollVoteNotificationDataType {
-  poolId: string;
+  pollId: string;
+  chain: string;
   vote: PollVoteType;
   operatorAddress: string;
   moniker: string;

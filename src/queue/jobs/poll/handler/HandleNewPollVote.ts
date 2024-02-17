@@ -16,6 +16,12 @@ export const handleOnNewPollVote = async (
 
   let voteState = PollVoteType.UNSUBMITTED;
 
+  const poll = await pollRepo.findOne({ pollId });
+  let pollChain = "";
+  if (poll) {
+    pollChain = poll.pollChain;
+  }
+
   const tx = await axlQueryService.getTxWithHash(txHash);
   const txInnerMessageEvents = tx.tx.body.messages.find(
     (msg) => msg?.inner_message
@@ -33,6 +39,7 @@ export const handleOnNewPollVote = async (
   await pollVoteRepo.upsertOne(
     { customId },
     {
+      pollChain,
       customId,
       pollId,
       pollState,

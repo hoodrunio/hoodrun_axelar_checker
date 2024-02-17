@@ -5,7 +5,6 @@ import {
   PollVoteNotificationDataType,
 } from "@database/models/notification/notification.interface";
 import { PollVoteType } from "@database/models/polls/poll_vote/poll_vote.interface";
-import { AxelarRPCQueryService } from "@services/rest/AxelarRPCQueryService";
 import { logger } from "@utils/logger";
 import { createPollVoteCondition } from "notification/condition/pollVote";
 import { xSeconds } from "queue/jobHelper";
@@ -28,9 +27,6 @@ export const initPollVoteNotificationQueue = async () => {
         notificationRepo,
       } = new AppDb();
 
-      const axlRpcQueryService = new AxelarRPCQueryService();
-      // const latestHeight = await axlRpcQueryService.getLatestBlockHeight();
-
       const vote = PollVoteType.NO;
       const allNoPollVotes = await pollVoteRepo.findAll({
         vote,
@@ -39,9 +35,6 @@ export const initPollVoteNotificationQueue = async () => {
       });
 
       const promisses = allNoPollVotes?.map(async (pollVote) => {
-        // const shouldSendNotification = pollVote.txHeight + 10 < latestHeight;
-        // if (!shouldSendNotification) return Promise.resolve();
-
         const voterValidator = await validatorRepository.findOne({
           voter_address: pollVote.voter_address,
         });
@@ -53,7 +46,8 @@ export const initPollVoteNotificationQueue = async () => {
         for (const tgUser of tgUsers) {
           const chatId = tgUser.chat_id;
           const data: PollVoteNotificationDataType = {
-            poolId: pollVote.pollId,
+            chain: pollVote.pollChain,
+            pollId: pollVote.pollId,
             vote: pollVote.vote,
             operatorAddress: voterValidator.operator_address,
             moniker: voterValidator.description.moniker,
