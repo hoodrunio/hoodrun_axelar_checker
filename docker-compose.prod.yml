@@ -1,0 +1,54 @@
+version: "3.8"
+
+services:
+  server:
+    container_name: server
+    image: fermetin/hood-run-axelar-checker
+    build:
+      context: ./
+      dockerfile: Dockerfile.prod
+    ports:
+      - "3111:3111"
+    env_file:
+      - .env
+    volumes:
+      - ./:/app
+      - /app/node_modules
+    restart: "unless-stopped"
+    networks:
+      - backend
+    links:
+      - mongo
+    depends_on:
+      - mongo
+
+  mongo:
+    container_name: mongo
+    image: mongo
+    restart: "unless-stopped"
+    env_file:
+      - .env
+    volumes:
+      - data:/data/db
+      - ./init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js
+    ports:
+      - "27020:27017"
+    networks:
+      - backend
+
+  redis: # Define Redis service
+    container_name: redis
+    image: redis
+    ports:
+      - "6379:6379" # Expose Redis port
+    restart: "unless-stopped"
+    networks:
+      - backend
+
+networks:
+  backend:
+    driver: bridge
+
+volumes:
+  data:
+    driver: local

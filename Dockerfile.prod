@@ -13,9 +13,9 @@ RUN npm install -g pnpm
 RUN pnpm install --shamefully-hoist
 
 # Set Env
-ENV NODE_ENV development
+ENV NODE_ENV production
 
 EXPOSE 3000
 
 # Cmd script
-CMD ["pnpm", "run", "start:dev"]
+CMD ["pnpm", "run", "start"]
