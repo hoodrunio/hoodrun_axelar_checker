@@ -11,34 +11,8 @@ Axelar Validator Checker is a Node.js application designed to provide tracking f
 
 ## Requirements
 Before deploying the application, ensure you have the following prerequisites:
-- Node.js installed on your system
 - Docker installed on your system
 
-### Node.js Installation
-
-To install the required version of Node.js for this project, follow the steps below:
-
-1. **Installation with NodeSource Node.js Binaries:**
-
-   To install the LTS version of Node.js, use the following commands:
-
-   ```bash
-   curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
-   sudo apt-get install -y nodejs
-   ```
-
-   These commands install the latest LTS version on your system.
-
-2. **Verification of Installation:**
-
-   To check if Node.js and npm were successfully installed, use the following commands:
-
-   ```bash
-   node --version
-   npm --version
-   ```
-
-   These commands print the installed versions of Node.js and npm.
 
 ### Docker Installation
 
@@ -55,7 +29,7 @@ To install Docker, follow the steps below:
 
    This script installs Docker on your system.
 
-2. **Adding User to the Docker Group (optional):** 
+2. **Adding User to the Docker Group (or Please use root user to run container):** 
 
    To run Docker commands without `sudo`, add your user to the `docker` group:
 
@@ -88,18 +62,13 @@ To deploy Axelar Validator Checker to Docker, follow these steps:
    - `TG_TOKEN`: Generate your own Telegram token and include it in the .env file for Telegram notifications.
 
 ## Environment Variables
-Ensure to include the following environment variables in your .env file:
-- `AXELAR_MAINNET_REST_BASE_URLS="[https://example1.url, https://example2.url, https://example3.url]"`
-- `AXELAR_WS_URLS="[wss://example1.url, wss://example2.url, wss://example3.url]"`
-- `AXELAR_RPC_BASE_URLS="[https://example1.url, https://example2.url, https://example3.url]"`
-- `AXELAR_LCD_BASE_URLS="[https://example1.url, https://example2.url, https://example3.url]"`
-- `AXELAR_VOTER_ADDRESS="<Your Axelar Voter Address>"`
-- `TG_TOKEN="<Your Telegram Bot Token>"`
+Ensure to include proper environment variables in your .env file please check .env.example file.
 
 ## Docker Deployment
 Once your environment file is configured, you can deploy the application to Docker using the following command:
-`docker-compose up -d
+`docker-compose -f docker-compose.prod.yml up --build --force-recreate
 `
+
 ## Usage
 - Access the Telegram bot to track validators' uptime, poll votes, and more.
 - Monitor notifications sent via Telegram based on uptime thresholds and operator performance.
