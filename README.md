@@ -80,26 +80,26 @@ To deploy Axelar Validator Checker to Docker, follow these steps:
 1. Clone this repository to your local machine.
 2. Navigate to the project directory.
 3. Create an .env file with the following variables:
-   - AXELAR_MAINNET_REST_BASE_URLS: Specify at least three URLs for Axelar Mainnet REST API endpoints.
-   - AXELAR_WS_URLS: Specify at least three WebSocket URLs for Axelar.
-   - AXELAR_RPC_BASE_URLS: Specify at least three RPC base URLs for Axelar.
-   - AXELAR_LCD_BASE_URLS: Specify at least three LCD base URLs for Axelar.
-   - AXELAR_VOTER_ADDRESS: Provide your Axelar voter address for poll vote indexing.
-   - TG_TOKEN: Generate your own Telegram token and include it in the .env file for Telegram notifications.
+   - `AXELAR_MAINNET_REST_BASE_URLS`: Specify at least three URLs for Axelar Mainnet REST API endpoints.
+   - `AXELAR_WS_URLS`: Specify at least three WebSocket URLs for Axelar.
+   - `AXELAR_RPC_BASE_URLS`: Specify at least three RPC base URLs for Axelar.
+   - `AXELAR_LCD_BASE_URLS`: Specify at least three LCD base URLs for Axelar.
+   - `AXELAR_VOTER_ADDRESS`: Provide your Axelar voter address for poll vote indexing.
+   - `TG_TOKEN`: Generate your own Telegram token and include it in the .env file for Telegram notifications.
 
 ## Environment Variables
 Ensure to include the following environment variables in your .env file:
-- AXELAR_MAINNET_REST_BASE_URLS="[https://example1.url, https://example2.url, https://example3.url]"
-- AXELAR_WS_URLS="[wss://example1.url, wss://example2.url, wss://example3.url]"
-- AXELAR_RPC_BASE_URLS="[https://example1.url, https://example2.url, https://example3.url]"
-- AXELAR_LCD_BASE_URLS="[https://example1.url, https://example2.url, https://example3.url]"
-- AXELAR_VOTER_ADDRESS="<Your Axelar Voter Address>"
-- TG_TOKEN="<Your Telegram Bot Token>"
+- `AXELAR_MAINNET_REST_BASE_URLS="[https://example1.url, https://example2.url, https://example3.url]"`
+- `AXELAR_WS_URLS="[wss://example1.url, wss://example2.url, wss://example3.url]"`
+- `AXELAR_RPC_BASE_URLS="[https://example1.url, https://example2.url, https://example3.url]"`
+- `AXELAR_LCD_BASE_URLS="[https://example1.url, https://example2.url, https://example3.url]"`
+- `AXELAR_VOTER_ADDRESS="<Your Axelar Voter Address>"`
+- `TG_TOKEN="<Your Telegram Bot Token>"`
 
 ## Docker Deployment
 Once your environment file is configured, you can deploy the application to Docker using the following command:
-docker-compose up -d
-
+`docker-compose up -d
+`
 ## Usage
 - Access the Telegram bot to track validators' uptime, poll votes, and more.
 - Monitor notifications sent via Telegram based on uptime thresholds and operator performance.
