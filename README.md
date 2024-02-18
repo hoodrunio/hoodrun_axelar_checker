@@ -65,10 +65,10 @@ To deploy Axelar Validator Checker to Docker, follow these steps:
 Ensure to include proper environment variables in your .env file please check .env.example file.
 
 ## Docker Deployment
-Once your environment file is configured, you can deploy the application to Docker using the following command:
+Once your environment file is configured, you can deploy the deamon application to Docker using the following command:
 
 `
-docker-compose -f docker-compose.prod.yml up --build --force-recreate
+docker-compose -f docker-compose.prod.yml up -d --build --force-recreate
 `
 
 ## Usage
