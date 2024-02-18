@@ -95,7 +95,7 @@ export class AxelarQueryService {
   }): Promise<ValSigningInfoGetResponse> {
     const response = await this.restClient.request<ValSigningInfoGetResponse>({
       method: "GET",
-      url: `/cosmos/slashing/v1beta1/signing_infos/${consensusAddress}`,
+      url: `cosmos/slashing/v1beta1/signing_infos/${consensusAddress}`,
     });
 
     return response?.data;
@@ -104,7 +104,7 @@ export class AxelarQueryService {
   private async getSlahsingParams(): Promise<SlashingParamsGetResponse> {
     const response = await this.restClient.request<SlashingParamsGetResponse>({
       method: "GET",
-      url: `/cosmos/slashing/v1beta1/params`,
+      url: `cosmos/slashing/v1beta1/params`,
     });
 
     return response?.data;

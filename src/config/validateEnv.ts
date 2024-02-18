@@ -74,7 +74,7 @@ export const validateEnv = (): AppConfigType => {
       maxLastXHourPollVoteNotification
     ),
     mainnetAxelarRestBaseUrls: urlArrays.mainnetAxelarRestBaseUrls,
-    mainnetAxelarLCDRestBaseUrls: urlArrays.mainnetAxelarRpcBaseUrls,
+    mainnetAxelarLCDRestBaseUrls: urlArrays.mainnetAxelarLCDRestBaseUrls,
     mainnetAxelarRpcBaseUrls: urlArrays.mainnetAxelarRpcBaseUrls,
     mainnetAxelarWsUrls: urlArrays.mainnetAxelarWsUrls,
     tgToken: TG_TOKEN as string,

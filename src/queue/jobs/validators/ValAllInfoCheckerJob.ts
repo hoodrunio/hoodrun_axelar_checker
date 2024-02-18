@@ -34,6 +34,7 @@ export const initValAllInfoCheckerQueue = async () => {
       const chainsMaintainers = allEvmChainsWithMaintainersRes;
 
       const promises = validators.map(async (validator) => {
+        const is_active = validator.status == "BOND_STATUS_BONDED";
         const valEvmSupportedChains: string[] = [];
         const operatorAddress = validator.operator_address;
 
@@ -58,10 +59,12 @@ export const initValAllInfoCheckerQueue = async () => {
           logger.error(`Failed to get voter address: ${error}`);
         }
 
-        const uptime = await axelarQService.getSafeValidatorUptime(
-          consensusAddress
-        );
-        const is_active = validator.status == "BOND_STATUS_BONDED";
+        let uptime = 0;
+        if (is_active) {
+          uptime = await axelarQService.getSafeValidatorUptime(
+            consensusAddress
+          );
+        }
 
         try {
           await validatorRepo.upsertOne(
