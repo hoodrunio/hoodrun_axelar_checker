@@ -72,7 +72,7 @@ docker-compose -f docker-compose.prod.yml up -d --build --force-recreate
 `
 
 ## After Docker Deployment
-Please find your bot (Add bot to Telegram group if you wish) on Telegram then  send  `/start` or `/help` command to start conversation.
+Please find your bot on Telegram (add the bot to the Telegram group if you wish), and then send the `/start` or `/help` command to begin the conversation.
 
 ## Usage
 - Access the Telegram bot to track validators' uptime, poll votes, and more.
