@@ -71,6 +71,9 @@ Once your environment file is configured, you can deploy the deamon application 
 docker-compose -f docker-compose.prod.yml up -d --build --force-recreate
 `
 
+## After Docker Deployment
+Please find your bot (Add bot to Telegram group if you wish) on Telegram then  send  `/start` or `/help` command to start conversation.
+
 ## Usage
 - Access the Telegram bot to track validators' uptime, poll votes, and more.
 - Monitor notifications sent via Telegram based on uptime thresholds and operator performance.
