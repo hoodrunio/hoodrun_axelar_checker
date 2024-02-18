@@ -10,7 +10,7 @@
       "legacyDecorator": true,
       "decoratorMetadata": true
     },
-    "target": "es2017",
+    "target": "es2016",
     "externalHelpers": false,
     "keepClassNames": true,
     "loose": false,
@@ -31,5 +31,6 @@
   },
   "module": {
     "type": "commonjs"
-  }
+  },
+  "isModule": true
 }

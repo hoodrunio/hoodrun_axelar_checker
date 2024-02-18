@@ -6,6 +6,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "NODE_ENV=development nodemon",
     "start": "pnpm run build && NODE_ENV=production node dist/src/index.js",
+    "start:dev": "pnpm run build && NODE_ENV=development node dist/src/index.js",
     "build": "swc src -d dist --source-maps --copy-files"
   },
   "author": "Amorf",
