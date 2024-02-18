@@ -66,7 +66,9 @@ Ensure to include proper environment variables in your .env file please check .e
 
 ## Docker Deployment
 Once your environment file is configured, you can deploy the application to Docker using the following command:
-`docker-compose -f docker-compose.prod.yml up --build --force-recreate
+
+`
+docker-compose -f docker-compose.prod.yml up --build --force-recreate
 `
 
 ## Usage
