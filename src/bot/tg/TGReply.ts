@@ -54,7 +54,7 @@ export class TgReply {
       voteEmoji = "❌";
     }
 
-    return `<b>Pool ID:</b> ${pollId}\n<b>Vote:</b> ${vote} ${voteEmoji}\n<b>Chain:</b> ${chain.toUpperCase()}`;
+    return `<b>Pool ID:</b> ${pollId}\n<b>Vote:</b> ${vote} ${voteEmoji}\n<b>Chain:</b> ${chain.toUpperCase()}\n<b>Link To Poll:</b> https://axelarscan.io/evm-poll/${pollId}\n`;
   }
 
   pollVoteReply(params: PollVoteNotification): string {
