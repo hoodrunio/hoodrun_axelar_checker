@@ -12,6 +12,7 @@ import { chatSaverMiddleware } from "@/bot/tg/middlewares/chatSaverMiddleware";
 import appConfig from "@config/index";
 import { AppDb } from "@database/database";
 import {
+  ChainRegistrationStatus,
   INotification,
   NotificationEvent,
   PollVoteNotificationDataType,
@@ -272,10 +273,23 @@ export class TGBot {
       const upperCaseResult = validator?.supported_evm_chains.map((chain) =>
         chain.toUpperCase()
       );
+      const mappedRegisteredEvmSupportedChains: EvmSupprtedChainRegistrationNotification[] =
+        upperCaseResult?.map((el) => ({
+          chat_id: ctx.chat?.id ?? 0,
+          chain: el,
+          moniker: validator.description.moniker,
+          operatorAddress: validator.operator_address,
+          status: ChainRegistrationStatus.REGISTERED,
+        }));
 
-      ctx.reply(this.tgReply.listMessage(upperCaseResult ?? []), {
-        parse_mode: "HTML",
-      });
+      ctx.reply(
+        this.tgReply.evmSupportedChainBatchReply(
+          mappedRegisteredEvmSupportedChains
+        ),
+        {
+          parse_mode: "HTML",
+        }
+      );
     });
   }
   private _uptimeValidatorCMD() {

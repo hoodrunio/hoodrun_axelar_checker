@@ -120,7 +120,7 @@ export class TgReply {
     params: EvmSupprtedChainRegistrationNotification
   ): string {
     const { moniker, operatorAddress } = params;
-    return `<b><strong>${moniker} EVM Supported Chain</strong></b>\n<b>Operator Address:</b> ${operatorAddress}`;
+    return `<b><strong>${moniker} EVM Supported Chain</strong></b>\n\n<b>Operator Address:</b> ${operatorAddress}`;
   }
 
   evmSupportedChainReplyContent(
@@ -139,6 +139,23 @@ export class TgReply {
       params
     )}\n\n<b>${this.motivationMessage()}</b>
     `;
+  }
+
+  evmSupportedChainBatchReply(
+    params: EvmSupprtedChainRegistrationNotification[]
+  ): string {
+    if (params.length == 0) {
+      return `No evm supported chain data found`;
+    }
+    const contents = params
+      .map((param) => {
+        return `\n${this.evmSupportedChainReplyContent(param)}\n`;
+      })
+      .join(" ");
+
+    return `${this.evmSupportedChainReplyTitle(
+      params[0]
+    )}\n${contents}\n<b>${this.motivationMessage()}</b>`;
   }
 
   motivationMessage() {
