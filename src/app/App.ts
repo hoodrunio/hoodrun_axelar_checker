@@ -10,6 +10,10 @@ import {
   addPollVoteNotificationJob,
 } from "@/queue/jobs/poll/notification/PollVoteNotificationJob";
 import {
+  addRpcEndpointHealthcheckerJob,
+  initRpcEndpointHealthcheckerQueue,
+} from "@/queue/jobs/rpc_endpoint_healthy/RpcEndpointHealthcheckerJob";
+import {
   initValAllInfoCheckerQueue,
   addValAllInfoCheckerJob,
 } from "@/queue/jobs/validators/ValAllInfoCheckerJob";
@@ -62,6 +66,8 @@ class App {
     await initSendNotificationsQueue();
     await initWsMessageResultHandlerQueue();
     await initNewWsAllPollDataQueue();
+
+    await initRpcEndpointHealthcheckerQueue();
   }
 
   private async initJobs() {
@@ -69,6 +75,7 @@ class App {
     addValAllInfoCheckerJob();
     addValUptimeCheckerJob();
     addPollVoteNotificationJob();
+    addRpcEndpointHealthcheckerJob();
   }
 }
 
