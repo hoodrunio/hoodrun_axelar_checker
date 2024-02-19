@@ -4,6 +4,7 @@ import { TgQuery } from "@/bot/tg/helpers/tgQuery";
 import { elipsized } from "@/bot/tg/helpers/validator";
 import {
   PollVoteNotification,
+  RpcEndpointHealthNotification,
   UptimeNotification,
 } from "@/bot/tg/interface/notification";
 import { chatSaverMiddleware } from "@/bot/tg/middlewares/chatSaverMiddleware";
@@ -13,6 +14,7 @@ import {
   INotification,
   NotificationEvent,
   PollVoteNotificationDataType,
+  RpcEndpointHealthNotificationDataType,
   UptimeNotificationDataType,
 } from "@database/models/notification/notification.interface";
 import { logger } from "@utils/logger";
@@ -57,6 +59,7 @@ export class TGBot {
       logger.info(`Message sent to user ${chat_id}`);
     } catch (error) {
       logger.error(`Error while sending message to user ${chat_id}`, error);
+      throw error;
     }
   }
 
@@ -68,11 +71,20 @@ export class TGBot {
   }
 
   private async sendPollVoteNotification<T extends PollVoteNotification>(
-    data: PollVoteNotification
+    data: T
   ) {
     await this.sendMessageToUser(
       { chat_id: data.chat_id },
       this.tgReply.pollVoteReply(data)
+    );
+  }
+
+  private async sendRpcEndpointHealthNotification<
+    T extends RpcEndpointHealthNotification
+  >(data: T) {
+    await this.sendMessageToUser(
+      { chat_id: data.chat_id },
+      this.tgReply.rpcEndpointHealthReply(data)
     );
   }
 
@@ -90,6 +102,12 @@ export class TGBot {
       case NotificationEvent.POOL_VOTE:
         await this.sendPollVoteNotification({
           ...(data as PollVoteNotificationDataType),
+          chat_id: tgRecipient,
+        });
+        break;
+      case NotificationEvent.RPC_ENDPOINT_HEALTH:
+        await this.sendRpcEndpointHealthNotification({
+          ...(data as RpcEndpointHealthNotificationDataType),
           chat_id: tgRecipient,
         });
         break;
