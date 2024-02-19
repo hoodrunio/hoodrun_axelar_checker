@@ -3,6 +3,7 @@ import { Commands } from "@/bot/tg/constants";
 import { TgQuery } from "@/bot/tg/helpers/tgQuery";
 import { elipsized } from "@/bot/tg/helpers/validator";
 import {
+  EvmSupprtedChainRegistrationNotification,
   PollVoteNotification,
   RpcEndpointHealthNotification,
   UptimeNotification,
@@ -79,18 +80,30 @@ export class TGBot {
     );
   }
 
-  private async sendRpcEndpointHealthNotification<
-    T extends RpcEndpointHealthNotification
-  >(data: T) {
+  private async sendRpcHealthNotif<T extends RpcEndpointHealthNotification>(
+    data: T
+  ) {
     await this.sendMessageToUser(
       { chat_id: data.chat_id },
       this.tgReply.rpcEndpointHealthReply(data)
     );
   }
 
-  public async sendNotification(notification: INotification) {
+  private async sendEvmSupChainNotif<
+    T extends EvmSupprtedChainRegistrationNotification
+  >(data: T) {
+    await this.sendMessageToUser(
+      { chat_id: data.chat_id },
+      this.tgReply.evmSupportedChainReply(data)
+    );
+  }
+
+  public async sendNotification(
+    notification: INotification
+  ): Promise<{ sentSuccess: boolean }> {
     const { data, event, recipient } = notification;
     const tgRecipient = parseInt(recipient);
+    let sentSuccess = false;
 
     switch (event) {
       case NotificationEvent.UPTIME:
@@ -98,20 +111,32 @@ export class TGBot {
           ...(data as UptimeNotificationDataType),
           chat_id: tgRecipient,
         });
+        sentSuccess = true;
         break;
       case NotificationEvent.POOL_VOTE:
         await this.sendPollVoteNotification({
           ...(data as PollVoteNotificationDataType),
           chat_id: tgRecipient,
         });
+        sentSuccess = true;
         break;
       case NotificationEvent.RPC_ENDPOINT_HEALTH:
-        await this.sendRpcEndpointHealthNotification({
+        await this.sendRpcHealthNotif({
           ...(data as RpcEndpointHealthNotificationDataType),
           chat_id: tgRecipient,
         });
+        sentSuccess = true;
+        break;
+      case NotificationEvent.EVM_SUPPORTED_CHAIN_REGISTRATION:
+        await this.sendEvmSupChainNotif({
+          ...(data as EvmSupprtedChainRegistrationNotification),
+          chat_id: tgRecipient,
+        });
+        sentSuccess = true;
         break;
     }
+
+    return Promise.resolve({ sentSuccess });
   }
 
   private _listValidatorsCMD() {
