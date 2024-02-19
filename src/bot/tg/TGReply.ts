@@ -1,8 +1,10 @@
 import {
+  EvmSupprtedChainRegistrationNotification,
   PollVoteNotification,
   RpcEndpointHealthNotification,
   UptimeNotification,
 } from "@/bot/tg/interface/notification";
+import { ChainRegistrationStatus } from "@/database/models/notification/notification.interface";
 import { PollVoteType } from "@database/models/polls/poll_vote/poll_vote.interface";
 
 import BigNumber from "bignumber.js";
@@ -34,7 +36,7 @@ export class TgReply {
 <b>Operator Address:</b> ${operatorAddress}
 <b>Uptime:</b> ${uptime}% <b>🤘</b>
 
-<b>🚀 Keep up the good work! </b>
+<b>${this.motivationMessage()}</b>
 `;
   }
 
@@ -60,7 +62,7 @@ export class TgReply {
   pollVoteReply(params: PollVoteNotification): string {
     return `${this.pollVoteTitleText(params)}\n${this.pollVoteContentText(
       params
-    )}\n<b>🚀 Keep up the good work! </b>`;
+    )}\n<b>${this.motivationMessage()}</b>`;
   }
 
   batchValidatorPollVoteReply(params: PollVoteNotification[]): string {
@@ -75,7 +77,7 @@ export class TgReply {
 
     return `${this.pollVoteTitleText(
       params[0]
-    )}\n${contents}\n<b>🚀 Keep up the good work! </b>`;
+    )}\n${contents}\n<b>${this.motivationMessage()}</b>`;
   }
 
   rpcEndpointHealthTitle(params: RpcEndpointHealthNotification): string {
@@ -84,7 +86,7 @@ export class TgReply {
   }
 
   rpcEndpointHealthContent(params: RpcEndpointHealthNotification) {
-    const { moniker, operatorAddress, isHealthy, rpcEndpoint, name } = params;
+    const { isHealthy, rpcEndpoint, name } = params;
     const status = isHealthy ? "Healthy" : "Unhealthy";
     const icon = isHealthy ? "✅" : "❌";
     return `<b>RPC Chain:</b> ${name}\n<b>RPC Status:</b> ${status} ${icon}\n<b>RPC Endpoint:</b> ${rpcEndpoint}`;
@@ -95,7 +97,7 @@ export class TgReply {
       params
     )}\n\n${this.rpcEndpointHealthContent(
       params
-    )}\n\n<b>🚀 Keep up the good work! </b>
+    )}\n\n<b>${this.motivationMessage()}</b>
     `;
   }
 
@@ -111,7 +113,36 @@ export class TgReply {
 
     return `${this.rpcEndpointHealthTitle(
       params[0]
-    )}\n${contents}\n<b>🚀 Keep up the good work! </b>`;
+    )}\n${contents}\n<b>${this.motivationMessage()}</b>`;
+  }
+
+  evmSupportedChainReplyTitle(
+    params: EvmSupprtedChainRegistrationNotification
+  ): string {
+    const { moniker, operatorAddress } = params;
+    return `<b><strong>${moniker} EVM Supported Chain</strong></b>\n<b>Operator Address:</b> ${operatorAddress}`;
+  }
+
+  evmSupportedChainReplyContent(
+    params: EvmSupprtedChainRegistrationNotification
+  ): string {
+    const { status } = params;
+    const icon = status == ChainRegistrationStatus.REGISTERED ? "✅" : "❌";
+    return `<b>Chain:</b> ${params.chain.toUpperCase()}\n<b>Status:</b> ${status} ${icon}`;
+  }
+  evmSupportedChainReply(
+    params: EvmSupprtedChainRegistrationNotification
+  ): string {
+    return `${this.evmSupportedChainReplyTitle(
+      params
+    )}\n\n${this.evmSupportedChainReplyContent(
+      params
+    )}\n\n<b>${this.motivationMessage()}</b>
+    `;
+  }
+
+  motivationMessage() {
+    return `🚀 Keep up the good work!`;
   }
 
   successFullAddOperatorAddress(operatorAddress: string) {
