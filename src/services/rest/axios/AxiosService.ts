@@ -1,5 +1,11 @@
 import { logger } from "@utils/logger";
-import axios, { AxiosInstance, AxiosResponse, Method } from "axios";
+import axios, {
+  AxiosHeaders,
+  AxiosInstance,
+  AxiosResponse,
+  Method,
+  RawAxiosRequestHeaders,
+} from "axios";
 import axiosRetry, { isNetworkOrIdempotentRequestError } from "axios-retry";
 
 const AXIOS_REQ_RETRY_COUNT = 3;
@@ -26,7 +32,7 @@ export class AxiosService {
   }
 
   async request<R>(params: AxiosRequestParams): Promise<AxiosResponse<R, any>> {
-    const { method, url, body, params: queryParams, rest } = params;
+    const { method, url, body, params: queryParams, rest, headers } = params;
 
     for (const instance of this.axiosInstances) {
       try {
@@ -35,6 +41,7 @@ export class AxiosService {
           url,
           data: body,
           params: queryParams,
+          headers,
           ...rest,
         });
         return axiosResponse;
@@ -79,4 +86,5 @@ interface AxiosRequestParams {
   body?: IBody;
   params?: any;
   rest?: any;
+  headers?: RawAxiosRequestHeaders | AxiosHeaders;
 }
