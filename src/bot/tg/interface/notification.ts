@@ -1,4 +1,5 @@
 import {
+  EvmSupprtedChainRegistrationNotificationDataType,
   PollVoteNotificationDataType,
   RpcEndpointHealthNotificationDataType,
   UptimeNotificationDataType,
@@ -18,3 +19,6 @@ export interface UptimeNotification
 export interface RpcEndpointHealthNotification
   extends ISendNotification,
     RpcEndpointHealthNotificationDataType {}
+export interface EvmSupprtedChainRegistrationNotification
+  extends ISendNotification,
+    EvmSupprtedChainRegistrationNotificationDataType {}
