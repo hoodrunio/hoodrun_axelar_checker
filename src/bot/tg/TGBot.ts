@@ -201,7 +201,7 @@ export class TGBot {
       const last30PollVoteCallBackQueryData =
         TgQuery.Last30Votes.queryBuilder(operatorAddress);
 
-      const rpcHealthButton = `🏥 RPC Health - Soon... 🫡`;
+      const rpcHealthButton = `🏥 RPC Endpoints Health`;
       const rpcHealthCallbackQueryData =
         TgQuery.RpcHealth.queryBuilder(operatorAddress);
 
@@ -335,8 +335,41 @@ export class TGBot {
   private _rpcHealthCMD() {
     const event = TgQuery.RpcHealth.event;
     this.bot.callbackQuery(event, async (ctx) => {
+      const input = ctx.update.callback_query?.data;
+      const operatorAddressInput = TgQuery.RpcHealth.queryExtractor(input);
+      if (!operatorAddressInput) {
+        ctx.reply("Invalid operator address");
+        return;
+      }
+
+      const { validatorRepository } = new AppDb();
+      const validator = await validatorRepository.findOne({
+        operator_address: operatorAddressInput,
+      });
+
+      if (!validator) {
+        ctx.reply("Invalid operator address");
+        return;
+      }
+
+      const endpoints = validator?.rpc_health_endpoints ?? [];
+      const mappedRpcHealthEndpoints: RpcEndpointHealthNotification[] =
+        endpoints
+          .map((rpcEndpointEl) => ({
+            chat_id: ctx.chat?.id ?? 0,
+            rpcEndpoint: rpcEndpointEl.rpcEndpoint,
+            isHealthy: rpcEndpointEl.isHealthy,
+            name: rpcEndpointEl.name,
+            moniker: validator.description.moniker,
+            operatorAddress: validator.operator_address,
+          }))
+          .sort((a, b) => a.name.localeCompare(b.name));
+
       ctx.reply(
-        "🙏 We're still brewing up Rpc Health feature like a secret potion... Stay tuned for the magic!"
+        this.tgReply.rpcEndpointHealthBatchReply(mappedRpcHealthEndpoints),
+        {
+          parse_mode: "HTML",
+        }
       );
     });
   }

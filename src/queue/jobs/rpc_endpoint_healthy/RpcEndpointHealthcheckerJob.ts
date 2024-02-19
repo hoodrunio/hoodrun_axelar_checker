@@ -46,7 +46,7 @@ export const initRpcEndpointHealthcheckerQueue = async () => {
                 name
               );
 
-            if (currentRpcEndpointHealth?.isHealthy !== newIsHealthy) {
+            if (currentRpcEndpointHealth?.isHealthy != newIsHealthy) {
               await addRpcEndpointHealthForNotification(
                 rpcEndpointHealthResult,
                 envValidator

@@ -78,12 +78,40 @@ export class TgReply {
     )}\n${contents}\n<b>🚀 Keep up the good work! </b>`;
   }
 
-  rpcEndpointHealthReply(params: RpcEndpointHealthNotification): string {
+  rpcEndpointHealthTitle(params: RpcEndpointHealthNotification): string {
+    const { moniker, operatorAddress } = params;
+    return `<b><strong>${moniker} RPC Endpoint Health</strong></b>\n<b>Operator Address:</b> ${operatorAddress}`;
+  }
+
+  rpcEndpointHealthContent(params: RpcEndpointHealthNotification) {
     const { moniker, operatorAddress, isHealthy, rpcEndpoint, name } = params;
     const status = isHealthy ? "Healthy" : "Unhealthy";
     const icon = isHealthy ? "✅" : "❌";
-    return `<b><strong>${moniker} RPC Endpoint Health</strong></b>\n<b>Operator Address:</b> ${operatorAddress}\n\n<b>RPC Chain:</b> ${name}\n<b>RPC Endpoint:</b> ${rpcEndpoint}\n<b>Status:</b> ${status} ${icon}\n\n<b>🚀 Keep up the good work! </b>
+    return `<b>RPC Chain:</b> ${name}\n<b>RPC Status:</b> ${status} ${icon}\n<b>RPC Endpoint:</b> ${rpcEndpoint}`;
+  }
+
+  rpcEndpointHealthReply(params: RpcEndpointHealthNotification): string {
+    return `${this.rpcEndpointHealthTitle(
+      params
+    )}\n\n${this.rpcEndpointHealthContent(
+      params
+    )}\n\n<b>🚀 Keep up the good work! </b>
     `;
+  }
+
+  rpcEndpointHealthBatchReply(params: RpcEndpointHealthNotification[]): string {
+    if (params.length == 0) {
+      return `No rpc endpoint health data found`;
+    }
+    const contents = params
+      .map((param) => {
+        return `\n${this.rpcEndpointHealthContent(param)}\n`;
+      })
+      .join(" ");
+
+    return `${this.rpcEndpointHealthTitle(
+      params[0]
+    )}\n${contents}\n<b>🚀 Keep up the good work! </b>`;
   }
 
   successFullAddOperatorAddress(operatorAddress: string) {
