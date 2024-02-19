@@ -1,3 +1,13 @@
+import appConfig from "@/config/index";
+import { AppDb } from "@/database/database";
+import {
+  ChainRegistrationStatus,
+  EvmSupprtedChainRegistrationNotificationDataType,
+  INotification,
+  NotificationEvent,
+  NotificationType,
+} from "@/database/models/notification/notification.interface";
+import { IValidator } from "@/database/models/validator/validator.interface";
 import { ValidatorRepository } from "@repositories/validator/ValidatorRepository";
 import { AxelarLCDQueryService } from "@services/rest/AxelarLCDQueryService";
 import { AxelarQueryService } from "@services/rest/AxelarQueryService";
@@ -22,6 +32,7 @@ export const initValAllInfoCheckerQueue = async () => {
       const validatorRepo = new ValidatorRepository();
       const axelarQService = new AxelarQueryService();
       const axelarLCDService = new AxelarLCDQueryService();
+      const { validatorRepository } = new AppDb();
 
       const [validatorsRes, allEvmChainsWithMaintainersRes] = await Promise.all(
         [
@@ -31,23 +42,21 @@ export const initValAllInfoCheckerQueue = async () => {
       );
 
       const validators = validatorsRes.validators;
-      const chainsMaintainers = allEvmChainsWithMaintainersRes;
+      const newChainsMaintainers = allEvmChainsWithMaintainersRes;
 
       const promises = validators.map(async (validator) => {
         const is_active = validator.status == "BOND_STATUS_BONDED";
         const valEvmSupportedChains: string[] = [];
         const operatorAddress = validator.operator_address;
 
-        for (const [chain, maintainers] of chainsMaintainers.entries()) {
-          if (maintainers.includes(operatorAddress)) {
-            valEvmSupportedChains.push(chain);
+        for (const [
+          newChain,
+          newMaintainers,
+        ] of newChainsMaintainers.entries()) {
+          if (newMaintainers.includes(operatorAddress)) {
+            valEvmSupportedChains.push(newChain);
           }
         }
-
-        const consensusAddress = convertPubKeyToBech32(
-          validator.consensus_pubkey,
-          ADDRESS_TYPE_PREFIX.VALCONSENSUS
-        );
 
         let voterAddress = null;
 
@@ -58,6 +67,27 @@ export const initValAllInfoCheckerQueue = async () => {
         } catch (error) {
           logger.error(`Failed to get voter address: ${error}`);
         }
+
+        try {
+          const dbValidator = await validatorRepository.findOne({
+            operator_address: operatorAddress,
+          });
+          if (appConfig.axelarVoterAddress == voterAddress && dbValidator) {
+            await sendEvmChainSupportRegistrationNotification(
+              dbValidator,
+              valEvmSupportedChains
+            );
+          }
+        } catch (error) {
+          logger.error(
+            `Failed to send evm chain support registration notification: ${error}`
+          );
+        }
+
+        const consensusAddress = convertPubKeyToBech32(
+          validator.consensus_pubkey,
+          ADDRESS_TYPE_PREFIX.VALCONSENSUS
+        );
 
         let uptime = 0;
         if (is_active) {
@@ -113,4 +143,84 @@ export const addValAllInfoCheckerJob = () => {
     {},
     { repeat: { every: xSeconds(60) } }
   );
+};
+
+type NotificationData = EvmSupprtedChainRegistrationNotificationDataType;
+const sendEvmChainSupportRegistrationNotification = async (
+  validator: IValidator,
+  valEvmSupportedChains: string[]
+) => {
+  const { notificationRepo, telegramUserRepo } = new AppDb();
+  const allTgUsers = await telegramUserRepo.findAll();
+  if (!allTgUsers || allTgUsers.length < 1) return;
+
+  const oldSupportedChains = validator.supported_evm_chains;
+  const newSupportedChains = valEvmSupportedChains;
+  const validatorOperatorAddress = validator.operator_address;
+  const validatorMoniker = validator.description.moniker;
+
+  const newlyRegisteredChains: NotificationData[] = newSupportedChains
+    .filter((chainName) => !oldSupportedChains.includes(chainName))
+    ?.map((chainName) => ({
+      chain: chainName,
+      operatorAddress: validatorOperatorAddress,
+      moniker: validatorMoniker,
+      status: ChainRegistrationStatus.REGISTERED,
+    }));
+  const newlyDeregisteredChains: NotificationData[] = oldSupportedChains
+    .filter((chainName) => {
+      return !newSupportedChains.includes(chainName);
+    })
+    ?.map((chainName) => ({
+      chain: chainName,
+      operatorAddress: validatorOperatorAddress,
+      moniker: validatorMoniker,
+      status: ChainRegistrationStatus.DEREGISTERED,
+    }));
+
+  const allNotificationData: NotificationData[] = [
+    ...newlyRegisteredChains,
+    ...newlyDeregisteredChains,
+  ];
+
+  const notificationPromises = allNotificationData.map(async (data) => {
+    for (const tgUser of allTgUsers) {
+      const currentTimestamp = new Date().getTime();
+      const notificationId = `evm_chain_change_${validatorOperatorAddress}-${data.chain}-${currentTimestamp}`;
+      const condition = `evm_supported_chain_registration-${validatorOperatorAddress}-${data.chain}`;
+
+      const notification: INotification = {
+        data,
+        condition,
+        notification_id: notificationId,
+        event: NotificationEvent.EVM_SUPPORTED_CHAIN_REGISTRATION,
+        type: NotificationType.TELEGRAM,
+        recipient: tgUser.chat_id.toString(),
+        sent: false,
+      };
+
+      const isNotificationExist = await notificationRepo.findOne({
+        data: {
+          chain: data.chain,
+          operatorAddress: data.operatorAddress,
+          moniker: data.moniker,
+          status: data.status,
+        },
+        event: NotificationEvent.EVM_SUPPORTED_CHAIN_REGISTRATION,
+        type: NotificationType.TELEGRAM,
+        sent: false,
+      });
+      if (isNotificationExist) return;
+
+      await notificationRepo.create(notification);
+    }
+  });
+
+  try {
+    await Promise.all(notificationPromises);
+  } catch (error) {
+    logger.error(
+      `Failed to create evm chain support registration notification: ${error}`
+    );
+  }
 };
