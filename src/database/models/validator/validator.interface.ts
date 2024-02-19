@@ -6,6 +6,12 @@ import {
 } from "@services/rest/interfaces/validators/validator";
 import { Document } from "mongoose";
 
+export interface ValRpcHealthEndpoint {
+  name: string;
+  isHealthy: boolean;
+  rpcEndpoint: string;
+}
+
 export interface IValidator extends IBaseInterface {
   operator_address: string;
   consensus_address: string;
@@ -23,6 +29,7 @@ export interface IValidator extends IBaseInterface {
   supported_evm_chains: string[];
   uptime: number;
   is_active: boolean;
+  rpc_health_endpoints?: ValRpcHealthEndpoint[];
 }
 
 export interface IValidatorDocument extends Document, IValidator {}

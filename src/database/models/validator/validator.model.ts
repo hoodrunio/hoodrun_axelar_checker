@@ -5,6 +5,12 @@ import { IValidatorDocument } from "@/database/models/validator/validator.interf
 
 const VALIDATOR_COLLECTION_NAME = "validators";
 
+const ValRpcHealthEndpointSchema: Schema = new Schema({
+  name: { type: String, required: true },
+  isHealthy: { type: Boolean, required: true },
+  rpcEndpoint: { type: String, required: true },
+});
+
 const ValidatorSchema: Schema<IValidatorDocument> =
   createAppSchema<IValidatorDocument>({
     operator_address: { type: String, required: true, unique: true },
@@ -43,6 +49,7 @@ const ValidatorSchema: Schema<IValidatorDocument> =
       set: (value: number) => modelNumberPrecisionFixer({ value }),
     },
     is_active: { type: Boolean, required: true, default: false },
+    rpc_health_endpoints: { type: [ValRpcHealthEndpointSchema], default: [] },
   });
 
 ValidatorSchema.statics.buildModel = (args: IValidatorDocument) => {
