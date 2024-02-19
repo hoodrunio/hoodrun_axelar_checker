@@ -5,6 +5,7 @@ import { Document } from "mongoose";
 export enum NotificationEvent {
   UPTIME = "UPTIME_EVENT",
   POOL_VOTE = "POOL_VOTE_EVENT",
+  RPC_ENDPOINT_HEALTH = "RPC_ENDPOINT_HEALTH_EVENT",
 }
 
 export enum NotificationType {
@@ -15,7 +16,10 @@ export enum NotificationType {
 export interface INotification extends IBaseInterface {
   notification_id: string;
   event: NotificationEvent;
-  data: UptimeNotificationDataType | PollVoteNotificationDataType;
+  data:
+    | UptimeNotificationDataType
+    | PollVoteNotificationDataType
+    | RpcEndpointHealthNotificationDataType;
   condition: string;
   type: NotificationType;
   recipient: string;
@@ -38,6 +42,14 @@ export interface PollVoteNotificationDataType {
   pollId: string;
   chain: string;
   vote: PollVoteType;
+  operatorAddress: string;
+  moniker: string;
+}
+
+export interface RpcEndpointHealthNotificationDataType {
+  rpcEndpoint: string;
+  isHealthy: boolean;
+  name: string;
   operatorAddress: string;
   moniker: string;
 }

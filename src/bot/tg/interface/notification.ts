@@ -1,5 +1,6 @@
 import {
   PollVoteNotificationDataType,
+  RpcEndpointHealthNotificationDataType,
   UptimeNotificationDataType,
 } from "@database/models/notification/notification.interface";
 
@@ -13,3 +14,7 @@ export interface PollVoteNotification
 export interface UptimeNotification
   extends UptimeNotificationDataType,
     ISendNotification {}
+
+export interface RpcEndpointHealthNotification
+  extends ISendNotification,
+    RpcEndpointHealthNotificationDataType {}
