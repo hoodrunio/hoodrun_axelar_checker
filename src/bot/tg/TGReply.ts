@@ -1,5 +1,6 @@
 import {
   PollVoteNotification,
+  RpcEndpointHealthNotification,
   UptimeNotification,
 } from "@/bot/tg/interface/notification";
 import { PollVoteType } from "@database/models/polls/poll_vote/poll_vote.interface";
@@ -75,6 +76,14 @@ export class TgReply {
     return `${this.pollVoteTitleText(
       params[0]
     )}\n${contents}\n<b>🚀 Keep up the good work! </b>`;
+  }
+
+  rpcEndpointHealthReply(params: RpcEndpointHealthNotification): string {
+    const { moniker, operatorAddress, isHealthy, rpcEndpoint, name } = params;
+    const status = isHealthy ? "Healthy" : "Unhealthy";
+    const icon = isHealthy ? "✅" : "❌";
+    return `<b><strong>${moniker} RPC Endpoint Health</strong></b>\n<b>Operator Address:</b> ${operatorAddress}\n\n<b>RPC Chain:</b> ${name}\n<b>RPC Endpoint:</b> ${rpcEndpoint}\n<b>Status:</b> ${status} ${icon}\n\n<b>🚀 Keep up the good work! </b>
+    `;
   }
 
   successFullAddOperatorAddress(operatorAddress: string) {
