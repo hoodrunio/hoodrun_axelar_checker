@@ -6,6 +6,7 @@ export enum NotificationEvent {
   UPTIME = "UPTIME_EVENT",
   POOL_VOTE = "POOL_VOTE_EVENT",
   RPC_ENDPOINT_HEALTH = "RPC_ENDPOINT_HEALTH_EVENT",
+  EVM_SUPPORTED_CHAIN_REGISTRATION = "EVM_SUPPORTED_CHAIN_REGISTRATION_EVENT",
 }
 
 export enum NotificationType {
@@ -19,7 +20,8 @@ export interface INotification extends IBaseInterface {
   data:
     | UptimeNotificationDataType
     | PollVoteNotificationDataType
-    | RpcEndpointHealthNotificationDataType;
+    | RpcEndpointHealthNotificationDataType
+    | EvmSupprtedChainRegistrationNotificationDataType;
   condition: string;
   type: NotificationType;
   recipient: string;
@@ -52,4 +54,15 @@ export interface RpcEndpointHealthNotificationDataType {
   name: string;
   operatorAddress: string;
   moniker: string;
+}
+
+export enum ChainRegistrationStatus {
+  REGISTERED = "REGISTERED",
+  DEREGISTERED = "DEREGISTERED",
+}
+export interface EvmSupprtedChainRegistrationNotificationDataType {
+  chain: string;
+  operatorAddress: string;
+  moniker: string;
+  status: ChainRegistrationStatus;
 }
