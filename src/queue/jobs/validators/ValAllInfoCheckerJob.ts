@@ -7,7 +7,10 @@ import {
   NotificationEvent,
   NotificationType,
 } from "@/database/models/notification/notification.interface";
-import { IValidator } from "@/database/models/validator/validator.interface";
+import {
+  IValidator,
+  IValidatorDocument,
+} from "@/database/models/validator/validator.interface";
 import { ValidatorRepository } from "@repositories/validator/ValidatorRepository";
 import { AxelarLCDQueryService } from "@services/rest/AxelarLCDQueryService";
 import { AxelarQueryService } from "@services/rest/AxelarQueryService";
@@ -58,7 +61,16 @@ export const initValAllInfoCheckerQueue = async () => {
           }
         }
 
-        let voterAddress = null;
+        let dbValidator: IValidatorDocument | null = null;
+        try {
+          dbValidator = await validatorRepository.findOne({
+            operator_address: operatorAddress,
+          });
+        } catch (error) {
+          logger.error(`Failed to get validator from db: ${error}`);
+        }
+
+        let voterAddress = dbValidator?.voter_address ?? null;
 
         try {
           voterAddress = await axelarLCDService.getValidatorVoterAddress(
@@ -69,9 +81,6 @@ export const initValAllInfoCheckerQueue = async () => {
         }
 
         try {
-          const dbValidator = await validatorRepository.findOne({
-            operator_address: operatorAddress,
-          });
           if (appConfig.axelarVoterAddress == voterAddress && dbValidator) {
             await sendEvmChainSupportRegistrationNotification(
               dbValidator,
@@ -89,11 +98,15 @@ export const initValAllInfoCheckerQueue = async () => {
           ADDRESS_TYPE_PREFIX.VALCONSENSUS
         );
 
-        let uptime = 0;
+        let uptime = dbValidator?.uptime ?? 0;
         if (is_active) {
-          uptime = await axelarQService.getSafeValidatorUptime(
-            consensusAddress
-          );
+          try {
+            uptime = await axelarQService.getSafeValidatorUptime(
+              consensusAddress
+            );
+          } catch (error) {
+            logger.error(`Failed to get validator uptime: ${error}`);
+          }
         }
 
         try {
@@ -141,7 +154,7 @@ export const addValAllInfoCheckerJob = () => {
   appJobProducer.addJob(
     VAL_ALL_INFO_CHECKER,
     {},
-    { repeat: { every: xSeconds(60) } }
+    { repeat: { every: xSeconds(10) } }
   );
 };
 
