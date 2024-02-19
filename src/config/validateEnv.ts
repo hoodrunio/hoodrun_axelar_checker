@@ -1,4 +1,5 @@
 import { AppConfigType } from "@/config/index";
+import { parseRpcEndpoints } from "@/config/parseRpcEndpoints";
 import { isValidVoterAddress } from "@utils/cosmos/axelar/addressUtil";
 import { isSafeUrl } from "@utils/url";
 import { config } from "dotenv";
@@ -70,6 +71,12 @@ export const validateEnv = (): AppConfigType => {
 
   return {
     axelarVoterAddress,
+    parsedRpcEndpoints: parseRpcEndpoints(),
+    uptimeThreshold: {
+      low: parseFloat(UPTIME_THRESHOLD_LOW as string),
+      medium: parseFloat(UPTIME_THRESHOLD_MEDIUM as string),
+      high: parseFloat(UPTIME_THRESHOLD_HIGH as string),
+    },
     maxLastXHourPollVoteNotification: parseInt(
       maxLastXHourPollVoteNotification
     ),
@@ -88,11 +95,6 @@ export const validateEnv = (): AppConfigType => {
     logDir: LOG_DIR as string,
     redisHost: isDev ? defatultRedisHost : (REDIS_HOST as string),
     redisPort: parseInt(REDIS_PORT ?? defaultRedisPort),
-    uptimeThreshold: {
-      low: parseFloat(UPTIME_THRESHOLD_LOW as string),
-      medium: parseFloat(UPTIME_THRESHOLD_MEDIUM as string),
-      high: parseFloat(UPTIME_THRESHOLD_HIGH as string),
-    },
   };
 };
 

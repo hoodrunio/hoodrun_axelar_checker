@@ -1,3 +1,4 @@
+import { RpcEnvEndpoint } from "@/config/parseRpcEndpoints";
 import { validateEnv } from "@/config/validateEnv";
 
 let appConfig: AppConfigType | {} = {};
@@ -11,6 +12,7 @@ try {
 export default appConfig as AppConfigType;
 
 export interface AppConfigType {
+  parsedRpcEndpoints: RpcEnvEndpoint[];
   maxLastXHourPollVoteNotification: number;
   axelarVoterAddress: string;
   mainnetAxelarRestBaseUrls: string[];
