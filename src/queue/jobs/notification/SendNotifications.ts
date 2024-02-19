@@ -23,16 +23,21 @@ export const initSendNotificationsQueue = async () => {
     const promises = notSendNotifications?.map(async (notification) => {
       const { type, notification_id } = notification;
       const tgBot = await TGBot.getInstance();
+      let sentSuccessfully = false;
 
       switch (type) {
         case NotificationType.TELEGRAM:
-          await tgBot.sendNotification(notification);
+          const result = await tgBot.sendNotification(notification);
+          sentSuccessfully = result?.sentSuccess ?? false;
           break;
         default:
           break;
       }
 
-      await notificationRepo.updateOne({ notification_id }, { sent: true });
+      await notificationRepo.updateOne(
+        { notification_id },
+        { sent: sentSuccessfully }
+      );
     });
 
     try {
