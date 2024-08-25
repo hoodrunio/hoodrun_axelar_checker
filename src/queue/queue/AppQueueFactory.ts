@@ -6,14 +6,13 @@ import Redis from 'ioredis';
 const { redisHost, redisPort } = appConfig;
 
 const redisClient = new Redis({
-  host: appConfig.redisHost,
-  port: appConfig.redisPort,
-  maxRetriesPerRequest: null,
-  enableReadyCheck: false,
+  host: process.env.REDIS_HOST || 'redis',
+  port: parseInt(process.env.REDIS_PORT || '6379'),
+  maxRetriesPerRequest: 3,
   retryStrategy(times) {
     const delay = Math.min(times * 50, 2000);
     return delay;
-  }
+  },
 });
 
 redisClient.on('error', (error) => {
