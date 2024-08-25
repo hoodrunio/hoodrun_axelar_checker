@@ -18,7 +18,7 @@ const redisClient = new Redis({
 
 redisClient.on('error', (error) => {
   logger.error(`Redis connection error: ${error.message}`);
-  logger.error(`Redis connection details: host=${redisHost}, port=${redisPort}`);
+  logger.error(`Redis connection details: host=${appConfig.redisHost}, port=${appConfig.redisPort}`);
 });
 
 redisClient.on('connect', () => {
@@ -110,6 +110,7 @@ class AppQueueFactory {
       return true;
     } catch (error) {
       logger.error('Redis connection check failed:', error);
+      logger.error(`Redis connection details: host=${appConfig.redisHost}, port=${appConfig.redisPort}`);
       return false;
     }
   }
@@ -138,7 +139,10 @@ export async function testRedisConnection() {
     port: appConfig.redisPort,
     maxRetriesPerRequest: null,
     enableReadyCheck: false,
-    retryStrategy: () => null,
+    retryStrategy: (times) => {
+      const delay = Math.min(times * 50, 2000);
+      return delay;
+    },
     connectTimeout: 5000,
   });
 
