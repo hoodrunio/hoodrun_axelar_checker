@@ -7,8 +7,9 @@ import AppQueueFactory from "queue/queue/AppQueueFactory";
 import { testRedisConnection } from "queue/queue/AppQueueFactory";
 import appConfig from "@config/index";
 
-logger.info("Starting bot...");
-logger.info(`Redis configuration: host=${appConfig.redisHost}, port=${appConfig.redisPort}`);
+// There are some duplicated loggers in the codebase. We can remove the following loggers:
+// logger.info("Starting bot...");
+// logger.info(`Redis configuration: host=${appConfig.redisHost}, port=${appConfig.redisPort}`);
 
 setupExitHandlers();
 
@@ -40,6 +41,7 @@ function setupExitHandlers() {
   });
 
   process.on("unhandledRejection", async (reason, promise) => {
+    console.log(reason, promise)
     logger.error("Unhandled Rejection at:", promise, "reason:", reason);
     await gracefulShutdown('UNHANDLED_REJECTION');
   });

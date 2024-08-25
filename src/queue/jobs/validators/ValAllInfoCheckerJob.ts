@@ -81,11 +81,17 @@ export const initValAllInfoCheckerQueue = async () => {
         }
 
         try {
-          if (appConfig.axelarVoterAddress == voterAddress && dbValidator) {
+          if (voterAddress && appConfig.axelarVoterAddress == voterAddress && dbValidator) {
             await sendEvmChainSupportRegistrationNotification(
               dbValidator,
               valEvmSupportedChains
             );
+          } else {
+            if(!voterAddress) {
+              logger.info(
+                `Voter address not found for operator address: ${operatorAddress}`
+              );
+            }
           }
         } catch (error) {
           logger.error(

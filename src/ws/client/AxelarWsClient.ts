@@ -17,7 +17,7 @@ export class AxelarWsClient {
 
   constructor() {
     const url = mainnetAxelarWsUrls[0];
-    console.log(url);
+    // console.log(url);
 
     this.ws = new WebSocket(url, {
       headers: {

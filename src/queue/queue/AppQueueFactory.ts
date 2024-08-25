@@ -8,7 +8,7 @@ const { redisHost, redisPort } = appConfig;
 const redisClient = new Redis({
   host: appConfig.redisHost,
   port: appConfig.redisPort,
-  maxRetriesPerRequest: 3,
+  maxRetriesPerRequest: null,
   enableReadyCheck: false,
   retryStrategy(times) {
     const delay = Math.min(times * 50, 2000);
@@ -136,7 +136,8 @@ export async function testRedisConnection() {
   const client = new Redis({
     host: appConfig.redisHost,
     port: appConfig.redisPort,
-    maxRetriesPerRequest: 1,
+    maxRetriesPerRequest: null,
+    enableReadyCheck: false,
     retryStrategy: () => null,
     connectTimeout: 5000,
   });
