@@ -22,7 +22,10 @@ services:
     depends_on:
       - mongo
       - redis
-      
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+
   mongo:
     container_name: mongo
     image: mongo

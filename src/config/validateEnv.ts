@@ -40,7 +40,7 @@ const {
 } = process.env;
 
 const isDev = process.env.NODE_ENV === "development";
-const defaultRedisHost = "redis";
+const defaultRedisHost = "127.0.0.1";
 const defaultRedisPort = "6379";
 
 const broadcasterBalanceThreshold = parseInt(BROADCASTER_BALANCE_THRESHOLD as string);

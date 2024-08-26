@@ -9,6 +9,7 @@ const connectionString =
   `mongodb://${dbUser}:${dbPwd}@${dbHost}:${dbPort}/${dbName}`;
 
 export const connectDb = async (env: string) => {
+	console.log(dbConnectionString);
   if (env !== "production") {
     set("debug", true);
   }
