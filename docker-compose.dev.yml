@@ -18,8 +18,10 @@ services:
     networks:
       - backend
     links:
+      - redis
       - mongo
     depends_on:
+      - redis
       - mongo
 
   mongo:
@@ -39,9 +41,9 @@ services:
   redis: # Define Redis service
     container_name: redis
     image: redis
-    ports:
-      - "6379:6379" # Expose Redis port
     restart: "unless-stopped"
+    expose:
+      - 6379
     networks:
       - backend
 

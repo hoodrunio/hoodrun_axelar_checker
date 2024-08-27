@@ -11,11 +11,10 @@ RUN npm install -g pnpm
 
 # Install Node Package
 RUN pnpm install --shamefully-hoist
+RUN pnpm add cross-env
 
 # Set Env
 ENV NODE_ENV development
-
-EXPOSE 3000
 
 # Cmd script
 CMD ["pnpm", "run", "start:dev"]

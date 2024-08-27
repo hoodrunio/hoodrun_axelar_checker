@@ -46,7 +46,9 @@ export default class App {
   constructor() {
     this.env = process.env.NODE_ENV ?? "development";
     this.axelarQueryService = new AxelarQueryService();
-    this.redisClient = createClient();
+    this.redisClient = createClient({
+      url: 'redis://redis:6379'
+    });
     this.redisClient.connect();
     this.appDb = new AppDb();
     this.tgBot = null; // Initialize TGBot as null
@@ -56,7 +58,7 @@ export default class App {
     this.tgBot = await TGBot.getInstance();
   }
 
-  async initalizeApplication() {
+  async initalizeApplication(restart: boolean = false) {
     const maxRetries = 5;
     let retries = 0;
 
@@ -89,6 +91,12 @@ export default class App {
       }
     };
 
+    if (restart) {
+      logger.info("Closing all queues...")
+      await AppQueueFactory.removeAllQueueListeners();
+      await AppQueueFactory.closeAll();
+      process.exit(1)
+    }
     await initializeWithRetry();
   }
   private async initAxelarWS() {
@@ -199,12 +207,12 @@ export default class App {
 
         if (!redisStatus || !dbStatus || !queuesStatus) {
           logger.error("Health check failed. Attempting to reinitialize application.");
-          await this.initalizeApplication();
+          await this.initalizeApplication(true);
         }
       } catch (error) {
         logger.error(`Error during health check: ${error}`);
       }
-    }, 5 * 60 * 1000); // Check every 5 minutes
+    }, 20 * 1000); // Check every 5 minutes
   }
 
   private async checkDatabaseConnection() {

@@ -41,7 +41,6 @@ function setupExitHandlers() {
   });
 
   process.on("unhandledRejection", async (reason, promise) => {
-    console.log(reason, promise)
     logger.error("Unhandled Rejection at:", promise, "reason:", reason);
     await gracefulShutdown('UNHANDLED_REJECTION');
   });

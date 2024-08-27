@@ -87,6 +87,13 @@ class AppQueueFactory {
         logger.error(`Error creating queue ${name}: ${error}`);
         throw error;
       }
+    } else if(name !== 'wsMessageResultHandlerQueue') {
+      // Delete the query
+      const oldQueue = this.queues[name];
+      oldQueue.close();
+      delete this.queues[name];
+      logger.info(`Queue ${name} already exists. Re-creating queue...`);
+      return this.createQueue(name);
     }
 
     return this.queues[name];
@@ -129,6 +136,18 @@ class AppQueueFactory {
     }
     await redisClient.quit();
     logger.info('Redis connection closed');
+  }
+
+  
+  public static async removeAllQueueListeners() {
+    for (const [name, queue] of Object.entries(this.queues)) {
+      try {
+        queue.removeAllListeners();
+        logger.info(`Removed all listeners from queue ${name}`);
+      } catch (error) {
+        logger.error(`Error removing listeners from queue ${name}: ${error}`);
+      }
+    }
   }
 }
 
