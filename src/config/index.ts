@@ -37,4 +37,5 @@ export interface AppConfigType {
   };
   broadcasterBalanceThreshold: number;
   broadcasterBalanceCheckInterval: number;
+  valUptimeCheckerInterval: number;
 }

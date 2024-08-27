@@ -1,7 +1,7 @@
 import appConfig from "@config/index";
 import { logger } from "@utils/logger";
 import Queue from "bull";
-import Redis from 'ioredis';
+import Redis from "ioredis";
 
 const { redisHost, redisPort } = appConfig;
 
@@ -10,14 +10,14 @@ const redisClient = new Redis({
   port: appConfig.redisPort,
   maxRetriesPerRequest: null,
   enableReadyCheck: false,
-  retryStrategy(times) {
+  retryStrategy(times: number) {
     const delay = Math.min(times * 50, 2000);
     return delay;
   }
 });
 
-redisClient.on('error', (error) => {
-  logger.error(`Redis connection error: ${error.message}`);
+redisClient.on('error', (hata: Error) => {
+  logger.error(`Redis connection error: ${hata.message}`);
   logger.error(`Redis connection details: host=${redisHost}, port=${redisPort}`);
 });
 
@@ -79,21 +79,14 @@ class AppQueueFactory {
         this.onQueueError(queue, name);
         this.onQueueCompleted(queue, name);
         
-        // queue.empty() çağrısını kaldırdık
-
         this.queues[name] = queue;
         logger.info(`Queue ${name} created successfully`);
       } catch (error) {
         logger.error(`Error creating queue ${name}: ${error}`);
         throw error;
       }
-    } else if(name !== 'wsMessageResultHandlerQueue') {
-      // Delete the query
-      const oldQueue = this.queues[name];
-      oldQueue.close();
-      delete this.queues[name];
-      logger.info(`Queue ${name} already exists. Re-creating queue...`);
-      return this.createQueue(name);
+    } else {
+      logger.info(`Queue ${name} already exists. Using existing queue.`);
     }
 
     return this.queues[name];

@@ -1,21 +1,32 @@
-FROM node:18.17-buster-slim
+FROM node:18.17-buster-slim as builder
 
-# Copy Dir
-COPY . ./app
-
-# Work to Dir
 WORKDIR /app
 
-# Install pnpm
-RUN npm install -g pnpm
+COPY package.json pnpm-lock.yaml ./
 
-# Install Node Package
-RUN pnpm install --shamefully-hoist
+# Dev bağımlılıkları da dahil olmak üzere tüm bağımlılıkları yükle
+RUN npm install -g pnpm && pnpm install --frozen-lockfile
 
-# Set Env
+COPY . .
+
+# Uygulamayı derle
+RUN pnpm run build
+
+# Yeni bir aşama başlat
+FROM node:18.17-buster-slim
+
+WORKDIR /app
+
+# Sadece gerekli dosyaları kopyala
+COPY --from=builder /app/package.json /app/pnpm-lock.yaml ./
+COPY --from=builder /app/dist ./dist
+
+# Sadece prodüksiyon bağımlılıklarını yükle
+RUN npm install -g pnpm && pnpm install --prod --frozen-lockfile
+
 ENV NODE_ENV production
 
 EXPOSE 3000
 
-# Cmd script
-CMD ["pnpm", "run", "start"]
+# Uygulamayı başlat
+CMD ["node", "dist/src/index.js"]

@@ -205,20 +205,26 @@ export default class App {
         const dbStatus = await this.checkDatabaseConnection();
         const queuesStatus = await this.checkQueuesStatus();
 
-        if (!redisStatus || !dbStatus || !queuesStatus) {
+        if (!redisStatus || !dbStatus) {
           logger.error("Health check failed. Attempting to reinitialize application.");
           await this.initalizeApplication(true);
+        } else if (!queuesStatus) {
+          logger.warn("Some queues are empty. Checking if this is a persistent issue.");
+          // Here you can monitor the empty queue situation and restart only if it's a long-term problem.
         }
       } catch (error) {
         logger.error(`Error during health check: ${error}`);
       }
-    }, 20 * 1000); // Check every 5 minutes
+    }, 5 * 60 * 1000); // Check every 5 minutes
   }
 
   private async checkDatabaseConnection() {
     try {
-      await mongoose.connection.db.admin().ping();
-      return true;
+      if (mongoose.connection.db) {
+        await mongoose.connection.db.admin().ping();
+        return true;
+      }
+      return false;
     } catch (error) {
       logger.error(`Database connection check failed: ${error}`);
       return false;
@@ -231,7 +237,7 @@ export default class App {
       for (const queue of queues) {
         const jobCounts = await queue.getJobCounts();
         if (jobCounts.active === 0 && jobCounts.waiting === 0) {
-          return false;
+          logger.warn(`Queue ${queue.name} is empty`);
         }
       }
       return true;

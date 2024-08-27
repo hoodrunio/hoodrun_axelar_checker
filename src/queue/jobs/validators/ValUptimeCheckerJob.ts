@@ -141,7 +141,7 @@ export const addValUptimeCheckerJob = () => {
     VALIDATOR_UPTIME_CHECKER,
     {},
     {
-      repeat: { every: xSeconds(10) },
+      repeat: { every: xSeconds(appConfig.valUptimeCheckerInterval) },
     }
   );
 };
