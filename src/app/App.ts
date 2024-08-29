@@ -39,17 +39,12 @@ import { testRedisConnection } from "@/queue/queue/AppQueueFactory";
 export default class App {
   axelarQueryService: AxelarQueryService;
   env: string;
-  private redisClient: ReturnType<typeof createClient>;
   private tgBot: TGBot | null;
   private appDb: AppDb;
 
   constructor() {
     this.env = process.env.NODE_ENV ?? "development";
     this.axelarQueryService = new AxelarQueryService();
-    this.redisClient = createClient({
-      url: 'redis://redis:6379'
-    });
-    this.redisClient.connect();
     this.appDb = new AppDb();
     this.tgBot = null; // Initialize TGBot as null
   }
@@ -212,13 +207,17 @@ export default class App {
       } catch (error) {
         logger.error(`Error during health check: ${error}`);
       }
-    }, 20 * 1000); // Check every 5 minutes
+    }, 5 * 60 * 1000); // Check every 5 minutes
   }
 
   private async checkDatabaseConnection() {
     try {
-      await mongoose.connection.db.admin().ping();
-      return true;
+      if(mongoose.connection.db) {
+        await mongoose.connection.db.admin().ping();
+        return true;
+      } else {
+        return false;
+      }
     } catch (error) {
       logger.error(`Database connection check failed: ${error}`);
       return false;

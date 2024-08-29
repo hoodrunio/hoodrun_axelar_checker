@@ -13,12 +13,13 @@ export const checkBroadcasterBalance = async () => {
     const THRESHOLD = appConfig.balanceThreshold;
 
     try {
-        const balance = await axelarQueryService.getBroadcasterBalance(BROADCASTER_ADDRESS);
-        if (balance < THRESHOLD) {
-            const message = `Warning: Broadcaster balance is below the threshold. Current balance: ${balance}`;
-            await tgBot.sendNotification({ chatId: 'your-chat-id', text: message });
-            logger.info(message);
-        }
+        // TODO: Implement the getBroadcasterBalance method in the AxelarQueryService class
+        // const balance = await axelarQueryService.getBroadcasterBalance(BROADCASTER_ADDRESS);
+        // if (balance < THRESHOLD) {
+        //     const message = `Warning: Broadcaster balance is below the threshold. Current balance: ${balance}`;
+        //     await tgBot.sendNotification({ recipient: 'your-chat-id', data: { balance, threshold: THRESHOLD} });
+        //     logger.info(message);
+        // }
     } catch (error) {
         logger.error('Error checking broadcaster balance', error);
     }

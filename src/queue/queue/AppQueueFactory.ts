@@ -87,14 +87,14 @@ class AppQueueFactory {
         logger.error(`Error creating queue ${name}: ${error}`);
         throw error;
       }
-    } else if(name !== 'wsMessageResultHandlerQueue') {
-      // Delete the query
-      const oldQueue = this.queues[name];
-      oldQueue.close();
-      delete this.queues[name];
-      logger.info(`Queue ${name} already exists. Re-creating queue...`);
-      return this.createQueue(name);
-    }
+     }// else if(name !== 'wsMessageResultHandlerQueue') {
+    //   // Delete the query
+    //   const oldQueue = this.queues[name];
+    //   oldQueue.close();
+    //   delete this.queues[name];
+    //   logger.info(`Queue ${name} already exists. Re-creating queue...`);
+    //   return this.createQueue(name);
+    // }
 
     return this.queues[name];
   }

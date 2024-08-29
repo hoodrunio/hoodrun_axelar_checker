@@ -12,6 +12,8 @@ import appConfig from "@config/index";
 // logger.info(`Redis configuration: host=${appConfig.redisHost}, port=${appConfig.redisPort}`);
 
 setupExitHandlers();
+let app: App;
+
 
 async function main() {
   try {
@@ -25,7 +27,7 @@ async function main() {
     }
     logger.info("Redis connection successful.");
 
-    const app = new App();
+    app = new App();
     await app.initalizeApplication();
     logger.info("Application initialized and running");
   } catch (error) {
@@ -49,7 +51,6 @@ function setupExitHandlers() {
   process.on('SIGINT', () => gracefulShutdown('SIGINT'));
 }
 
-const app = new App();
 
 async function gracefulShutdown(signal: string) {
   logger.info(`Received ${signal}. Starting graceful shutdown...`);
