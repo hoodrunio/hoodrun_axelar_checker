@@ -6,7 +6,7 @@ const { dbConnectionString, dbName, dbUser, dbPwd, dbHost, dbPort } = appConfig;
 
 const connectionString =
   dbConnectionString ??
-  `mongodb://${dbUser}:${dbPwd}@${dbHost}:${dbPort}/${dbName}`;
+  `mongodb://${dbUser}:${dbPwd}@${dbHost}:${dbPort}/${dbName}?authSource=admin`;
 
 export const connectDb = async (env: string) => {
   if (env !== "production") {

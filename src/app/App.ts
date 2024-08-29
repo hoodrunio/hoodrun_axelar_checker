@@ -35,6 +35,7 @@ import {
 } from "@/queue/jobs/BroadcasterBalanceCheckerJob";
 import { AppDb } from "@database/database";
 import { testRedisConnection } from "@/queue/queue/AppQueueFactory";
+import { parse } from 'url';
 
 export default class App {
   axelarQueryService: AxelarQueryService;
@@ -46,12 +47,34 @@ export default class App {
   constructor() {
     this.env = process.env.NODE_ENV ?? "development";
     this.axelarQueryService = new AxelarQueryService();
-    this.redisClient = createClient({
-      url: 'redis://redis:6379'
-    });
-    this.redisClient.connect();
     this.appDb = new AppDb();
-    this.tgBot = null; // Initialize TGBot as null
+    this.tgBot = null;
+    this.redisClient = null as any; 
+  }
+
+  private async initializeConnections() {
+    try {
+      // Redis bağlantısı
+      const redisUrl = process.env.REDIS_URL || 'redis://redis:6379';
+      const parsedUrl = new URL(redisUrl);
+      this.redisClient = createClient({
+        url: redisUrl,
+        socket: {
+          host: parsedUrl.hostname || 'redis',
+          port: parseInt(parsedUrl.port || '6379', 10)
+        }
+      });
+      this.redisClient.on('error', (err) => console.log('Redis Client Error', err));
+      await this.redisClient.connect();
+      logger.info('Redis connection successful');
+
+      // MongoDB bağlantısı
+      await this.initDbConn();
+      logger.info('MongoDB connection successful');
+    } catch (error) {
+      logger.error('Failed to initialize connections:', error);
+      throw error;
+    }
   }
 
   async initTgBot() {
@@ -64,16 +87,10 @@ export default class App {
 
     const initializeWithRetry = async () => {
       try {
-        logger.info("Testing Redis connection...");
-        const redisConnected = await testRedisConnection();
-        if (!redisConnected) {
-          throw new Error("Redis connection failed.");
-        }
-        logger.info("Redis connection successful.");
-
-        await this.initDbConn();
+        logger.info(`Initializing application with Redis host: ${process.env.REDIS_HOST || 'redis'}, port: ${process.env.REDIS_PORT || 6379}`);
+        await this.initializeConnections();
         await this.initAxelarWS();
-        await this.initTgBot(); // Start TGBot
+        await this.initTgBot();
         await this.initJobsAndQueues();
         this.initHealthCheck();
         logger.info("Application started successfully");
@@ -204,6 +221,7 @@ export default class App {
         const redisStatus = await AppQueueFactory.checkRedisConnection();
         const dbStatus = await this.checkDatabaseConnection();
         const queuesStatus = await this.checkQueuesStatus();
+<<<<<<< Updated upstream
 
         if (!redisStatus || !dbStatus) {
           logger.error("Health check failed. Attempting to reinitialize application.");
@@ -211,22 +229,44 @@ export default class App {
         } else if (!queuesStatus) {
           logger.warn("Some queues are empty. Checking if this is a persistent issue.");
           // Here you can monitor the empty queue situation and restart only if it's a long-term problem.
+=======
+  
+        logger.info(`Health check: Redis: ${redisStatus}, DB: ${dbStatus}, Queues: ${queuesStatus}`);
+  
+        if (!redisStatus || !dbStatus) {
+          logger.error("Health check failed. Attempting to reinitialize application.");
+          await this.initalizeApplication(true);
+        } else {
+          logger.info("Health check passed successfully.");
+>>>>>>> Stashed changes
         }
       } catch (error) {
         logger.error(`Error during health check: ${error}`);
       }
+<<<<<<< Updated upstream
     }, 5 * 60 * 1000); // Check every 5 minutes
+=======
+    }, 60 * 1000); // Her 1 dakikada bir kontrol et
+>>>>>>> Stashed changes
   }
 
   private async checkDatabaseConnection() {
     try {
       if (mongoose.connection.db) {
         await mongoose.connection.db.admin().ping();
+<<<<<<< Updated upstream
         return true;
       }
       return false;
+=======
+        logger.info("Veritabanı bağlantı kontrolü başarılı.");
+        return true;
+      } else {
+        throw new Error("Veritabanı bağlantısı mevcut değil.");
+      }
+>>>>>>> Stashed changes
     } catch (error) {
-      logger.error(`Database connection check failed: ${error}`);
+      logger.error(`Veritabanı bağlantı kontrolü başarısız: ${error}`);
       return false;
     }
   }
@@ -234,13 +274,25 @@ export default class App {
   private async checkQueuesStatus() {
     try {
       const queues = AppQueueFactory.getAllQueues();
+      let allQueuesEmpty = true;
       for (const queue of queues) {
         const jobCounts = await queue.getJobCounts();
+<<<<<<< Updated upstream
         if (jobCounts.active === 0 && jobCounts.waiting === 0) {
           logger.warn(`Queue ${queue.name} is empty`);
+=======
+        logger.info(`Queue ${queue.name} status: active=${jobCounts.active}, waiting=${jobCounts.waiting}`);
+        if (jobCounts.active > 0 || jobCounts.waiting > 0) {
+          allQueuesEmpty = false;
+>>>>>>> Stashed changes
         }
       }
-      return true;
+      if (allQueuesEmpty) {
+        logger.warn("All queues are empty. This might be normal if no jobs are scheduled.");
+      } else {
+        logger.info("At least one queue has active or waiting jobs.");
+      }
+      return true; // Her zaman true döndür, boş kuyruklar bir hata değildir
     } catch (error) {
       logger.error(`Queue status check failed: ${error}`);
       return false;

@@ -7,6 +7,7 @@ import { ValidatorRepository } from "@repositories/validator/ValidatorRepository
 import mongoose from 'mongoose';
 
 export class AppDb {
+  mongoose: typeof mongoose;
   validatorRepository: ValidatorRepository;
   telegramUserRepo: TelegramUserRepository;
   notificationRepo: NotificationRepository;
@@ -15,6 +16,7 @@ export class AppDb {
   pollVoteRepo: PollVoteRepository;
 
   constructor() {
+    this.mongoose = mongoose;
     this.validatorRepository = new ValidatorRepository();
     this.telegramUserRepo = new TelegramUserRepository();
     this.notificationRepo = new NotificationRepository();

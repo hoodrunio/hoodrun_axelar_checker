@@ -1,13 +1,18 @@
 import appConfig from "@config/index";
 import { logger } from "@utils/logger";
 import Queue from "bull";
+<<<<<<< Updated upstream
 import Redis from "ioredis";
+=======
+import Redis from 'ioredis';
+import { createClient } from "redis";
+>>>>>>> Stashed changes
 
 const { redisHost, redisPort } = appConfig;
 
 const redisClient = new Redis({
-  host: appConfig.redisHost,
-  port: appConfig.redisPort,
+  host: appConfig.redisHost || 'redis',
+  port: appConfig.redisPort || 6379,
   maxRetriesPerRequest: null,
   enableReadyCheck: false,
   retryStrategy(times: number) {
@@ -16,6 +21,7 @@ const redisClient = new Redis({
   }
 });
 
+<<<<<<< Updated upstream
 redisClient.on('error', (hata: Error) => {
   logger.error(`Redis connection error: ${hata.message}`);
   logger.error(`Redis connection details: host=${redisHost}, port=${redisPort}`);
@@ -27,6 +33,11 @@ redisClient.on('connect', () => {
 
 redisClient.on('reconnecting', () => {
   logger.info('Reconnecting to Redis...');
+=======
+redisClient.on('error', (error) => {
+  logger.error(`Redis connection error: ${error.message}`);
+  logger.error(`Redis connection details: host=${appConfig.redisHost || 'redis'}, port=${appConfig.redisPort || 6379}`);
+>>>>>>> Stashed changes
 });
 
 class AppQueueFactory {
@@ -107,6 +118,7 @@ class AppQueueFactory {
   public static async checkRedisConnection() {
     try {
       await redisClient.ping();
+      logger.info("Redis connection check passed.");
       return true;
     } catch (error) {
       logger.error('Redis connection check failed:', error);
@@ -144,28 +156,19 @@ class AppQueueFactory {
   }
 }
 
-export async function testRedisConnection() {
-  const client = new Redis({
-    host: appConfig.redisHost,
-    port: appConfig.redisPort,
-    maxRetriesPerRequest: null,
-    enableReadyCheck: false,
-    retryStrategy: () => null,
-    connectTimeout: 5000,
-  });
-
+export const testRedisConnection = async (): Promise<boolean> => {
   try {
-    logger.info(`Attempting to connect to Redis at ${appConfig.redisHost}:${appConfig.redisPort}`);
+    const client = createClient({
+      url: process.env.REDIS_URL || 'redis://redis:6379'
+    });
+    await client.connect();
     await client.ping();
-    logger.info('Redis connection test successful');
     await client.quit();
     return true;
   } catch (error) {
-    logger.error('Redis connection check failed:', error);
-    logger.error(`Redis connection details: host=${appConfig.redisHost}, port=${appConfig.redisPort}`);
-    await client.quit();
+    logger.error('Redis connection test failed:', error);
     return false;
   }
-}
+};
 
 export default AppQueueFactory;
