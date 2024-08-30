@@ -12,6 +12,9 @@ class JobProducer {
     }
   ): Promise<Queue.Job> {
     const queue = AppQueueFactory.createQueue<T>(queueName);
+    queue.on("completed", async (job) => {
+      // if(options.removeOnComplete) AppQueueFactory.removeQueue(queueName);
+    })
     return queue.add(data, options);
   }
 }

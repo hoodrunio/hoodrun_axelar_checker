@@ -13,9 +13,11 @@ const { axelarVoterAddress: userVoterAddress, mainnetAxelarWsUrls } = appConfig;
 
 export class AxelarWsClient {
   ws: WebSocket;
+  private eventListeners: { [event: string]: Function[] } = {};
+
   constructor() {
     const url = mainnetAxelarWsUrls[0];
-    console.log(url);
+    // console.log(url);
 
     this.ws = new WebSocket(url, {
       headers: {
@@ -26,17 +28,47 @@ export class AxelarWsClient {
           "permessage-deflate; client_max_window_bits",
       },
     });
+    this.initWebSocketEvents();
+  }
+
+  // New on method
+  on(event: string, callback: Function) {
+    if (!this.eventListeners[event]) {
+      this.eventListeners[event] = [];
+    }
+    this.eventListeners[event].push(callback);
+  }
+
+  // Emit event method
+  private emit(event: string, ...args: any[]) {
+    const listeners = this.eventListeners[event];
+    if (listeners) {
+      listeners.forEach(listener => listener(...args));
+    }
+  }
+
+  // Update WebSocket events
+  private initWebSocketEvents() {
     this.ws.onopen = (params) => {
       console.log("connected to Axelar ws", params.target.url);
       this.initOnOpen();
+      this.emit('connect', params);
     };
 
     this.ws.onmessage = (event) => {
+      console.log('Message', event.data)
       addWsMessageResultHandlerJob({ messageData: event?.data });
+      this.emit('message', event);
     };
 
     this.ws.onclose = () => {
       console.log("disconnected from Axelar ws");
+      this.emit('disconnect');
+    };
+
+    this.ws.onerror = (error) => {
+      console.error("WebSocket error:", error);
+      this.emit('error', error);
     };
   }
 

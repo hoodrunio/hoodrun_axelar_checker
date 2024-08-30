@@ -4,7 +4,7 @@ import {
   RpcEndpointHealthNotification,
   UptimeNotification,
 } from "@/bot/tg/interface/notification";
-import { ChainRegistrationStatus } from "@/database/models/notification/notification.interface";
+import { BroadcasterBalanceLowNotificationDataType, ChainRegistrationStatus } from "@/database/models/notification/notification.interface";
 import { PollVoteType } from "@database/models/polls/poll_vote/poll_vote.interface";
 
 import BigNumber from "bignumber.js";
@@ -171,5 +171,18 @@ export class TgReply {
       .map((platform, index) => `<b>${index + 1}. ${platform}</b>`)
       .join("\n");
     return htmlMessage;
+  }
+
+  broadcasterBalanceLowReply(params: BroadcasterBalanceLowNotificationDataType): string {
+    const { balance, threshold, moniker, operatorAddress } = params;
+    return `
+<b><strong>${moniker} Broadcaster Balance Low</strong></b>
+
+<b>Operator Address:</b> ${operatorAddress}
+<b>Current Balance:</b> ${balance / 1000000} AXL
+<b>Threshold:</b> ${threshold / 1000000} AXL
+
+<b>⚠️ Warning: Broadcaster balance is below the threshold!</b>
+`;
   }
 }

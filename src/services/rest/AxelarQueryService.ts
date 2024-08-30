@@ -11,6 +11,9 @@ import { logger } from "@utils/logger";
 import BigNumber from "bignumber.js";
 
 export class AxelarQueryService {
+  getBroadcasterBalance(BROADCASTER_ADDRESS: string) {
+      throw new Error('Method not implemented.');
+  }
   restClient: AxiosService;
 
   constructor() {

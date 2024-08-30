@@ -13,11 +13,12 @@ import AppQueueFactory from "@/queue/queue/AppQueueFactory";
 import { AxlRpcHealthService } from "@/services/rpc/axelarRpcHealth/AxlRpcHealthService";
 import { logger } from "@/utils/logger";
 
-const RPC_ENDPOINT_HEALTHCHECKER_JOB = "RpcEndpointHealthcheckerJob";
+const RPC_ENDPOINT_HEALTHCHECKER_JOB = "rpcEndpointHealthchecker";
 
 export const initRpcEndpointHealthcheckerQueue = async () => {
   const rpcEndpointHealthcheckerJobQueue = AppQueueFactory.createQueue(
-    RPC_ENDPOINT_HEALTHCHECKER_JOB
+    RPC_ENDPOINT_HEALTHCHECKER_JOB,
+    true
   );
 
   rpcEndpointHealthcheckerJobQueue.process(async () => {

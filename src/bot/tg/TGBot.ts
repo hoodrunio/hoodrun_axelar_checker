@@ -12,6 +12,7 @@ import { chatSaverMiddleware } from "@/bot/tg/middlewares/chatSaverMiddleware";
 import appConfig from "@config/index";
 import { AppDb } from "@database/database";
 import {
+  BroadcasterBalanceLowNotificationDataType,
   ChainRegistrationStatus,
   INotification,
   NotificationEvent,
@@ -23,7 +24,7 @@ import { logger } from "@utils/logger";
 import { Bot, InlineKeyboard } from "grammy";
 
 export class TGBot {
-  private static _instance: TGBot;
+  private static _instance: TGBot | null = null;
   bot: Bot;
   tgReply: TgReply;
   appDb: AppDb;
@@ -61,8 +62,23 @@ export class TGBot {
       logger.info(`Message sent to user ${chat_id}`);
     } catch (error) {
       logger.error(`Error while sending message to user ${chat_id}`, error);
-      throw error;
+      // Add retry mechanism in case of error
+      await this.retryMessageSend(chat_id, message, 3); // Try 3 times
     }
+  }
+
+  private async retryMessageSend(chat_id: number, message: string, retries: number) {
+    for (let i = 0; i < retries; i++) {
+      try {
+        await this.bot.api.sendMessage(chat_id, message, { parse_mode: "HTML" });
+        logger.info(`Message sent to user ${chat_id} after retry`);
+        return;
+      } catch (error) {
+        logger.error(`Retry ${i + 1} failed for user ${chat_id}:`, error);
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait for 1 second
+      }
+    }
+    logger.error(`Failed to send message to user ${chat_id} after ${retries} retries`);
   }
 
   private async sendUptimeNotification<T extends UptimeNotification>(data: T) {
@@ -99,6 +115,13 @@ export class TGBot {
     );
   }
 
+  private async sendBroadcasterBalanceLowNotification<T extends BroadcasterBalanceLowNotificationDataType & { chat_id: number }>(data: T) {
+    await this.sendMessageToUser(
+      { chat_id: data.chat_id },
+      this.tgReply.broadcasterBalanceLowReply(data)
+    );
+  }
+
   public async sendNotification(
     notification: INotification
   ): Promise<{ sentSuccess: boolean }> {
@@ -131,6 +154,13 @@ export class TGBot {
       case NotificationEvent.EVM_SUPPORTED_CHAIN_REGISTRATION:
         await this.sendEvmSupChainNotif({
           ...(data as EvmSupprtedChainRegistrationNotification),
+          chat_id: tgRecipient,
+        });
+        sentSuccess = true;
+        break;
+      case NotificationEvent.BROADCASTER_BALANCE_LOW:
+        await this.sendBroadcasterBalanceLowNotification({
+          ...(data as BroadcasterBalanceLowNotificationDataType),
           chat_id: tgRecipient,
         });
         sentSuccess = true;
@@ -450,6 +480,33 @@ export class TGBot {
     await this.bot.api.setMyCommands(commands);
   }
   private async initBot() {
-    await this.bot.start();
+    const startBot = async () => {
+      try {
+        await this.bot.start({
+          onStart: (botInfo) => {
+            logger.info(`Bot ${botInfo.username} started`);
+          },
+        });
+      } catch (error) {
+        logger.error("Failed to start bot:", error);
+        setTimeout(startBot, 5000);
+      }
+    };
+
+    await startBot();
+
+    setInterval(async () => {
+      try {
+        await this.bot.api.getMe();
+      } catch (error) {
+        logger.error("Bot connection lost, reconnecting...", error);
+        await startBot();
+      }
+    }, 60000);
+  }
+
+  public async stop(): Promise<void> {
+    await this.bot.stop();
+    logger.info('Telegram bot stopped');
   }
 }

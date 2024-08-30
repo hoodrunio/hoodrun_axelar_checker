@@ -1,6 +1,5 @@
 import { RpcEnvEndpoint } from "@/config/parseRpcEndpoints";
 import { validateEnv } from "@/config/validateEnv";
-
 let appConfig: AppConfigType | {} = {};
 
 try {
@@ -12,6 +11,7 @@ try {
 export default appConfig as AppConfigType;
 
 export interface AppConfigType {
+  balanceThreshold: any;
   parsedRpcEndpoints: RpcEnvEndpoint[];
   maxLastXHourPollVoteNotification: number;
   axelarVoterAddress: string;
@@ -35,4 +35,6 @@ export interface AppConfigType {
     medium: number;
     high: number;
   };
+  broadcasterBalanceThreshold: number;
+  broadcasterBalanceCheckInterval: number;
 }

@@ -14,7 +14,8 @@ export interface IWsMessageDataType {
 export const initWsMessageResultHandlerQueue = async () => {
   const wsMessageResultHandlerQueue =
     AppQueueFactory.createQueue<IWsMessageDataType>(
-      WS_MESSAGE_RESULT_HANDLER_QUEUE
+      WS_MESSAGE_RESULT_HANDLER_QUEUE,
+      true
     );
 
   wsMessageResultHandlerQueue.process(async (job) => {

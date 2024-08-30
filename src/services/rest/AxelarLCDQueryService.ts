@@ -1,6 +1,7 @@
 import appConfig from "@/config/index";
 import { AxiosService } from "@/services/rest/axios/AxiosService";
 import { RegisterProxyGetResponse } from "@/services/rest/interfaces/tx/RegisterProxyGetResponse";
+import { logger } from "@/utils/logger";
 
 export class AxelarLCDQueryService {
   restClient: AxiosService;
@@ -25,16 +26,18 @@ export class AxelarLCDQueryService {
 
   public async getValidatorVoterAddress(
     operatorAddress: string
-  ): Promise<string> {
+  ): Promise<string | null> {
     const response = await this.getValidatorRegisterProxyInfo(operatorAddress);
     if (response?.txs.length === 0) {
-      return Promise.reject(new Error("No RegisterProxy tx found"));
+      logger.warn(`No RegisterProxy tx found for ${operatorAddress}`);
+      return null;
     }
 
     const firstMessage = response?.txs?.[0]?.body?.messages?.[0];
 
     if (!firstMessage) {
-      return Promise.reject(new Error("No message found in RegisterProxy tx"));
+      logger.warn(`No messages found for ${operatorAddress}`);
+      return null;
     }
 
     return firstMessage.proxy_addr as string;

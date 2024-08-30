@@ -11,7 +11,7 @@ const NEW_WS_ALL_POLL_DATA_JOB = "NewWsAllPollDataJob";
 
 export const initNewWsAllPollDataQueue = async () => {
   const newWsAllPollDataJobQueue =
-    AppQueueFactory.createQueue<NewWsPollAndVoteDto>(NEW_WS_ALL_POLL_DATA_JOB);
+    AppQueueFactory.createQueue<NewWsPollAndVoteDto>(NEW_WS_ALL_POLL_DATA_JOB, true);
 
   newWsAllPollDataJobQueue.process(async (job) => {
     const { type, data } = job.data;

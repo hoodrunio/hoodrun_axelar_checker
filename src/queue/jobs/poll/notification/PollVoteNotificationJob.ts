@@ -12,11 +12,12 @@ import { xSeconds } from "queue/jobHelper";
 import appJobProducer from "queue/producer/AppJobProducer";
 import AppQueueFactory from "queue/queue/AppQueueFactory";
 
-const POLL_VOTE_NOTIFICATION_JOB = "pollVoteNotificationJob";
+const POLL_VOTE_NOTIFICATION_JOB = "pollVoteNotification";
 
 export const initPollVoteNotificationQueue = async () => {
   const pollVoteNotificationJobQueue = AppQueueFactory.createQueue(
-    POLL_VOTE_NOTIFICATION_JOB
+    POLL_VOTE_NOTIFICATION_JOB,
+    true
   );
 
   pollVoteNotificationJobQueue.process(async () => {
@@ -75,7 +76,7 @@ export const initPollVoteNotificationQueue = async () => {
           );
         }
 
-        await pollVoteRepo.updateOne(pollVote._id, {
+        await pollVoteRepo.updateOne(pollVote._id!, {
           checkedForNotification: true,
         });
       });

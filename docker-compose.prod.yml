@@ -21,7 +21,8 @@ services:
       - mongo
     depends_on:
       - mongo
-
+      - redis
+      
   mongo:
     container_name: mongo
     image: mongo
@@ -38,15 +39,21 @@ services:
 
   redis: # Define Redis service
     container_name: redis
-    image: redis
+    image: redis:latest
     ports:
       - "6379:6379" # Expose Redis port
     restart: "unless-stopped"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     networks:
       - backend
 
 networks:
   backend:
+    name: axelar-network-checker
     driver: bridge
 
 volumes:
