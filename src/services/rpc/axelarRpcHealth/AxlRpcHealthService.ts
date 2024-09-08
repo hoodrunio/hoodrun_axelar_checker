@@ -149,6 +149,8 @@ export class AxlRpcHealthService {
           res = await this.checkDefaultRpcHealth();
           break;
       }
+
+      return res;
     } catch (error) {
       throw new Error(`Error checking health of ${this.name}: ${error}`);
     }

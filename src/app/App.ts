@@ -28,7 +28,6 @@ import http from 'http';
 import { logger } from '@/utils/logger';
 import AppQueueFactory from "@/queue/queue/AppQueueFactory";
 import mongoose from 'mongoose';
-import { createClient } from 'redis';
 import {
   initBroadcasterBalanceCheckerQueue,
   addBroadcasterBalanceCheckerJob,
@@ -41,12 +40,14 @@ export default class App {
   env: string;
   private tgBot: TGBot | null;
   private appDb: AppDb;
+  private healthyQueues: string[];
 
   constructor() {
     this.env = process.env.NODE_ENV ?? "development";
     this.axelarQueryService = new AxelarQueryService();
     this.appDb = new AppDb();
     this.tgBot = null; // Initialize TGBot as null
+    this.healthyQueues = ['sendNotifications', 'pollVoteNotification', 'rpcEndpointHealthchecker'];
   }
 
   async initTgBot() {
@@ -157,7 +158,7 @@ export default class App {
 
     for (const { name, job } of jobs) {
       try {
-        await job();
+        job();
         logger.info(`Successfully initialized job: ${name}`);
         this.scheduleJobHealthCheck(name, job);
       } catch (error) {
@@ -183,15 +184,14 @@ export default class App {
       try {
         const queue = AppQueueFactory.getQueue(name);
         const jobCounts = await queue.getJobCounts();
-        if (jobCounts.active === 0 && jobCounts.waiting === 0 && jobCounts.delayed === 0) {
-          console.log(name, jobCounts, true)
+        if (jobCounts.active === 0 && jobCounts.waiting === 0) {
           logger.warn(`Job ${name} seems to be inactive. Restarting...`);
           await job();
         }
       } catch (error) {
         logger.error(`Error checking health of job ${name}:`, error);
       }
-    }, 40 * 1000); // Check every 5 minutes
+    }, 4.5 * 60 * 1000); // Check every 4.5 minutes
   }
 
   private initHealthCheck() {
@@ -210,7 +210,7 @@ export default class App {
       } catch (error) {
         logger.error(`Error during health check: ${error}`);
       }
-    }, 60 * 1000); // Check every 5 minutes
+    }, 5 * 60 * 1000); // Check every 5 minutes
   }
 
   private async checkDatabaseConnection() {
@@ -230,11 +230,11 @@ export default class App {
   private async checkQueuesStatus() {
     try {
       const queues = AppQueueFactory.getAllQueues();
-      console.log(queues.map(q => q.name))
       for (const queue of queues) {
         const jobCounts = await queue.getJobCounts();
         if (jobCounts.active === 0 && jobCounts.waiting === 0 && jobCounts.delayed === 0) {
-          console.log(queue.name, jobCounts)
+          if(this.healthyQueues.includes(queue.name)) continue;
+          console.log(`Queue ${queue.name} is inactive.`, jobCounts)
           return false;
         }
       }

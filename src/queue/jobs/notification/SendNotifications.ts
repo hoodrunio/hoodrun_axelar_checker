@@ -13,10 +13,10 @@ interface INotification extends INotificationInterface {
   lastError?: string;
 }
 
-const SEND_NOTIFICATIONS_JOB = "sendNotifications";
+const SEND_NOTIFICATIONS_JOB = "sendNotificationsJob";
 
 export const initSendNotificationsQueue = async () => {
-  const sendNotificationsQueue = AppQueueFactory.createQueue(SEND_NOTIFICATIONS_JOB, true);
+  const sendNotificationsQueue = AppQueueFactory.createQueue(SEND_NOTIFICATIONS_JOB);
 
   sendNotificationsQueue.process(async (job) => {
     try {
