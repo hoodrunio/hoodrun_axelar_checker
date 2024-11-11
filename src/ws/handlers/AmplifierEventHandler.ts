@@ -8,7 +8,7 @@ import { AmplifierPollState } from '@/database/models/amplifier/interfaces';
 import { AmplifierVoteType } from '@/types/amplifier';
 
 export class AmplifierEventHandler {
-  private decoder: AmplifierEventDecoder;
+  public decoder: AmplifierEventDecoder;
   private db: AppDb;
   private voteCheckQueue: Queue;
   private verifierService: AmplifierVerifierService;

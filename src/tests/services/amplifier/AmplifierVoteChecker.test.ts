@@ -1,50 +1,118 @@
-import { AmplifierVoteChecker } from '@services/amplifier/AmplifierVoteChecker';
-import { AmplifierVerifierService } from '@services/amplifier/AmplifierVerifierService';
-import { AmplifierVoteType } from '../../../types/amplifier';
-import axios, { AxiosInstance } from 'axios';
+import { AmplifierVoteChecker } from '@/services/amplifier/AmplifierVoteChecker';
+import { AmplifierVerifierService } from '@/services/amplifier/AmplifierVerifierService';
+import { AmplifierVoteType } from '@/types/amplifier';
+import { AppDb } from '@/database/database';
+import axios, { AxiosDefaults, AxiosHeaderValue, AxiosInstance, HeadersDefaults } from 'axios';
 
-describe('AmplifierVoteChecker Integration Test', () => {
+jest.mock('@/services/amplifier/AmplifierVerifierService');
+jest.mock('axios');
+jest.mock('@/database/database');
+
+describe('AmplifierVoteChecker', () => {
   let voteChecker: AmplifierVoteChecker;
-  const axiosInstance = axios.create({
-    baseURL: 'https://axelar-rpc.qubelabs.io:443' // veya mainnet URL'i
-  });
+  let mockAxiosInstance: jest.Mocked<AxiosInstance>;
+  let mockVerifierService: jest.Mocked<AmplifierVerifierService>;
 
-  beforeAll(() => {
-    // Gerçek verifier adresi
-    process.env.VERIFIER_ADDRESS = 'axelar104jgwmkat4xn2800r6yd44djjhgw2ejrjvqkaj'; // örnek adres
-    voteChecker = new AmplifierVoteChecker(axiosInstance);
-  });
-
-  it('should check real vote status', async () => {
-    // Gerçek bir poll ID
-    const pollId = '42'; // test edeceğimiz gerçek poll ID
-
-    const voteStatus = await voteChecker.checkVoteStatus(pollId);
-    console.log('Vote Status:', voteStatus);
-    
-    // Vote tipi kontrolü
-    expect(voteStatus).toBe(AmplifierVoteType.NO);
-
-    // API response detayları
-    const response = await axiosInstance.get('/cosmos/tx/v1beta1/txs', {
-      params: {
-        'events': `wasm-voted.voter='axelar104jgwmkat4xn2800r6yd44djjhgw2ejrjvqkaj'`,
-        'pagination.offset': 2,
-        'pagination.count_total': true,
-        'order_by': 'ORDER_BY_DESC'
+  beforeEach(() => {
+    // Mock AxiosInstance
+    mockAxiosInstance = {
+      get: jest.fn(),
+      getUri: jest.fn(),
+      head: jest.fn(),
+      options: jest.fn(),
+      post: jest.fn(),
+      put: jest.fn(),
+      patch: jest.fn(),
+      patchForm: jest.fn(),
+      delete: jest.fn(),
+      request: jest.fn(),
+      defaults: {
+        headers: {} as HeadersDefaults & { [key: string]: AxiosHeaderValue },
+        // add other properties as needed
+      } as Omit<AxiosDefaults<any>, "headers"> & { headers: HeadersDefaults & { [key: string]: AxiosHeaderValue } },
+      interceptors: {
+        request: { use: jest.fn(), eject: jest.fn(), clear: jest.fn() },
+        response: { use: jest.fn(), eject: jest.fn(), clear: jest.fn() }
       }
+    } as unknown as jest.Mocked<AxiosInstance>;
+
+    // Mock VerifierService
+    const MockVerifierService = jest.fn(() => ({
+      isConfigured: jest.fn().mockReturnValue(true),
+      getVerifierAddress: jest.fn().mockReturnValue('verifier_address')
+    }));
+
+    mockVerifierService = new MockVerifierService() as unknown as jest.Mocked<AmplifierVerifierService>;
+    (AmplifierVerifierService.getInstance as jest.Mock).mockReturnValue(mockVerifierService);
+    
+    voteChecker = new AmplifierVoteChecker(mockAxiosInstance);
+  });
+
+  describe('checkVoteStatus', () => {
+    it('should return UNSUBMITTED when no transactions found', async () => {
+      mockAxiosInstance.get.mockResolvedValueOnce({ data: { txs: [] } });
+
+      const result = await voteChecker.checkVoteStatus('test_poll_id');
+      
+      expect(result).toBe(AmplifierVoteType.UNSUBMITTED);
+      expect(mockAxiosInstance.get).toHaveBeenCalledWith(
+        expect.stringContaining('/cosmos/tx/v1beta1/txs'),
+        expect.any(Object)
+      );
     });
 
-    console.log('Transaction Details:', JSON.stringify(response.data, null, 2));
-  });
+    it('should return YES for succeeded_on_chain vote', async () => {
+      const mockTxResponse = {
+        data: {
+          txs: [{
+            body: {
+              messages: [{
+                '@type': '/cosmwasm.wasm.v1.MsgExecuteContract',
+                msg: {
+                  vote: {
+                    poll_id: 'test_poll_id',
+                    votes: ['succeeded_on_chain']
+                  }
+                }
+              }]
+            }
+          }]
+        }
+      };
 
-  it('should get real transaction info', async () => {
-    const txInfo = await voteChecker.getVoteTxInfo(process.env.VERIFIER_ADDRESS!, '42');
-    console.log('Transaction Info:', txInfo);
+      mockAxiosInstance.get.mockResolvedValueOnce(mockTxResponse);
 
-    if (txInfo) {
-      expect(txInfo).toHaveProperty("txHash", "6556881EDA826FCE140C841F9550536ACCD00F5C434F8B0E5F6AE48CB2C8D62C");
-      expect(txInfo).toHaveProperty('txHeight', 15300776);
-    }
+      const result = await voteChecker.checkVoteStatus('test_poll_id');
+      
+      expect(result).toBe(AmplifierVoteType.YES);
+      console.log(mockAxiosInstance.get.mock.calls);
+    });
+
+    it('should return NO for non-succeeded vote', async () => {
+      const mockTxResponse = {
+        data: {
+          txs: [{
+            body: {
+              messages: [{
+                '@type': '/cosmwasm.wasm.v1.MsgExecuteContract',
+                msg: {
+                  vote: {
+                    poll_id: 'test_poll_id',
+                    votes: ['failed_on_chain']
+                  }
+                }
+              }]
+            }
+          }]
+        }
+      };
+
+      mockAxiosInstance.get.mockResolvedValueOnce(mockTxResponse);
+
+      const result = await voteChecker.checkVoteStatus('test_poll_id');
+      
+      expect(result).toBe(AmplifierVoteType.NO);
+      console.log(mockAxiosInstance.get.mock.calls);
+    });
   });
 });

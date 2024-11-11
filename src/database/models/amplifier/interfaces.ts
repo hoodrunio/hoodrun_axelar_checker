@@ -40,7 +40,8 @@ export interface IAmplifierMessage {
 export enum AmplifierPollState {
   ACTIVE = 'active',
   COMPLETED = 'completed',
-  EXPIRED = 'expired'
+  EXPIRED = 'expired',
+  FAILED = 'failed'
 }
 
 export interface ITxResponse {

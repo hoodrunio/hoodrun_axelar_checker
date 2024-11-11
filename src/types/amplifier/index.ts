@@ -2,7 +2,9 @@ export enum AmplifierEventType {
   POLL_STARTED = "wasm-messages_poll_started",
   SIGNING_STARTED = "wasm-signing_started",
   VOTE_SUBMITTED = "wasm-voted",
-  SIGNATURE_SUBMITTED = "wasm-signature_submitted"
+  SIGNATURE_SUBMITTED = "wasm-signature_submitted",
+  POLL_QUORUM_REACHED = "wasm-poll_quorum_reached",
+  SIGNING_COMPLETED = "wasm-signing_completed"
 }
 
 export enum AmplifierVoteType {
