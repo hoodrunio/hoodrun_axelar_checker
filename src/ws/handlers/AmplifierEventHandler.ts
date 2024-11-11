@@ -26,9 +26,9 @@ export class AmplifierEventHandler {
         case AmplifierEventType.POLL_STARTED:
           await this.handlePollStarted(event);
           break;
-        case AmplifierEventType.SIGNING_STARTED:
-          // await this.handleSigningStarted(event);
-          break;
+        // case AmplifierEventType.SIGNING_STARTED:
+        //   await this.handleSigningStarted(event);
+        //   break;
       }
     } catch (error) {
       logger.error('Error handling amplifier event:', error);

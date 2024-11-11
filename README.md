@@ -1,13 +1,14 @@
 # Axelar Checker
 
 ## Overview
-Axelar Validator Checker is a Node.js application designed to provide tracking features for running blockchain nodes, specifically tailored for Axelar network validators. The application includes a Telegram bot for monitoring validators' uptime, poll votes, supported EVM chains, and RPC health mechanism.
+Axelar Validator Checker is a Node.js application designed to provide tracking features for running blockchain nodes, specifically tailored for Axelar network validators. The application includes a Telegram bot for monitoring validators' uptime, poll votes, supported EVM chains, RPC health mechanism, and Amplifier verifier status.
 
 ## Features
 - Validator Tracking: Monitor validators' uptime, poll votes, supported EVM chains, and RPC health.
 - Environment Configuration: Utilize an environment file for seamless deployment to Docker. All features are configurable via environment variables.
 - Poll Vote Indexing: Index poll votes based on the specified voter address to facilitate tracking and analysis.
 - Telegram Notifications: Receive notifications via Telegram based on uptime thresholds and operator performance.
+- Amplifier Support: Track Amplifier polls, votes, signatures for enhanced network participation.
 
 ## Requirements
 Before deploying the application, ensure you have the following prerequisites:
@@ -60,6 +61,7 @@ To deploy Axelar Validator Checker to Docker, follow these steps:
    - `AXELAR_LCD_BASE_URLS`: Specify at least three LCD base URLs for Axelar.
    - `AXELAR_VOTER_ADDRESS`: Provide your Axelar voter address for poll vote indexing.
    - `TG_TOKEN`: Generate your own Telegram token and include it in the .env file for Telegram notifications.
+   - `VERIFIER_ADDRESS`: Provide your Amplifier verifier address for vote tracking.
 
 ## Environment Variables
 Ensure to include proper environment variables in your .env file please check .env.example file.
@@ -75,8 +77,9 @@ docker-compose -f docker-compose.prod.yml up -d --build --force-recreate
 Please find your bot on Telegram (add the bot to the Telegram group if you wish), and then send the `/start` or `/help` command to begin the conversation.
 
 ## Usage
-- Access the Telegram bot to track validators' uptime, poll votes, and more.
-- Monitor notifications sent via Telegram based on uptime thresholds and operator performance.
+- Access the Telegram bot to track validators' uptime, poll votes, and verifier status.
+- Monitor notifications sent via Telegram based on uptime thresholds, operator performance, and Amplifier activities.
+- Use Amplifier-specific commands to check poll statuses, vote information, signatures.
 
 ## License
 This project is licensed under the MIT License

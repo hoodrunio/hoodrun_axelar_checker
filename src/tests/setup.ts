@@ -1,6 +1,6 @@
 import { config } from 'dotenv';
 
-config({ path: '.env.example' });
+config({ path: '.env' });
 
 // Mock console methods if needed
 // global.console = {

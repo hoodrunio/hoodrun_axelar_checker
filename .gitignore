@@ -136,3 +136,6 @@ all_transactions_analysis.txt
 example-tx-for-amp-vote.json
 package-lock.json
 .DS_Store
+example-block-for-amp-poll.json
+example-tx-for-amp-sign.json
+example-block-for-amp-sign.json

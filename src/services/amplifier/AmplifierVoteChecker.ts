@@ -120,19 +120,29 @@ export class AmplifierVoteChecker {
       );
   
       if (response.data?.tx_responses) {
-        // Find the transaction for the specific poll
+        // İlgili işlemi bul
         const relevantTxResponse = response.data.tx_responses.find((tx: any) => {
-          const events = tx.events || [];
-          return events.some((event: any) => {
-            if (event.type === 'wasm-voted') {
-              const pollIdAttr = event.attributes.find(
-                (attr: any) => Buffer.from(attr.key, 'base64').toString() === 'poll_id'
+          try {
+            // raw_log'u parse et
+            const logs = JSON.parse(tx.raw_log);
+            
+            // wasm-voted event'ini bul
+            return logs.some((log: any) => {
+              const wasmVotedEvent = log.events.find((event: any) => event.type === 'wasm-voted');
+              if (!wasmVotedEvent) return false;
+  
+              // poll_id attribute'unu bul
+              const pollIdAttr = wasmVotedEvent.attributes.find(
+                (attr: any) => attr.key === 'poll_id'
               );
-              return pollIdAttr && 
-                Buffer.from(pollIdAttr.value, 'base64').toString() === pollId;
-            }
+  
+              // poll_id değerini kontrol et (tırnak işaretlerini kaldırarak)
+              return pollIdAttr && pollIdAttr.value.replace(/['"]/g, '') === pollId;
+            });
+          } catch (error) {
+            logger.error(`Error parsing raw_log for tx ${tx.txhash}:`, error);
             return false;
-          });
+          }
         });
   
         if (relevantTxResponse) {

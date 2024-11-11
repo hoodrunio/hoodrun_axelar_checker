@@ -17,17 +17,13 @@ describe('AmplifierVoteChecker Integration Test', () => {
 
   it('should check real vote status', async () => {
     // Gerçek bir poll ID
-    const pollId = '34'; // test edeceğimiz gerçek poll ID
+    const pollId = '42'; // test edeceğimiz gerçek poll ID
 
     const voteStatus = await voteChecker.checkVoteStatus(pollId);
     console.log('Vote Status:', voteStatus);
     
     // Vote tipi kontrolü
-    expect([
-      AmplifierVoteType.YES,
-      AmplifierVoteType.NO,
-      AmplifierVoteType.UNSUBMITTED
-    ]).toContain(voteStatus);
+    expect(voteStatus).toBe(AmplifierVoteType.NO);
 
     // API response detayları
     const response = await axiosInstance.get('/cosmos/tx/v1beta1/txs', {
@@ -43,12 +39,12 @@ describe('AmplifierVoteChecker Integration Test', () => {
   });
 
   it('should get real transaction info', async () => {
-    const txInfo = await voteChecker.getVoteTxInfo(process.env.VERIFIER_ADDRESS!, '34');
+    const txInfo = await voteChecker.getVoteTxInfo(process.env.VERIFIER_ADDRESS!, '42');
     console.log('Transaction Info:', txInfo);
 
     if (txInfo) {
-      expect(txInfo).toHaveProperty('txHash');
-      expect(txInfo).toHaveProperty('txHeight');
+      expect(txInfo).toHaveProperty("txHash", "6556881EDA826FCE140C841F9550536ACCD00F5C434F8B0E5F6AE48CB2C8D62C");
+      expect(txInfo).toHaveProperty('txHeight', 15300776);
     }
   });
 });
