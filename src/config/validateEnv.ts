@@ -18,6 +18,7 @@ const {
   TESTNET_AXELAR_REST_BASE_URLS,
   //Axelar
   AXELAR_VOTER_ADDRESS,
+  VERIFIER_ADDRESS,
   BROADCASTER_BALANCE_THRESHOLD,
   BROADCASTER_BALANCE_CHECK_INTERVAL,
   UPTIME_THRESHOLD_LOW,
@@ -78,6 +79,13 @@ export const validateEnv = (): AppConfigType => {
 
   if (isNaN(parseFloat(BROADCASTER_BALANCE_THRESHOLD as string))) {
     throw new Error('‼️ Invalid BALANCE_THRESHOLD in Env file');
+  }
+
+  const amplifierVerifierAddress = VERIFIER_ADDRESS as string;
+  if (!isValidVoterAddress(amplifierVerifierAddress)) {
+    throw new Error(
+      `‼️ Invalid Amplifier Verifier Address in Env file please fix it : ${amplifierVerifierAddress}`
+    );
   }
 
   const balanceThreshold = parseFloat(BROADCASTER_BALANCE_THRESHOLD as string);

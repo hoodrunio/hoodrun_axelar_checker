@@ -22,6 +22,10 @@ class BaseRepository<T extends IBaseInterface, TD extends T & Document> {
     });
   }
 
+  async find(filter: FilterQuery<T>): Promise<Array<Document & T>> {
+    return this._model.find(filter).exec();
+  }
+
   async findAll(query?: FilterQuery<T>): Promise<TD[]> {
     const { sort, limit, ...filter } = query ?? { sort: {} };
     let findQuery = this._model.find(filter as FilterQuery<TD>).sort(sort);
@@ -52,7 +56,6 @@ class BaseRepository<T extends IBaseInterface, TD extends T & Document> {
       })
       .exec();
   }
-
   async updateOne(
     query: FilterQuery<T>,
     data: Partial<CRUDDoc<T>>
@@ -83,3 +86,4 @@ class BaseRepository<T extends IBaseInterface, TD extends T & Document> {
 }
 
 export default BaseRepository;
+

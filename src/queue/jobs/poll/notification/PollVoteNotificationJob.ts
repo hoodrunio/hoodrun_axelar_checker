@@ -75,9 +75,10 @@ export const initPollVoteNotificationQueue = async () => {
           );
         }
 
-        await pollVoteRepo.updateOne(pollVote._id!, {
-          checkedForNotification: true,
-        });
+        await pollVoteRepo.updateOne(
+          { _id: pollVote._id },
+          { checkedForNotification: true }
+        );
       });
 
       await Promise.allSettled(promisses);

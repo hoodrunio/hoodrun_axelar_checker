@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "description": "This module provides a Axelar Network Validator Statistics checking mechanism periodically",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
     "dev": "NODE_ENV=development nodemon",
     "start": "pnpm run build && npx cross-env NODE_ENV=production node dist/src/index.js",
     "start:dev": "pnpm run build && npx cross-env NODE_ENV=development node dist/src/index.js",
@@ -14,7 +16,7 @@
   "dependencies": {
     "@cosmjs/crypto": "^0.32.2",
     "@cosmjs/encoding": "^0.32.2",
-    "axios": "^1.6.5",
+    "axios": "^1.7.7",
     "axios-retry": "^4.0.0",
     "bignumber.js": "^9.1.2",
     "bull": "^4.12.2",
@@ -31,10 +33,14 @@
     "ws": "^8.16.0"
   },
   "devDependencies": {
+    "@jest/types": "^29.6.3",
     "@swc/cli": "^0.3.9",
     "@swc/core": "^1.4.1",
+    "@types/jest": "^29.5.14",
     "@types/node-fetch": "^2.6.10",
     "@types/ws": "^8.5.10",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.2.5",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
     "tsc-alias": "^1.8.8",

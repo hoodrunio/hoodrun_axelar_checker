@@ -25,7 +25,8 @@
       "@repositories/*": ["repositories/*"],
       "@services/*": ["services/*"],
       "@utils/*": ["utils/*"],
-      "@extensions/*": ["extensions/*"]
+      "@extensions/*": ["extensions/*"],
+      "@types/*": ["types/*"]
     },
     "typeRoots": ["app/**/types", "node_modules/@types"],
     "plugins": [

@@ -10,7 +10,12 @@ const { logDir: LOG_DIR } = appConfig;
 const logDir: string = join(__dirname, LOG_DIR);
 
 if (!existsSync(logDir)) {
-  mkdirSync(logDir);
+  try {
+    mkdirSync(logDir, { recursive: true });
+  } catch (error) {
+    // Dizin zaten varsa veya oluşturma hatası olursa görmezden gel
+    console.warn(`Warning creating log directory: ${error}`);
+  }
 }
 
 // Define log format

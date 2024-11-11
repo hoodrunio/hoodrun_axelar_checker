@@ -8,6 +8,7 @@ import {
   PollSendEvent,
 } from "ws/event/PollSendEvent";
 import { PollEvent } from "ws/event/eventHelper";
+import { AmplifierEventType } from "@/types/amplifier";
 
 const { axelarVoterAddress: userVoterAddress, mainnetAxelarWsUrls } = appConfig;
 
@@ -80,6 +81,7 @@ export class AxelarWsClient {
     this.subscribeToValidatorVoteEvents({
       voterAddress: userVoterAddress,
     });
+    this.subscribeToAmplifierEvents();
   }
   private subscribeToPollEvents() {
     const pollSendEvents = [
@@ -113,5 +115,18 @@ export class AxelarWsClient {
         );
       }
     });
+  }
+
+  private subscribeToAmplifierEvents() {
+    const subscribeMessage = {
+      jsonrpc: "2.0",
+      method: "subscribe",
+      id: "0",
+      params: {
+        query: `tm.event='Tx' AND (${AmplifierEventType.POLL_STARTED} OR ${AmplifierEventType.SIGNING_STARTED})`
+      }
+    };
+
+    this.ws.send(JSON.stringify(subscribeMessage));
   }
 }
