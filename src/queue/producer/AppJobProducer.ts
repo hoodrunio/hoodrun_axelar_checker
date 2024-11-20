@@ -1,5 +1,5 @@
 import Queue from "bull";
-import AppQueueFactory from "queue/queue/AppQueueFactory";
+import AppQueueFactory from "@/queue/queue/AppQueueFactory";
 
 class JobProducer {
   addJob<T>(

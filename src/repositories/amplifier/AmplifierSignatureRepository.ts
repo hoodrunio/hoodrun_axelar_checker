@@ -1,5 +1,5 @@
 import BaseRepository from '@/repositories/base.repository';
-import { IAmplifierSignature, IAmplifierSignatureDocument, SignatureStatus } from '@/database/models/amplifier/signature.interface';
+import { IAmplifierSignature, IAmplifierSignatureDocument, SignatureStatus, SignatureType } from '@/database/models/amplifier/signature.interface';
 import AmplifierSignatureDbModel from '@/database/models/amplifier/signature.model';
 
 export class AmplifierSignatureRepository extends BaseRepository<IAmplifierSignature, IAmplifierSignatureDocument> {
@@ -14,18 +14,18 @@ export class AmplifierSignatureRepository extends BaseRepository<IAmplifierSigna
   async updateSignatureStatus(
     sessionId: string, 
     verifier: string, 
-    status: 'Yes' | 'Unsubmitted' | 'Invalid'
+    status: SignatureType
   ): Promise<void> {
     const signature = await this.findBySessionId(sessionId);
     if (!signature) return;
 
     const sigIndex = signature.signatures.findIndex(s => s.verifier === verifier);
     if (sigIndex === -1) {
-      signature.signatures.push({ verifier, status, submittedAt: Date.now() });
+      signature.signatures.push({ verifier, status: status as SignatureType, submittedAt: Date.now() });
     } else {
       signature.signatures[sigIndex] = { 
         ...signature.signatures[sigIndex], 
-        status, 
+        status: status as SignatureType, 
         submittedAt: Date.now() 
       };
     }

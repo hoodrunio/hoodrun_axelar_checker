@@ -19,9 +19,9 @@ import {
   convertPubKeyToBech32,
 } from "@utils/cosmos/cosmosConverter";
 import { logger } from "@utils/logger";
-import { xSeconds } from "queue/jobHelper";
-import appJobProducer from "queue/producer/AppJobProducer";
-import AppQueueFactory from "queue/queue/AppQueueFactory";
+import { xSeconds } from "@/queue/jobHelper";
+import appJobProducer from "@/queue/producer/AppJobProducer";
+import AppQueueFactory from "@/queue/queue/AppQueueFactory";
 
 export const VAL_ALL_INFO_CHECKER = "valAllInfoChecker";
 

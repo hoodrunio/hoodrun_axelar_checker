@@ -41,8 +41,14 @@ export interface PubKeyInfo {
 
 export interface SignatureInfo {
   verifier: string;
-  status: 'Yes' | 'Unsubmitted' | 'Invalid';
+  status: SignatureType;
   submittedAt?: number;
+}
+
+export enum SignatureType {
+  YES = 'Yes',
+  UNSUBMITTED = 'Unsubmitted',
+  INVALID = 'Invalid'
 }
 
 export enum SignatureStatus {

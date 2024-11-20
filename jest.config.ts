@@ -25,6 +25,7 @@ const config: Config.InitialOptions = {
     '^@tests/(.*)$': '<rootDir>/src/tests/$1'
   },
   setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
+  setupFiles: ['<rootDir>/src/tests/setup/redis-mock.ts'],
   testMatch: [
     '**/__tests__/**/*.+(ts|tsx|js)',
     '**/?(*.)+(spec|test).+(ts|tsx|js)'

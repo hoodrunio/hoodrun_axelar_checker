@@ -8,80 +8,121 @@ import {
   PollSendEvent,
 } from "@/ws/event/PollSendEvent";
 import { PollEvent } from "@/ws/event/eventHelper";
+import { ActiveAmplifierEvents } from "@/ws/event/AmplifierEventHelper";
+import { EventEmitter } from "events";
 
 const { axelarVoterAddress: userVoterAddress, mainnetAxelarWsUrls } = appConfig;
 
-export class AxelarWsClient {
-  ws: WebSocket;
-  private eventListeners: { [event: string]: Function[] } = {};
+export class AxelarWsClient extends EventEmitter {
+  private evmWs: WebSocket | null;
+  private amplifierWs: WebSocket | null;
+  private readonly MAX_RETRIES = 5;
+  private evmRetryCount = 0;
+  private evmIsReconnecting = false;
+  private amplifierRetryCount = 0;
+  private amplifierIsReconnecting = false;
 
   constructor() {
-    const url = mainnetAxelarWsUrls[0];
-    // console.log(url);
+    super();
+    this.evmWs = null;
+    this.amplifierWs = null;
+    this.connect();
+  }
 
-    this.ws = new WebSocket(url, {
+  private connect() {
+    const url = mainnetAxelarWsUrls[0];
+    
+    // EVM WebSocket bağlantısı
+    this.evmWs = new WebSocket(url, this.getWsOptions());
+    this.initEvmWebSocketEvents();
+
+    // Amplifier WebSocket bağlantısı
+    this.amplifierWs = new WebSocket(url, this.getWsOptions());
+    this.initAmplifierWebSocketEvents();
+  }
+
+  private getWsOptions() {
+    return {
       headers: {
         connection: "Upgrade",
         upgrade: "websocket",
         "sec-websocket-version": "13",
-        "Sec-WebSocket-Extensions":
-        "permessage-deflate; client_max_window_bits",
+        "Sec-WebSocket-Extensions": "permessage-deflate; client_max_window_bits",
       },
-    });
-    this.initWebSocketEvents();
+    };
   }
 
-  // New on method
-  on(event: string, callback: Function) {
-    if (!this.eventListeners[event]) {
-      this.eventListeners[event] = [];
-    }
-    this.eventListeners[event].push(callback);
-  }
+  private initEvmWebSocketEvents() {
+    if (!this.evmWs) return;
 
-  // Emit event method
-  private emit(event: string, ...args: any[]) {
-    const listeners = this.eventListeners[event];
-    if (listeners) {
-      listeners.forEach(listener => listener(...args));
-    }
-  }
-
-  // Update WebSocket events
-  private initWebSocketEvents() {
-    this.ws.onopen = (params) => {
-      console.log("connected to Axelar ws", params.target.url);
-      this.initOnOpen();
-      this.emit('connect', params);
+    this.evmWs.onopen = (event) => {
+      this.evmRetryCount = 0;
+      this.evmIsReconnecting = false;
+      logger.info("EVM WebSocket connected");
+      super.emit("evm-connect", event);
+      this.initEvmSubscriptions();
     };
 
-    this.ws.onmessage = (event) => {
+    this.evmWs.onmessage = (event) => {
       addWsMessageResultHandlerJob({ messageData: event?.data });
-      this.emit('message', event);
+      super.emit('evm-message', event);
     };
 
-    this.ws.onclose = () => {
-      console.log("disconnected from Axelar ws");
-      this.emit('disconnect');
+    this.evmWs.onclose = (event) => {
+      logger.error('EVM WebSocket connection closed:', event);
+      
+      if (this.evmRetryCount < this.MAX_RETRIES) {
+        setTimeout(() => {
+          if (!this.evmIsReconnecting) {
+            this.reconnectEvmWs();
+          }
+        }, 1000);
+      }
     };
 
-    this.ws.onerror = (error) => {
-      console.error("WebSocket error:", error);
-      this.emit('error', error);
+    this.evmWs.onerror = (error) => {
+      logger.error("EVM WebSocket error:", error);
+      super.emit('evm-error', error);
     };
   }
 
-  private initOnOpen() {
-    this.subscribeAllEvents();
+  private initAmplifierWebSocketEvents() {
+    if (!this.amplifierWs) return;
+
+    this.amplifierWs.onopen = (event) => {
+      logger.info("Connected to Axelar Amplifier WS");
+      this.initAmplifierSubscriptions();
+      super.emit('amplifier-connect', event);
+    };
+
+    this.amplifierWs.onmessage = (event) => {
+      addWsMessageResultHandlerJob({ messageData: event?.data });
+      super.emit('amplifier-message', event);
+    };
+
+    this.amplifierWs.onclose = () => {
+      logger.info("Disconnected from Axelar Amplifier WS");
+      super.emit('amplifier-disconnect');
+      this.reconnectAmplifierWs();
+    };
+
+    this.amplifierWs.onerror = (error) => {
+      logger.error("Amplifier WebSocket error:", error);
+      super.emit('amplifier-error', error);
+    };
   }
 
-  private subscribeAllEvents() {
+  // EVM subscriptions
+  private initEvmSubscriptions() {
     this.subscribeToPollEvents();
     this.subscribeToValidatorVoteEvents({
       voterAddress: userVoterAddress,
     });
   }
+
   private subscribeToPollEvents() {
+    if (!this.evmWs) return;
+
     const pollSendEvents = [
       ActivePollEvents.ConfirmDeposit,
       ActivePollEvents.ConfirmERC20Deposit,
@@ -90,11 +131,8 @@ export class AxelarWsClient {
     ];
 
     pollSendEvents.forEach((event) => {
-      this.ws.send(event.asWsSubscribeEventString());
+      this.evmWs?.send(event.asWsSubscribeEventString());
     });
-  }
-  private subscribeToPollVoteEvent() {
-    this.ws.send(ActivePollVotedEvents.Voted.asWsSubscribeEventString());
   }
 
   public subscribeToValidatorVoteEvents({
@@ -102,16 +140,109 @@ export class AxelarWsClient {
   }: {
     voterAddress: string;
   }) {
+    if (!this.evmWs) return;
+
     const event = new PollSendEvent(PollEvent.Voted, {
       voterAddress,
     });
-    this.ws.send(event.asWsSubscribeEventString(), (err) => {
+    this.evmWs.send(event.asWsSubscribeEventString(), (err) => {
       if (err) {
         logger.error(
-          `Error on subscribe voter ws votes for ${voterAddress} `,
+          `Error on subscribe voter ws votes for ${voterAddress}`,
           err
         );
       }
     });
+  }
+
+  // Amplifier subscriptions
+  private initAmplifierSubscriptions() {
+    if (!this.amplifierWs) return;
+
+    Object.values(ActiveAmplifierEvents).forEach(event => {
+      this.amplifierWs?.send(event.asWsSubscribeEventString(), (err) => {
+        if (err) {
+          logger.error(
+            `Error subscribing to amplifier event: ${event.constructor.name}`,
+            err
+          );
+        }
+      });
+    });
+  }
+
+  // Reconnection logic
+  private async reconnectEvmWs() {
+    if (this.evmRetryCount >= this.MAX_RETRIES) {
+      logger.error("Max retry attempts reached for EVM WebSocket");
+      return;
+    }
+
+    if (this.evmIsReconnecting) return;
+    
+    try {
+      this.evmIsReconnecting = true;
+      this.evmRetryCount++;
+      
+      logger.info(`EVM WebSocket reconnection attempt ${this.evmRetryCount}`);
+      
+      const url = mainnetAxelarWsUrls[0];
+      this.evmWs = new WebSocket(url, this.getWsOptions());
+      this.initEvmWebSocketEvents();
+      
+    } catch (error) {
+      logger.error('Error during EVM WebSocket reconnection:', error);
+    } finally {
+      this.evmIsReconnecting = false;
+    }
+  }
+
+  private async reconnectAmplifierWs() {
+    if (this.amplifierIsReconnecting) return;
+    this.amplifierIsReconnecting = true;
+
+    try {
+      this.amplifierRetryCount++;
+
+      if (this.amplifierRetryCount > this.MAX_RETRIES) {
+        logger.error("Max retry attempts reached for Amplifier WebSocket");
+        this.amplifierRetryCount = 0;
+        this.amplifierIsReconnecting = false;
+        return;
+      }
+
+      const delay = Math.min(1000 * Math.pow(2, this.amplifierRetryCount), 30000);
+      await new Promise(resolve => setTimeout(resolve, delay));
+
+      const url = mainnetAxelarWsUrls[0];
+      this.amplifierWs = new WebSocket(url, this.getWsOptions());
+      this.initAmplifierWebSocketEvents();
+      
+    } catch (error) {
+      logger.error(`Amplifier WebSocket reconnection attempt ${this.amplifierRetryCount} failed:`, error);
+      if (this.amplifierRetryCount >= this.MAX_RETRIES) {
+        logger.error("Max retry attempts reached for Amplifier WebSocket");
+        this.amplifierRetryCount = 0;
+      }
+    } finally {
+      this.amplifierIsReconnecting = false;
+    }
+  }
+
+  // Cleanup method for tests
+  public cleanup() {
+    if (this.evmWs) {
+      this.evmWs.close();
+      this.evmWs = null;
+    }
+    if (this.amplifierWs) {
+      this.amplifierWs.close();
+      this.amplifierWs = null;
+    }
+    
+    this.evmRetryCount = 0;
+    this.evmIsReconnecting = false;
+    this.amplifierRetryCount = 0;
+    this.amplifierIsReconnecting = false;
   }
 }

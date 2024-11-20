@@ -1,5 +1,5 @@
 import BaseRepository from '@/repositories/base.repository';
-import { IAmplifierPoll, IAmplifierPollDocument, PollStatus } from '@/database/models/amplifier/poll.interface';
+import { IAmplifierPoll, IAmplifierPollDocument, PollStatus, VoteInfo, VoteType } from '@/database/models/amplifier/poll.interface';
 import AmplifierPollDbModel from '@/database/models/amplifier/poll.model';
 
 export class AmplifierPollRepository extends BaseRepository<IAmplifierPoll, IAmplifierPollDocument> {
@@ -14,7 +14,7 @@ export class AmplifierPollRepository extends BaseRepository<IAmplifierPoll, IAmp
   async updateVoteStatus(
     pollId: string, 
     voter: string, 
-    vote: 'Yes' | 'No' | 'Unsubmitted'
+    vote: VoteType
   ): Promise<void> {
     const poll = await this.findByPollId(pollId);
     if (!poll) return;
@@ -25,7 +25,7 @@ export class AmplifierPollRepository extends BaseRepository<IAmplifierPoll, IAmp
 
     await this.updateOne(
       { pollId }, 
-      { votes: updatedVotes }
+      { votes: updatedVotes as VoteInfo[] }
     );
   }
 
@@ -37,6 +37,6 @@ export class AmplifierPollRepository extends BaseRepository<IAmplifierPoll, IAmp
       throw new Error(`Invalid status: ${status}`);
     }
     
-    await this.updateOne({ pollId }, { status });
+    await this.updateOne({ pollId }, { status: status as PollStatus });
   }
 } 

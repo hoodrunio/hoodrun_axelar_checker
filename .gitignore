@@ -141,3 +141,4 @@ example-txs/ws-sign-submit.json
 .env.test
 base.js
 package-lock.json
+package-lock.json

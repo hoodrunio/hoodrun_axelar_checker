@@ -34,8 +34,14 @@ export interface PollStartedEvent {
 
 export interface VoteInfo {
   voter: string;
-  vote: 'Yes' | 'No' | 'Unsubmitted';
+  vote: VoteType;
   votedAt?: number;
+}
+  
+export enum VoteType {
+  YES = 'Yes',
+  NO = 'No',
+  UNSUBMITTED = 'Unsubmitted'
 }
 
 export interface IAmplifierPoll extends IBaseInterface {

@@ -3,9 +3,9 @@ import { AppDb } from "@/database/database";
 import { NotificationEvent, NotificationType } from "@/database/models/notification/notification.interface";
 import { AxelarBalanceQueryService } from "@/services/rest/AxelarBalanceQueryService";
 import { logger } from "@utils/logger";
-import { xSeconds } from "queue/jobHelper";
-import appJobProducer from "queue/producer/AppJobProducer";
-import AppQueueFactory from "queue/queue/AppQueueFactory";
+import { xSeconds } from "@/queue/jobHelper";
+import appJobProducer from "@/queue/producer/AppJobProducer";
+import AppQueueFactory from "@/queue/queue/AppQueueFactory";
 
 const BROADCASTER_BALANCE_CHECKER = "broadcasterBalanceChecker";
 

@@ -4,12 +4,14 @@ import { logger } from "@/utils/logger";
 import { 
   IAmplifierPoll, 
   PollStartedEvent,
-  PollStatus 
+  PollStatus,
+  VoteType
 } from "@/database/models/amplifier/poll.interface";
 import { 
   IAmplifierSignature, 
   SigningStartedEvent,
-  SignatureStatus
+  SignatureStatus,
+  SignatureType
 } from "@/database/models/amplifier/signature.interface";
 
 // Type guard fonksiyonları
@@ -76,7 +78,7 @@ export class AmplifierEventHandler {
         status: PollStatus.PENDING,
         votes: event.participants.map(participant => ({
           voter: participant,
-          vote: 'Unsubmitted'
+          vote: 'Unsubmitted' as VoteType
         }))
       };
 
@@ -86,7 +88,7 @@ export class AmplifierEventHandler {
       for (const participant of event.participants) {
         const voteStatus = await this.queryService.getVoteStatus(participant, event.poll_id);
         if (voteStatus !== 'Unsubmitted') {
-          await amplifierPollRepo.updateVoteStatus(event.poll_id, participant, voteStatus);
+          await amplifierPollRepo.updateVoteStatus(event.poll_id, participant, voteStatus as VoteType);
         }
       }
     } catch (error) {
@@ -125,7 +127,7 @@ export class AmplifierEventHandler {
         status: SignatureStatus.PENDING,
         signatures: Object.entries(event.pub_keys).map(([address]) => ({
           verifier: address,
-          status: 'Unsubmitted'
+          status: 'Unsubmitted' as SignatureType
         }))
       };
 
@@ -135,7 +137,7 @@ export class AmplifierEventHandler {
       for (const [address] of Object.entries(event.pub_keys)) {
         const sigStatus = await this.queryService.getSignatureStatus(address, event.session_id);
         if (sigStatus !== 'Unsubmitted') {
-          await amplifierSignatureRepo.updateSignatureStatus(event.session_id, address, sigStatus);
+          await amplifierSignatureRepo.updateSignatureStatus(event.session_id, address, sigStatus as SignatureType);
         }
       }
     } catch (error) {
