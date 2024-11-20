@@ -138,3 +138,6 @@ example-txs/ws-sign-complete.json
 example-txs/ws-sign-start.json
 example-txs/ws-sign-submit.json
 .cursorrules
+.env.test
+base.js
+package-lock.json

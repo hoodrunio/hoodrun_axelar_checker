@@ -1,6 +1,6 @@
-import BaseRepository from '@repositories/base.repository';
-import { IAmplifierSignature, IAmplifierSignatureDocument } from '@database/models/amplifier/signature.interface';
-import AmplifierSignatureDbModel from '@database/models/amplifier/signature.model';
+import BaseRepository from '@/repositories/base.repository';
+import { IAmplifierSignature, IAmplifierSignatureDocument, SignatureStatus } from '@/database/models/amplifier/signature.interface';
+import AmplifierSignatureDbModel from '@/database/models/amplifier/signature.model';
 
 export class AmplifierSignatureRepository extends BaseRepository<IAmplifierSignature, IAmplifierSignatureDocument> {
   constructor() {
@@ -33,10 +33,14 @@ export class AmplifierSignatureRepository extends BaseRepository<IAmplifierSigna
     await this.updateOne({ sessionId }, { signatures: signature.signatures });
   }
 
-  async updateSessionStatus(
-    sessionId: string, 
-    status: 'Pending' | 'Completed' | 'Failed'
+  async updateStatus(
+    sessionId: string,
+    status: SignatureStatus
   ): Promise<void> {
+    if (!Object.values(SignatureStatus).includes(status)) {
+      throw new Error(`Invalid status: ${status}`);
+    }
+    
     await this.updateOne({ sessionId }, { status });
   }
 } 

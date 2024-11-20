@@ -1,77 +1,201 @@
-import { MongoMemoryServer } from 'mongodb-memory-server';
-import { MongoClient, Db } from 'mongodb';
+import { connectTestDb, disconnectTestDb, cleanupCollections } from '@/utils/test-helpers';
 import { AmplifierPollRepository } from '@/repositories/amplifier/AmplifierPollRepository';
 import { AmplifierSignatureRepository } from '@/repositories/amplifier/AmplifierSignatureRepository';
+import mongoose from 'mongoose';
+import { PollStatus } from '@/database/models/amplifier/poll.interface';
+import { SignatureStatus } from '@/database/models/amplifier/signature.interface';
 
 describe('Amplifier Repositories Tests', () => {
-  let mongoServer: MongoMemoryServer;
-  let connection: MongoClient;
-  let db: Db;
   let pollRepo: AmplifierPollRepository;
   let signatureRepo: AmplifierSignatureRepository;
 
   beforeAll(async () => {
-    mongoServer = await MongoMemoryServer.create();
-    connection = await MongoClient.connect(mongoServer.getUri());
-    db = connection.db('testdb');
+    await connectTestDb();
     pollRepo = new AmplifierPollRepository();
     signatureRepo = new AmplifierSignatureRepository();
+    await cleanupCollections();
   });
 
   afterAll(async () => {
-    await connection.close();
-    await mongoServer.stop();
+    await disconnectTestDb();
   });
 
   describe('AmplifierPollRepository', () => {
     it('should create and find a poll', async () => {
       const pollData = {
-        pollId: 'test-poll-1',
-        sourceChain: 'ethereum',
-        participants: ['validator1', 'validator2'],
+        pollId: '53',
+        sourceChain: 'stellar',
+        participants: ['axelar1', 'axelar12'],
         expiresAt: Date.now() + 3600000,
         height: 1000,
         hash: '0x123',
-        status: 'Pending' as const,
-        votes: [],
-        createdAt: Date.now(),
-        updatedAt: Date.now()
+        status: PollStatus.PENDING,
+        votes: []
       };
 
-      await pollRepo.create(pollData);
+      const created = await pollRepo.create(pollData);
+      expect(created).toBeTruthy();
+      expect(created.pollId).toBe(pollData.pollId);
+
       const found = await pollRepo.findByPollId(pollData.pollId);
-      
       expect(found).toBeTruthy();
       expect(found?.pollId).toBe(pollData.pollId);
     });
 
-    // Add more tests...
+    it('should update vote status', async () => {
+      const pollData = {
+        pollId: '54',
+        sourceChain: 'stellar',
+        participants: ['axelar1', 'axelar12'],
+        expiresAt: Date.now() + 3600000,
+        height: 1000,
+        hash: '0x123',
+        status: PollStatus.PENDING,
+        votes: []
+      };
+
+      await pollRepo.create(pollData);
+      await pollRepo.updateVoteStatus(pollData.pollId, 'axelar1', 'Yes');
+
+      const updated = await pollRepo.findByPollId(pollData.pollId);
+      expect(updated?.votes[0].voter).toBe('axelar1');
+      expect(updated?.votes[0].vote).toBe('Yes');
+    });
+
+    it('should handle multiple votes from same voter', async () => {
+      const pollData = {
+        pollId: '56',
+        sourceChain: 'stellar',
+        participants: ['axelar1', 'axelar12'],
+        expiresAt: Date.now() + 3600000,
+        height: 1000,
+        hash: '0x123',
+        status: PollStatus.PENDING,
+        votes: []
+      };
+
+      await pollRepo.create(pollData);
+      await pollRepo.updateVoteStatus(pollData.pollId, 'axelar1', 'No');
+      await pollRepo.updateVoteStatus(pollData.pollId, 'axelar1', 'Yes');
+
+      const updated = await pollRepo.findByPollId(pollData.pollId);
+      expect(updated?.votes.length).toBe(1);
+      expect(updated?.votes[0].voter).toBe('axelar1');
+      expect(updated?.votes[0].vote).toBe('Yes');
+    });
+
+    it('should update poll status', async () => {
+      const pollData = {
+        pollId: '57',
+        sourceChain: 'stellar',
+        participants: ['axelar1', 'axelar12'],
+        expiresAt: Date.now() + 3600000,
+        height: 1000,
+        hash: '0x123',
+        status: PollStatus.PENDING,
+        votes: []
+      };
+
+      await pollRepo.create(pollData);
+      await pollRepo.updatePollStatus(pollData.pollId, PollStatus.COMPLETED);
+
+      const updated = await pollRepo.findByPollId(pollData.pollId);
+      expect(updated?.status).toBe(PollStatus.COMPLETED);
+    });
   });
 
   describe('AmplifierSignatureRepository', () => {
     it('should create and find a signature session', async () => {
       const signatureData = {
-        sessionId: 'test-session-1',
-        chain: 'ethereum',
+        sessionId: '55',
+        chain: 'stellar',
         contractAddress: '0x456',
-        pubKeys: [{ address: 'validator1', ecdsaKey: 'key1' }],
+        pubKeys: [{ address: 'axelar1', ecdsaKey: 'key1' }],
         verifierSetId: 'set1',
         expiresAt: Date.now() + 3600000,
         height: 1000,
         hash: '0x789',
-        status: 'Pending' as const,
-        signatures: [],
-        createdAt: Date.now(),
-        updatedAt: Date.now()
+        status: SignatureStatus.PENDING,
+        signatures: []
       };
 
-      await signatureRepo.create(signatureData);
+      const created = await signatureRepo.create(signatureData);
+      console.log('Created signature:', created);
+
+      expect(created).toBeTruthy();
+      expect(created.sessionId).toBe(signatureData.sessionId);
+
       const found = await signatureRepo.findBySessionId(signatureData.sessionId);
+      console.log('Found signature:', found);
       
       expect(found).toBeTruthy();
       expect(found?.sessionId).toBe(signatureData.sessionId);
     });
 
-    // Add more tests...
+    it('should update signature status', async () => {
+      const signatureData = {
+        sessionId: '56',
+        chain: 'stellar',
+        contractAddress: '0x456',
+        pubKeys: [{ address: 'axelar1', ecdsaKey: 'key1' }],
+        verifierSetId: 'set1',
+        expiresAt: Date.now() + 3600000,
+        height: 1000,
+        hash: '0x789',
+        status: SignatureStatus.PENDING,
+        signatures: []
+      };
+
+      const created = await signatureRepo.create(signatureData);
+      await signatureRepo.updateStatus(created.sessionId, SignatureStatus.COMPLETED);
+
+      const updated = await signatureRepo.findBySessionId(created.sessionId);
+      expect(updated?.status).toBe(SignatureStatus.COMPLETED);
+    });
+
+    it('should handle non-existent session', async () => {
+      const nonExistentId = 'non-existent-id';
+      const found = await signatureRepo.findBySessionId(nonExistentId);
+      expect(found).toBeNull();
+    });
+  });
+
+  describe('Error Handling', () => {
+    it('should handle duplicate poll creation', async () => {
+      const pollData = {
+        pollId: '58',
+        sourceChain: 'stellar',
+        participants: ['axelar1'],
+        expiresAt: Date.now() + 3600000,
+        height: 1000,
+        hash: '0x123',
+        status: PollStatus.PENDING,
+        votes: []
+      };
+
+      await pollRepo.create(pollData);
+      
+      // Aynı pollId ile tekrar oluşturmayı dene
+      await expect(pollRepo.create(pollData)).rejects.toThrow();
+    });
+
+    it('should handle invalid status updates', async () => {
+      const pollData = {
+        pollId: '59',
+        sourceChain: 'stellar',
+        participants: ['axelar1'],
+        expiresAt: Date.now() + 3600000,
+        height: 1000,
+        hash: '0x123',
+        status: PollStatus.PENDING,
+        votes: []
+      };
+
+      await pollRepo.create(pollData);
+      
+      // @ts-expect-error - Geçersiz durum testi
+      await expect(pollRepo.updatePollStatus(pollData.pollId, 'InvalidStatus'))
+        .rejects.toThrow();
+    });
   });
 }); 

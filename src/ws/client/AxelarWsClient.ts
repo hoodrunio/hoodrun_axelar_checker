@@ -1,13 +1,13 @@
 import appConfig from "@config/index";
 import { logger } from "@utils/logger";
-import { addWsMessageResultHandlerJob } from "queue/jobs/WsMessageResultHandler";
+import { addWsMessageResultHandlerJob } from "@/queue/jobs/WsMessageResultHandler";
 import { WebSocket } from "ws";
 import {
   ActivePollEvents,
   ActivePollVotedEvents,
   PollSendEvent,
-} from "ws/event/PollSendEvent";
-import { PollEvent } from "ws/event/eventHelper";
+} from "@/ws/event/PollSendEvent";
+import { PollEvent } from "@/ws/event/eventHelper";
 
 const { axelarVoterAddress: userVoterAddress, mainnetAxelarWsUrls } = appConfig;
 
@@ -25,7 +25,7 @@ export class AxelarWsClient {
         upgrade: "websocket",
         "sec-websocket-version": "13",
         "Sec-WebSocket-Extensions":
-          "permessage-deflate; client_max_window_bits",
+        "permessage-deflate; client_max_window_bits",
       },
     });
     this.initWebSocketEvents();

@@ -43,7 +43,10 @@ const AmplifierPollSchema: Schema<IAmplifierPollDocument> = createAppSchema<IAmp
   status: {
     type: String,
     required: true,
-    enum: ['Pending', 'Completed', 'Failed']
+    enum: {
+      values: ['Pending', 'Completed', 'Failed'],
+      message: '{VALUE} is not a valid status'
+    }
   },
   votes: {
     type: [VoteInfoSchema],

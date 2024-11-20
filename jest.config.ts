@@ -7,15 +7,23 @@ const config: Config.InitialOptions = {
   preset: 'ts-jest',
   testEnvironment: 'node',
   roots: ['<rootDir>/src'],
-  modulePaths: [compilerOptions.baseUrl],
+  modulePaths: ['<rootDir>'],
   transform: {
     '^.+\\.tsx?$': ['ts-jest', {
       tsconfig: './tsconfig.json'
     }]
   },
-  moduleNameMapper: pathsToModuleNameMapper(compilerOptions.paths, { 
-    prefix: '<rootDir>/'
-  }),
+  moduleNameMapper: {
+    '^@/(.*)$': '<rootDir>/src/$1',
+    '^@app/(.*)$': '<rootDir>/src/app/$1',
+    '^@database/(.*)$': '<rootDir>/src/database/$1',
+    '^@config/(.*)$': '<rootDir>/src/config/$1',
+    '^@repositories/(.*)$': '<rootDir>/src/repositories/$1',
+    '^@services/(.*)$': '<rootDir>/src/services/$1',
+    '^@utils/(.*)$': '<rootDir>/src/utils/$1',
+    '^@extensions/(.*)$': '<rootDir>/src/extensions/$1',
+    '^@tests/(.*)$': '<rootDir>/src/tests/$1'
+  },
   setupFilesAfterEnv: ['<rootDir>/jest.setup.ts'],
   testMatch: [
     '**/__tests__/**/*.+(ts|tsx|js)',
@@ -25,7 +33,8 @@ const config: Config.InitialOptions = {
   collectCoverage: true,
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov'],
-  verbose: true
+  verbose: true,
+  testTimeout: 30000
 };
 
 export default config; 

@@ -1,5 +1,5 @@
 import { Data } from "ws";
-import { IWsEventData } from "ws/interface/IWsEventMessage";
+import { IWsEventData } from "@/ws/interface/IWsEventMessage";
 
 const parseWsMessageEventData = (messageData: Data): string => {
   let data: string = "Unknown data type received from ws";

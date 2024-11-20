@@ -1,5 +1,5 @@
 import BaseRepository from '@/repositories/base.repository';
-import { IAmplifierPoll, IAmplifierPollDocument } from '@/database/models/amplifier/poll.interface';
+import { IAmplifierPoll, IAmplifierPollDocument, PollStatus } from '@/database/models/amplifier/poll.interface';
 import AmplifierPollDbModel from '@/database/models/amplifier/poll.model';
 
 export class AmplifierPollRepository extends BaseRepository<IAmplifierPoll, IAmplifierPollDocument> {
@@ -19,20 +19,24 @@ export class AmplifierPollRepository extends BaseRepository<IAmplifierPoll, IAmp
     const poll = await this.findByPollId(pollId);
     if (!poll) return;
 
-    const voteIndex = poll.votes.findIndex(v => v.voter === voter);
-    if (voteIndex === -1) {
-      poll.votes.push({ voter, vote, votedAt: Date.now() });
-    } else {
-      poll.votes[voteIndex] = { ...poll.votes[voteIndex], vote, votedAt: Date.now() };
-    }
+    const filteredVotes = poll.votes.filter(v => v.voter !== voter);
+    const newVote = { voter, vote, votedAt: Date.now() };
+    const updatedVotes = [...filteredVotes, newVote];
 
-    await this.updateOne({ pollId }, { votes: poll.votes });
+    await this.updateOne(
+      { pollId }, 
+      { votes: updatedVotes }
+    );
   }
 
   async updatePollStatus(
     pollId: string, 
-    status: 'Pending' | 'Completed' | 'Failed'
+    status: PollStatus
   ): Promise<void> {
+    if (!Object.values(PollStatus).includes(status)) {
+      throw new Error(`Invalid status: ${status}`);
+    }
+    
     await this.updateOne({ pollId }, { status });
   }
 } 
