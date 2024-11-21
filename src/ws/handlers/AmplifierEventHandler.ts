@@ -88,20 +88,107 @@ export class AmplifierEventHandler {
     }
 
     try {
-      const sessionId = event.session_id;
-
-      // Signature session'ı oluştur ve sonucu kullan
-      const signatureData = await this.createSignatureSession(event);
-      if (!signatureData) {
-        throw new Error(`Failed to create signature session for ${sessionId}`);
-      }
-      
-      // Queue'ya tracking job ekle
-      await this.queueManager.addSignatureTrackingJob(sessionId, Number(event.height));
-      
-      this.logger.info(`Signature session ${sessionId} created with status ${signatureData.status} and tracking job added`);
+      const session = await this.createSignatureSession(event);
+      this.logger.info(`Signature session created/found`, {
+        sessionId: session.sessionId,
+        chain: session.chain,
+        verifierCount: session.pubKeys.length,
+        status: session.status
+      });
     } catch (error) {
-      this.logger.error('Error handling signing started event:', error);
+      this.logger.error('Error handling signing started event:', {
+        error,
+        sessionId: event.session_id,
+        chain: event.chain,
+        height: event.height
+      });
+      throw error;
+    }
+  }
+
+  async handlePollCompleted(event: { poll_id: string; status: string }): Promise<void> {
+    const { poll_id, status: eventStatus } = event;
+    let status: PollStatus;
+    let reason: string;
+
+    if (eventStatus.includes('succeeded_on_source_chain')) {
+      status = PollStatus.COMPLETED;
+      reason = 'Poll succeeded on source chain';
+    } else if (eventStatus.includes('not_found_on_source_chain')) {
+      status = PollStatus.FAILED;
+      reason = 'Poll not found on source chain';
+    } else {
+      status = PollStatus.FAILED;
+      reason = `Unknown status: ${eventStatus}`;
+    }
+
+    try {
+      const { amplifierPollRepo } = this.db;
+      const poll = await amplifierPollRepo.findByPollId(poll_id);
+      
+      if (!poll) {
+        throw new Error(`Poll ${poll_id} not found`);
+      }
+
+      // Even if poll is completed/failed, we should continue tracking votes until expiration
+      if (poll.expiresAt > Date.now()) {
+        await this.queueManager.addPollTrackingJob(poll_id, poll.height);
+        this.logger.info(`Continued vote tracking for poll ${poll_id} until expiration`, {
+          currentStatus: status,
+          expiresAt: poll.expiresAt,
+          reason
+        });
+      }
+
+      await amplifierPollRepo.updatePollStatus(poll_id, status);
+      this.logger.info(`Updated poll ${poll_id} status`, {
+        previousStatus: poll.status,
+        newStatus: status,
+        reason,
+        eventStatus,
+        expiresAt: poll.expiresAt
+      });
+    } catch (error) {
+      this.logger.error('Error handling poll completed event:', {
+        error,
+        pollId: poll_id,
+        status: eventStatus,
+        reason
+      });
+      throw error;
+    }
+  }
+
+  async handleSigningCompleted(event: { session_id: string }): Promise<void> {
+    const { session_id: sessionId } = event;
+    try {
+      const { amplifierSignatureRepo } = this.db;
+      const session = await amplifierSignatureRepo.findBySessionId(sessionId);
+
+      if (!session) {
+        throw new Error(`Signature session ${sessionId} not found`);
+      }
+
+      // Even if signing is completed, continue tracking until expiration
+      if (session.expiresAt > Date.now()) {
+        await this.queueManager.addSignatureTrackingJob(sessionId, session.height);
+        this.logger.info(`Continued signature tracking for session ${sessionId} until expiration`, {
+          currentStatus: session.status,
+          expiresAt: session.expiresAt
+        });
+      }
+
+      await amplifierSignatureRepo.updateStatus(sessionId, SignatureStatus.COMPLETED);
+      this.logger.info(`Updated signature session ${sessionId} status`, {
+        previousStatus: session.status,
+        newStatus: SignatureStatus.COMPLETED,
+        expiresAt: session.expiresAt
+      });
+    } catch (error) {
+      this.logger.error('Error handling signing completed event:', {
+        error,
+        sessionId
+      });
       throw error;
     }
   }
@@ -110,83 +197,145 @@ export class AmplifierEventHandler {
     const { amplifierPollRepo } = this.db;
     const pollId = event.poll_id.replace(/"/g, '');
 
-    const existingPoll = await amplifierPollRepo.findByPollId(pollId);
-    if (existingPoll) {
-      this.logger.warn(`Poll ${pollId} already exists, skipping creation`);
-      return existingPoll;
+    try {
+      const existingPoll = await amplifierPollRepo.findByPollId(pollId);
+      if (existingPoll) {
+        this.logger.warn(`Poll ${pollId} already exists`, {
+          existingStatus: existingPoll.status,
+          existingHeight: existingPoll.height,
+          newHeight: event.height
+        });
+        return existingPoll;
+      }
+
+      const pollData: IAmplifierPoll = {
+        pollId,
+        sourceChain: event.source_chain,
+        participants: event.participants,
+        expiresAt: Number(event.expires_at),
+        height: Number(event.height),
+        hash: event.hash,
+        status: PollStatus.PENDING,
+        votes: event.participants.map(participant => ({
+          voter: participant,
+          vote: 'Unsubmitted' as VoteType,
+          lastChecked: Date.now()
+        }))
+      };
+
+      const createdPoll = await amplifierPollRepo.create(pollData);
+      
+      // Start tracking immediately
+      await this.queueManager.addPollTrackingJob(pollId, Number(event.height));
+      
+      this.logger.info(`Created new poll ${pollId}`, {
+        sourceChain: event.source_chain,
+        participantCount: event.participants.length,
+        expiresAt: event.expires_at,
+        height: event.height
+      });
+
+      return createdPoll;
+    } catch (error) {
+      this.logger.error(`Failed to create poll ${pollId}:`, {
+        error,
+        sourceChain: event.source_chain,
+        height: event.height,
+        participants: event.participants.length
+      });
+      throw error;
     }
-
-    const pollData: IAmplifierPoll = {
-      pollId,
-      sourceChain: event.source_chain,
-      participants: event.participants,
-      expiresAt: Number(event.expires_at),
-      height: Number(event.height),
-      hash: event.hash,
-      status: PollStatus.PENDING,
-      votes: event.participants.map(participant => ({
-        voter: participant,
-        vote: 'Unsubmitted' as VoteType
-      }))
-    };
-
-    return await amplifierPollRepo.create(pollData);
   }
 
   private async createSignatureSession(event: SigningStartedEvent): Promise<IAmplifierSignature> {
     const { amplifierSignatureRepo } = this.db;
+    const sessionId = event.session_id;
     
-    const existingSession = await amplifierSignatureRepo.findBySessionId(event.session_id);
-    if (existingSession) {
-      this.logger.warn(`Signature session ${event.session_id} already exists, skipping creation`);
-      return existingSession;
+    try {
+      const existingSession = await amplifierSignatureRepo.findBySessionId(sessionId);
+      if (existingSession) {
+        this.logger.warn(`Signature session ${sessionId} already exists`, {
+          existingStatus: existingSession.status,
+          existingHeight: existingSession.height,
+          newHeight: event.height
+        });
+        return existingSession;
+      }
+
+      const signatureData: IAmplifierSignature = {
+        sessionId,
+        chain: event.chain,
+        contractAddress: event._contract_address,
+        pubKeys: Object.entries(event.pub_keys).map(([address, data]) => ({
+          address,
+          ecdsaKey: data.ecdsa,
+          lastChecked: Date.now()
+        })),
+        verifierSetId: event.verifier_set_id,
+        expiresAt: Number(event.expires_at),
+        height: Number(event.height),
+        hash: event.hash,
+        status: SignatureStatus.PENDING,
+        signatures: Object.entries(event.pub_keys).map(([address]) => ({
+          verifier: address,
+          status: 'Unsubmitted' as SignatureType,
+          lastChecked: Date.now()
+        }))
+      };
+
+      const createdSession = await amplifierSignatureRepo.create(signatureData);
+      
+      // Start tracking immediately
+      await this.queueManager.addSignatureTrackingJob(sessionId, Number(event.height));
+      
+      this.logger.info(`Created new signature session ${sessionId}`, {
+        chain: event.chain,
+        verifierCount: Object.keys(event.pub_keys).length,
+        expiresAt: event.expires_at,
+        height: event.height
+      });
+
+      return createdSession;
+    } catch (error) {
+      this.logger.error(`Failed to create signature session ${sessionId}:`, {
+        error,
+        chain: event.chain,
+        height: event.height,
+        verifierCount: Object.keys(event.pub_keys).length
+      });
+      throw error;
     }
-
-    const signatureData: IAmplifierSignature = {
-      sessionId: event.session_id,
-      chain: event.chain,
-      contractAddress: event._contract_address,
-      pubKeys: Object.entries(event.pub_keys).map(([address, data]) => ({
-        address,
-        ecdsaKey: data.ecdsa
-      })),
-      verifierSetId: event.verifier_set_id,
-      expiresAt: Number(event.expires_at),
-      height: Number(event.height),
-      hash: event.hash,
-      status: SignatureStatus.PENDING,
-      signatures: Object.entries(event.pub_keys).map(([address]) => ({
-        verifier: address,
-        status: 'Unsubmitted' as SignatureType
-      }))
-    };
-
-    return await amplifierSignatureRepo.create(signatureData);
   }
 
-  async handlePollCompleted(event: { poll_id: string; status: string }): Promise<void> {
-    const status = event.status.includes('not_found_on_source_chain') ? PollStatus.FAILED :
-                   event.status.includes('succeeded_on_source_chain') ? PollStatus.COMPLETED : 
-                   PollStatus.FAILED;
+  private isExpired(expiresAt: number): boolean {
+    return expiresAt <= Date.now();
+  }
 
+  private shouldContinueTracking(expiresAt: number, status: PollStatus | SignatureStatus): boolean {
+    return !this.isExpired(expiresAt) && 
+           status !== PollStatus.FAILED && 
+           status !== SignatureStatus.FAILED;
+  }
+
+  private async updateTrackingTimestamps(pollId: string): Promise<void> {
     try {
       const { amplifierPollRepo } = this.db;
-      await amplifierPollRepo.updatePollStatus(event.poll_id, status as PollStatus);
-      this.logger.info(`Updated poll ${event.poll_id} status to ${status}`);
-    } catch (error) {
-      this.logger.error('Error handling poll completed event:', error);
-      throw error;
-    }
-  }
+      const poll = await amplifierPollRepo.findByPollId(pollId);
+      
+      if (!poll) return;
 
-  async handleSigningCompleted(event: { session_id: string }): Promise<void> {
-    try {
-      const { amplifierSignatureRepo } = this.db;
-      await amplifierSignatureRepo.updateStatus(event.session_id, SignatureStatus.COMPLETED);
-      this.logger.info(`Updated signature session ${event.session_id} status to ${SignatureStatus.COMPLETED}`);
+      const now = Date.now();
+      const updatedVotes = poll.votes.map(vote => ({
+        ...vote,
+        lastChecked: now
+      }));
+
+      await amplifierPollRepo.updateVoteStatus(pollId, updatedVotes, );
     } catch (error) {
-      this.logger.error('Error handling signing completed event:', error);
-      throw error;
+      this.logger.error('Error updating tracking timestamps:', {
+        error,
+        pollId
+      });
     }
   }
 }

@@ -142,3 +142,5 @@ example-txs/ws-sign-submit.json
 base.js
 package-lock.json
 package-lock.json
+amplifier-guide
+.DS_Store
