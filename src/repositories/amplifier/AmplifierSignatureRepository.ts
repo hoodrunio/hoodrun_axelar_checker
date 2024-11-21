@@ -43,4 +43,8 @@ export class AmplifierSignatureRepository extends BaseRepository<IAmplifierSigna
     
     await this.updateOne({ sessionId }, { status });
   }
+
+  async count(filter: Record<string, any> = {}): Promise<number> {
+    return await this.getModel().countDocuments(filter).exec();
+  }
 } 

@@ -1,5 +1,6 @@
 import { AppDb } from "@/database/database";
 import { AmplifierQueryService } from "@/services/rest/AmplifierQueryService";
+import { AmplifierQueueManager } from "@/queue/queue/AmplifierQueueManager";
 import { logger } from "@/utils/logger";
 import { 
   IAmplifierPoll, 
@@ -44,12 +45,15 @@ function isSigningStartedEvent(event: unknown): event is SigningStartedEvent {
 
 export class AmplifierEventHandler {
   private readonly logger: typeof logger;
+  private readonly queueManager: AmplifierQueueManager;
 
   constructor(
     private readonly db: AppDb,
-    private readonly queryService: AmplifierQueryService
+    private readonly queryService: AmplifierQueryService,
+    queueManager?: AmplifierQueueManager
   ) {
     this.logger = logger;
+    this.queueManager = queueManager || new AmplifierQueueManager(db, queryService);
   }
 
   async handlePollStarted(event: unknown): Promise<void> {
@@ -59,38 +63,18 @@ export class AmplifierEventHandler {
     }
 
     try {
-      const { amplifierPollRepo } = this.db;
-
-      const existingPoll = await amplifierPollRepo.findByPollId(event.poll_id);
-      if (existingPoll) {
-        this.logger.warn(`Poll ${event.poll_id} already exists, skipping`);
-        return;
-      }
-
       const pollId = event.poll_id.replace(/"/g, '');
-      const pollData: IAmplifierPoll = {
-        pollId,
-        sourceChain: event.source_chain,
-        participants: event.participants,
-        expiresAt: Number(event.expires_at),
-        height: Number(event.height),
-        hash: event.hash,
-        status: PollStatus.PENDING,
-        votes: event.participants.map(participant => ({
-          voter: participant,
-          vote: 'Unsubmitted' as VoteType
-        }))
-      };
 
-      await amplifierPollRepo.create(pollData);
-      this.logger.info(`Created new poll ${event.poll_id}`);
-
-      for (const participant of event.participants) {
-        const voteStatus = await this.queryService.getVoteStatus(participant, event.poll_id);
-        if (voteStatus !== 'Unsubmitted') {
-          await amplifierPollRepo.updateVoteStatus(event.poll_id, participant, voteStatus as VoteType);
-        }
+      // Poll'u oluştur ve sonucu kullan
+      const pollData = await this.createPoll(event);
+      if (!pollData) {
+        throw new Error(`Failed to create poll for ${pollId}`);
       }
+      
+      // Queue'ya tracking job ekle
+      await this.queueManager.addPollTrackingJob(pollId, Number(event.height));
+      
+      this.logger.info(`Poll ${pollId} created with status ${pollData.status} and tracking job added`);
     } catch (error) {
       this.logger.error('Error handling poll started event:', error);
       throw error;
@@ -104,46 +88,80 @@ export class AmplifierEventHandler {
     }
 
     try {
-      const { amplifierSignatureRepo } = this.db;
+      const sessionId = event.session_id;
 
-      const existingSession = await amplifierSignatureRepo.findBySessionId(event.session_id);
-      if (existingSession) {
-        this.logger.warn(`Signature session ${event.session_id} already exists, skipping`);
-        return;
+      // Signature session'ı oluştur ve sonucu kullan
+      const signatureData = await this.createSignatureSession(event);
+      if (!signatureData) {
+        throw new Error(`Failed to create signature session for ${sessionId}`);
       }
-
-      const signatureData: IAmplifierSignature = {
-        sessionId: event.session_id,
-        chain: event.chain,
-        contractAddress: event._contract_address,
-        pubKeys: Object.entries(event.pub_keys).map(([address, data]) => ({
-          address,
-          ecdsaKey: data.ecdsa
-        })),
-        verifierSetId: event.verifier_set_id,
-        expiresAt: Number(event.expires_at),
-        height: Number(event.height),
-        hash: event.hash,
-        status: SignatureStatus.PENDING,
-        signatures: Object.entries(event.pub_keys).map(([address]) => ({
-          verifier: address,
-          status: 'Unsubmitted' as SignatureType
-        }))
-      };
-
-      await amplifierSignatureRepo.create(signatureData);
-      this.logger.info(`Created new signature session ${event.session_id}`);
-
-      for (const [address] of Object.entries(event.pub_keys)) {
-        const sigStatus = await this.queryService.getSignatureStatus(address, event.session_id);
-        if (sigStatus !== 'Unsubmitted') {
-          await amplifierSignatureRepo.updateSignatureStatus(event.session_id, address, sigStatus as SignatureType);
-        }
-      }
+      
+      // Queue'ya tracking job ekle
+      await this.queueManager.addSignatureTrackingJob(sessionId, Number(event.height));
+      
+      this.logger.info(`Signature session ${sessionId} created with status ${signatureData.status} and tracking job added`);
     } catch (error) {
       this.logger.error('Error handling signing started event:', error);
       throw error;
     }
+  }
+
+  private async createPoll(event: PollStartedEvent): Promise<IAmplifierPoll> {
+    const { amplifierPollRepo } = this.db;
+    const pollId = event.poll_id.replace(/"/g, '');
+
+    const existingPoll = await amplifierPollRepo.findByPollId(pollId);
+    if (existingPoll) {
+      this.logger.warn(`Poll ${pollId} already exists, skipping creation`);
+      return existingPoll;
+    }
+
+    const pollData: IAmplifierPoll = {
+      pollId,
+      sourceChain: event.source_chain,
+      participants: event.participants,
+      expiresAt: Number(event.expires_at),
+      height: Number(event.height),
+      hash: event.hash,
+      status: PollStatus.PENDING,
+      votes: event.participants.map(participant => ({
+        voter: participant,
+        vote: 'Unsubmitted' as VoteType
+      }))
+    };
+
+    return await amplifierPollRepo.create(pollData);
+  }
+
+  private async createSignatureSession(event: SigningStartedEvent): Promise<IAmplifierSignature> {
+    const { amplifierSignatureRepo } = this.db;
+    
+    const existingSession = await amplifierSignatureRepo.findBySessionId(event.session_id);
+    if (existingSession) {
+      this.logger.warn(`Signature session ${event.session_id} already exists, skipping creation`);
+      return existingSession;
+    }
+
+    const signatureData: IAmplifierSignature = {
+      sessionId: event.session_id,
+      chain: event.chain,
+      contractAddress: event._contract_address,
+      pubKeys: Object.entries(event.pub_keys).map(([address, data]) => ({
+        address,
+        ecdsaKey: data.ecdsa
+      })),
+      verifierSetId: event.verifier_set_id,
+      expiresAt: Number(event.expires_at),
+      height: Number(event.height),
+      hash: event.hash,
+      status: SignatureStatus.PENDING,
+      signatures: Object.entries(event.pub_keys).map(([address]) => ({
+        verifier: address,
+        status: 'Unsubmitted' as SignatureType
+      }))
+    };
+
+    return await amplifierSignatureRepo.create(signatureData);
   }
 
   async handlePollCompleted(event: { poll_id: string; status: string }): Promise<void> {

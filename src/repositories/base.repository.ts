@@ -80,6 +80,9 @@ class BaseRepository<T extends IBaseInterface, TD extends T & Document> {
       .findByIdAndUpdate(id, { updatedAt: new Date() }, { new: true })
       .exec();
   }
+  async count(filter: Record<string, any> = {}): Promise<number> {
+    return await this._model.countDocuments(filter).exec();
+  }
 }
 
 export default BaseRepository;

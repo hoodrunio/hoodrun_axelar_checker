@@ -1,7 +1,8 @@
 import { AxiosInstance } from 'axios';
 import { VoteResponse } from '@database/models/amplifier/poll.interface';
 import { SignatureResponse } from '@database/models/amplifier/signature.interface';
-
+import { SignatureType } from '@database/models/amplifier/signature.interface';
+import { VoteType } from '@database/models/amplifier/poll.interface';
 export class AmplifierQueryService {
   constructor(
     private readonly axiosClient: AxiosInstance,
@@ -10,13 +11,13 @@ export class AmplifierQueryService {
     console.log('Service initialized with base URL:', baseUrl);
   }
 
-  async getVoteStatus(voterAddress: string, pollId: string): Promise<'Yes' | 'No' | 'Unsubmitted'> {
+  async getVoteStatus(voterAddress: string, pollId: string): Promise<VoteType> {
     try {
       const url = `${this.baseUrl}/cosmos/tx/v1beta1/txs`;
       
       let offset = 0;
       const limit = 100;
-      let status: 'Yes' | 'No' | 'Unsubmitted' = 'Unsubmitted';
+      let status: VoteType = VoteType.UNSUBMITTED;
       let total = 0;
 
       do {
@@ -44,7 +45,7 @@ export class AmplifierQueryService {
 
         if (voteTx) {
           const votes = voteTx.tx.body.messages[0].msg?.vote?.votes || [];
-          status = votes.includes('succeeded_on_chain') ? 'Yes' : 'No';
+          status = votes.includes('succeeded_on_chain') ? VoteType.YES : VoteType.NO;
           break;
         }
 
@@ -60,7 +61,7 @@ export class AmplifierQueryService {
     }
   }
 
-  async getSignatureStatus(verifierAddress: string, sessionId: string): Promise<'Yes' | 'Unsubmitted' | 'Invalid'> {
+  async getSignatureStatus(verifierAddress: string, sessionId: string): Promise<SignatureType> {
     try {
       const url = `${this.baseUrl}/cosmos/tx/v1beta1/txs`;
       
@@ -92,14 +93,14 @@ export class AmplifierQueryService {
 
         if (signatureTx) {
           const hasSignature = signatureTx.tx.body.messages[0].msg?.submit_signature?.signature;
-          return hasSignature ? 'Yes' : 'Invalid';
+          return hasSignature ? SignatureType.YES : SignatureType.INVALID;
         }
 
         offset += limit;
 
       } while (offset < total);
 
-      return 'Unsubmitted';
+      return SignatureType.UNSUBMITTED;
 
     } catch (error) {
       console.error(`Error fetching signature status for verifier ${verifierAddress} and session ${sessionId}:`, error);

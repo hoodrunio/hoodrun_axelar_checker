@@ -1,159 +1,203 @@
 import { AmplifierEventHandler } from '@/ws/handlers/AmplifierEventHandler';
 import { AppDb } from '@/database/database';
 import { AmplifierQueryService } from '@/services/rest/AmplifierQueryService';
-import { AmplifierPollRepository } from '@/repositories/amplifier/AmplifierPollRepository';
-import { AmplifierSignatureRepository } from '@/repositories/amplifier/AmplifierSignatureRepository';
+import { AmplifierQueueManager } from '@/queue/queue/AmplifierQueueManager';
+import { PollStatus, VoteType } from '@/database/models/amplifier/poll.interface';
+import { SignatureStatus, SignatureType } from '@/database/models/amplifier/signature.interface';
+import { mock, MockProxy } from 'jest-mock-extended';
+
+// Mock Bull
+jest.mock('bull', () => {
+  return jest.fn().mockImplementation(() => ({
+    add: jest.fn().mockResolvedValue({}),
+    process: jest.fn(),
+    on: jest.fn()
+  }));
+});
 
 describe('AmplifierEventHandler', () => {
   let handler: AmplifierEventHandler;
-  let mockDb: jest.Mocked<AppDb>;
-  let mockQueryService: jest.Mocked<AmplifierQueryService>;
-  let mockAmplifierPollRepo: jest.Mocked<AmplifierPollRepository>;
-  let mockAmplifierSignatureRepo: jest.Mocked<AmplifierSignatureRepository>;
+  let mockDb: MockProxy<AppDb>;
+  let mockQueryService: MockProxy<AmplifierQueryService>;
+  let mockQueueManager: MockProxy<AmplifierQueueManager>;
+  let mockAmplifierPollRepo: MockProxy<any>;
+  let mockAmplifierSignatureRepo: MockProxy<any>;
 
   beforeEach(() => {
-    // Mock repository'leri oluştur
-    mockAmplifierPollRepo = {
+    // Mock repositories
+    mockAmplifierPollRepo = mock<any>({
       findByPollId: jest.fn(),
       create: jest.fn(),
-      updateVoteStatus: jest.fn(),
-      updatePollStatus: jest.fn(),
-    } as any;
+      updatePollStatus: jest.fn()
+    });
 
-    mockAmplifierSignatureRepo = {
+    mockAmplifierSignatureRepo = mock<any>({
       findBySessionId: jest.fn(),
       create: jest.fn(),
-      updateSignatureStatus: jest.fn(),
-      updateStatus: jest.fn(),
-    } as any;
+      updateStatus: jest.fn()
+    });
 
-    // AppDb mock'unu oluştur
-    mockDb = {
+    // Mock DB
+    mockDb = mock<AppDb>({
       amplifierPollRepo: mockAmplifierPollRepo,
-      amplifierSignatureRepo: mockAmplifierSignatureRepo,
-    } as any;
+      amplifierSignatureRepo: mockAmplifierSignatureRepo
+    });
 
-    // QueryService mock'unu oluştur
-    mockQueryService = {
-      getVoteStatus: jest.fn(),
-      getSignatureStatus: jest.fn(),
-    } as any;
+    // Mock services
+    mockQueryService = mock<AmplifierQueryService>();
+    mockQueueManager = mock<AmplifierQueueManager>({
+      addPollTrackingJob: jest.fn().mockResolvedValue(undefined),
+      addSignatureTrackingJob: jest.fn().mockResolvedValue(undefined)
+    });
 
+    // Create handler with mocked dependencies
     handler = new AmplifierEventHandler(mockDb, mockQueryService);
+    // @ts-ignore - private property access for testing
+    handler['queueManager'] = mockQueueManager;
   });
 
   describe('handlePollStarted', () => {
-    const pollStartedEvent = {
+    const validPollEvent = {
       source_chain: 'ethereum',
       poll_id: '123',
       participants: ['axelar1', 'axelar2'],
-      expires_at: 1000,
-      height: 500,
+      expires_at: '1000',
+      height: '500',
       hash: '0xabc'
     };
 
-    it('should create new poll and check votes', async () => {
-      // Mock davranışlarını ayarla
+    it('should create new poll and add tracking job', async () => {
       mockAmplifierPollRepo.findByPollId.mockResolvedValue(null);
-      mockQueryService.getVoteStatus.mockResolvedValue('Unsubmitted');
+      mockAmplifierPollRepo.create.mockResolvedValue({
+        pollId: '123',
+        status: PollStatus.PENDING
+      });
 
-      await handler.handlePollStarted(pollStartedEvent);
+      await handler.handlePollStarted(validPollEvent);
 
       expect(mockAmplifierPollRepo.create).toHaveBeenCalledWith(expect.objectContaining({
         pollId: '123',
         sourceChain: 'ethereum',
-        status: 'Pending'
+        status: PollStatus.PENDING,
+        votes: [
+          { voter: 'axelar1', vote: VoteType.UNSUBMITTED },
+          { voter: 'axelar2', vote: VoteType.UNSUBMITTED }
+        ]
       }));
-      expect(mockQueryService.getVoteStatus).toHaveBeenCalledTimes(2);
+      expect(mockQueueManager.addPollTrackingJob).toHaveBeenCalledWith('123', 500);
     });
 
-    it('should skip if poll already exists', async () => {
-      mockAmplifierPollRepo.findByPollId.mockResolvedValue({
+    it('should skip poll creation if poll exists', async () => {
+      const existingPoll = {
         pollId: '123',
-        sourceChain: 'ethereum',
-        status: 'Pending'
-      } as any);
+        status: PollStatus.PENDING
+      };
+      mockAmplifierPollRepo.findByPollId.mockResolvedValue(existingPoll);
 
-      await handler.handlePollStarted(pollStartedEvent);
+      await handler.handlePollStarted(validPollEvent);
 
       expect(mockAmplifierPollRepo.create).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('handlePollCompleted', () => {
-    it('should handle not_found_on_source_chain status', async () => {
-      const event = {
-        poll_id: '164',
-        status: 'not_found_on_source_chain'
-      };
-      
-      await handler.handlePollCompleted(event);
-      
-      expect(mockAmplifierPollRepo.updatePollStatus)
-        .toHaveBeenCalledWith('164', 'Failed');
+      expect(mockQueueManager.addPollTrackingJob).toHaveBeenCalledWith('123', 500);
     });
 
-    it('should handle succeeded_on_source_chain status', async () => {
-      const event = {
-        poll_id: '164',
-        status: 'succeeded_on_source_chain'
+    it('should throw error for invalid event format', async () => {
+      const invalidEvent = {
+        source_chain: 'ethereum'
+        // missing required fields
       };
-      
-      await handler.handlePollCompleted(event);
-      
-      expect(mockAmplifierPollRepo.updatePollStatus)
-        .toHaveBeenCalledWith('164', 'Completed');
+
+      await expect(handler.handlePollStarted(invalidEvent))
+        .rejects
+        .toThrow('Invalid event format');
     });
   });
 
   describe('handleSigningStarted', () => {
-    const signingStartedEvent = {
-      chain: 'avalanche-fuji',
-      session_id: '2159',
+    const validSigningEvent = {
+      chain: 'ethereum',
+      session_id: '456',
+      _contract_address: '0xdef',
       pub_keys: {
-        'axelar1vtducwafe07uhh2lfkr7xye6szk5plxtcufj6y': {
-          ecdsa: '03ae2cee8567997e88db024267e0776f5f72c6da3bd61c28c4b5446482b7d6cdc9'
-        }
+        'axelar1': { ecdsa: 'key1' },
+        'axelar2': { ecdsa: 'key2' }
       },
-      expires_at: '4073996',
-      verifier_set_id: '23b68feb94699d32d762ad7264d416d5324408018f9ecd172a3aadd38a255c36',
-      _contract_address: 'axelar19jxy26z0qnnspa45y5nru0l5rmy9d637z5km2ndjxthfxf5qaswst9290r',
-      height: '4073986',
-      hash: '2E59170F5E2C123F4381534F404C9CDCFDAA966DE819EDBA3586FB3E394294CB'
+      verifier_set_id: '789',
+      expires_at: '2000',
+      height: '600',
+      hash: '0xghi'
     };
 
-    it('should create new signature session', async () => {
-      // Mock fonksiyonlarını ayarla
+    it('should create new signature session and add tracking job', async () => {
       mockAmplifierSignatureRepo.findBySessionId.mockResolvedValue(null);
-      mockQueryService.getSignatureStatus.mockResolvedValue('Unsubmitted');
+      mockAmplifierSignatureRepo.create.mockResolvedValue({
+        sessionId: '456',
+        status: SignatureStatus.PENDING
+      });
 
-      await handler.handleSigningStarted(signingStartedEvent);
+      await handler.handleSigningStarted(validSigningEvent);
 
-      expect(mockAmplifierSignatureRepo.create).toHaveBeenCalledWith(
-        expect.objectContaining({
-          sessionId: '2159',
-          chain: 'avalanche-fuji',
-          status: 'Pending'
-        })
-      );
+      expect(mockAmplifierSignatureRepo.create).toHaveBeenCalledWith(expect.objectContaining({
+        sessionId: '456',
+        chain: 'ethereum',
+        status: SignatureStatus.PENDING,
+        signatures: [
+          { verifier: 'axelar1', status: SignatureType.UNSUBMITTED },
+          { verifier: 'axelar2', status: SignatureType.UNSUBMITTED }
+        ]
+      }));
+      expect(mockQueueManager.addSignatureTrackingJob).toHaveBeenCalledWith('456', 600);
     });
 
-    it('should skip if signature session already exists', async () => {
-      mockAmplifierSignatureRepo.findBySessionId.mockResolvedValue({
-        sessionId: '2159',
-        chain: 'avalanche-fuji',
-        status: 'Pending'
-      } as any);
+    it('should skip signature session creation if session exists', async () => {
+      const existingSession = {
+        sessionId: '456',
+        status: SignatureStatus.PENDING
+      };
+      mockAmplifierSignatureRepo.findBySessionId.mockResolvedValue(existingSession);
 
-      await handler.handleSigningStarted(signingStartedEvent);
+      await handler.handleSigningStarted(validSigningEvent);
 
       expect(mockAmplifierSignatureRepo.create).not.toHaveBeenCalled();
+      expect(mockQueueManager.addSignatureTrackingJob).toHaveBeenCalledWith('456', 600);
+    });
+  });
+
+  describe('handlePollCompleted', () => {
+    it('should update poll status to COMPLETED when succeeded', async () => {
+      const event = {
+        poll_id: '123',
+        status: 'succeeded_on_source_chain'
+      };
+
+      await handler.handlePollCompleted(event);
+
+      expect(mockAmplifierPollRepo.updatePollStatus)
+        .toHaveBeenCalledWith('123', PollStatus.COMPLETED);
     });
 
-    it('should handle invalid event format', async () => {
-      const invalidEvent = { chain: 'avalanche-fuji' };
-      await expect(handler.handleSigningStarted(invalidEvent as any))
-        .rejects.toThrow('Invalid event format');
+    it('should update poll status to FAILED when not found', async () => {
+      const event = {
+        poll_id: '123',
+        status: 'not_found_on_source_chain'
+      };
+
+      await handler.handlePollCompleted(event);
+
+      expect(mockAmplifierPollRepo.updatePollStatus)
+        .toHaveBeenCalledWith('123', PollStatus.FAILED);
+    });
+  });
+
+  describe('handleSigningCompleted', () => {
+    it('should update signature session status to COMPLETED', async () => {
+      const event = {
+        session_id: '456'
+      };
+
+      await handler.handleSigningCompleted(event);
+
+      expect(mockAmplifierSignatureRepo.updateStatus)
+        .toHaveBeenCalledWith('456', SignatureStatus.COMPLETED);
     });
   });
 }); 

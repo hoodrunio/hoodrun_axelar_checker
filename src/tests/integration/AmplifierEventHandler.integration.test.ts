@@ -1,196 +1,201 @@
 import { AmplifierEventHandler } from '@/ws/handlers/AmplifierEventHandler';
 import { AppDb } from '@/database/database';
 import { AmplifierQueryService } from '@/services/rest/AmplifierQueryService';
-import mongoose from 'mongoose';
+import { AmplifierQueueManager } from '@/queue/queue/AmplifierQueueManager';
 import { MongoMemoryServer } from 'mongodb-memory-server';
-import { config } from 'dotenv';
+import mongoose from 'mongoose';
+import { PollStatus, VoteType } from '@/database/models/amplifier/poll.interface';
+import { SignatureStatus, SignatureType } from '@/database/models/amplifier/signature.interface';
 import axios from 'axios';
-import { PollStatus } from '@/database/models/amplifier/poll.interface';
-import { SignatureStatus } from '@/database/models/amplifier/signature.interface';
+import { mock } from 'jest-mock-extended';
 
-config();
+// Mock Bull
+jest.mock('bull', () => {
+  return jest.fn().mockImplementation(() => ({
+    add: jest.fn().mockResolvedValue({}),
+    process: jest.fn(),
+    on: jest.fn()
+  }));
+});
 
 describe('AmplifierEventHandler Integration Tests', () => {
   let handler: AmplifierEventHandler;
   let db: AppDb;
   let queryService: AmplifierQueryService;
-  let axiosInstance: ReturnType<typeof axios.create>;
   let mongoServer: MongoMemoryServer;
+  let axiosInstance: ReturnType<typeof axios.create>;
+  let mockQueueManager: AmplifierQueueManager;
 
   beforeAll(async () => {
-    // MongoDB Memory Server başlat
     mongoServer = await MongoMemoryServer.create();
     const mongoUri = mongoServer.getUri();
-    
-    // Memory Server'a bağlan
     await mongoose.connect(mongoUri);
-    
-    // Axios instance'ı oluştur
+
     axiosInstance = axios.create({
-      baseURL: "https://lcd-axelar.hoodrun.io",
+      baseURL: 'https://lcd-axelar.hoodrun.io',
       timeout: 5000
     });
 
     db = new AppDb();
-    queryService = new AmplifierQueryService(axiosInstance, "https://lcd-axelar.hoodrun.io");
-    handler = new AmplifierEventHandler(db, queryService);
+    queryService = new AmplifierQueryService(axiosInstance, 'https://lcd-axelar.hoodrun.io');
+
+    // Mock QueueManager
+    mockQueueManager = mock<AmplifierQueueManager>({
+      addPollTrackingJob: jest.fn().mockResolvedValue(undefined),
+      addSignatureTrackingJob: jest.fn().mockResolvedValue(undefined)
+    });
+
+    // Pass mockQueueManager to handler
+    handler = new AmplifierEventHandler(db, queryService, mockQueueManager);
   });
 
   afterAll(async () => {
-    // Bağlantıları kapat
     await mongoose.disconnect();
     await mongoServer.stop();
   });
 
   beforeEach(async () => {
-    // Her test öncesi koleksiyonları temizle
     const collections = await mongoose.connection.db?.collections();
     if (collections) {
       for (const collection of collections) {
         await collection.deleteMany({});
       }
     }
+    
+    // Reset mock calls
+    jest.clearAllMocks();
   });
 
-  describe('Poll Events Integration', () => {
-    it('should process real poll started event correctly', async () => {
-      const realPollEvent = {
-        source_chain: "eth-sepolia",
-        poll_id: "164",
-        participants: [
-          "axelar1vtducwafe07uhh2lfkr7xye6szk5plxtcufj6y",
-          "axelar1d30v0rf8pwm3vma9h2ms72vlk7zjfvpk3ecgl4",
-          "axelar19xly5upgdf48wrrr83yk6v8exsmnyqprmqzj4z"
-        ],
-        expires_at: "4078821",
-        height: "4078811",
-        hash: "324D4C552F8B2A4E49653E91973BA8D87B835073AEB64F5B361E2F970C1AAAAC"
+  describe('Poll Event Integration', () => {
+    const pollStartEvent = {
+      source_chain: 'ethereum',
+      poll_id: 'test-poll-123',
+      participants: ['axelar1test1', 'axelar1test2'],
+      expires_at: '1000',
+      height: '500',
+      hash: '0xabc123'
+    };
+
+    it('should handle complete poll lifecycle', async () => {
+      // 1. Poll başlatma
+      await handler.handlePollStarted(pollStartEvent);
+
+      // DB'den poll'u kontrol et
+      const createdPoll = await db.amplifierPollRepo.findByPollId('test-poll-123');
+      expect(createdPoll).toBeTruthy();
+      expect(createdPoll?.status).toBe(PollStatus.PENDING);
+      expect(createdPoll?.votes).toHaveLength(2);
+      expect(createdPoll?.votes[0].vote).toBe(VoteType.UNSUBMITTED);
+
+      // Queue job'ının eklendiğini kontrol et
+      expect(mockQueueManager.addPollTrackingJob).toHaveBeenCalledWith('test-poll-123', 500);
+
+      // 2. Poll tamamlama
+      const completionEvent = {
+        poll_id: 'test-poll-123',
+        status: 'succeeded_on_source_chain'
       };
+      await handler.handlePollCompleted(completionEvent);
 
-      await handler.handlePollStarted(realPollEvent);
-
-      const savedPoll = await db.amplifierPollRepo.findByPollId("164");
-      expect(savedPoll).toBeTruthy();
-      expect(savedPoll?.sourceChain).toBe("eth-sepolia");
-      expect(savedPoll?.participants).toHaveLength(3);
-      expect(savedPoll?.status).toBe(PollStatus.PENDING);
-      expect(savedPoll?.votes).toHaveLength(3);
+      // Güncellenmiş poll'u kontrol et
+      const completedPoll = await db.amplifierPollRepo.findByPollId('test-poll-123');
+      expect(completedPoll?.status).toBe(PollStatus.COMPLETED);
     });
 
-    it('should process real poll completed event correctly', async () => {
-      const pollData = {
-        pollId: "164",
-        sourceChain: "eth-sepolia",
-        participants: ["axelar1vtducwafe07uhh2lfkr7xye6szk5plxtcufj6y"],
-        expiresAt: Number("4078821"),
-        height: Number("4078811"),
-        hash: "324D4C552F8B2A4E49653E91973BA8D87B835073AEB64F5B361E2F970C1AAAAC",
-        status: PollStatus.PENDING,
-        votes: []
-      };
-      await db.amplifierPollRepo.create(pollData);
+    it('should handle duplicate poll events', async () => {
+      // İlk kez oluştur
+      await handler.handlePollStarted(pollStartEvent);
+      const firstPoll = await db.amplifierPollRepo.findByPollId('test-poll-123');
 
-      const realPollCompletedEvent = {
-        poll_id: "164",
-        status: "not_found_on_source_chain"
-      };
+      // Aynı event'i tekrar gönder
+      await handler.handlePollStarted(pollStartEvent);
+      const secondPoll = await db.amplifierPollRepo.findByPollId('test-poll-123');
 
-      await handler.handlePollCompleted(realPollCompletedEvent);
-
-      const updatedPoll = await db.amplifierPollRepo.findByPollId("164");
-      expect(updatedPoll?.status).toBe(PollStatus.FAILED);
-    });
-  });
-
-  describe('Signature Events Integration', () => {
-    it('should process real signing started event correctly', async () => {
-      const realSigningEvent = {
-        chain: "avalanche-fuji",
-        session_id: "2159",
-        _contract_address: "axelar19jxy26z0qnnspa45y5nru0l5rmy9d637z5km2ndjxthfxf5qaswst9290r",
-        pub_keys: {
-          "axelar1vtducwafe07uhh2lfkr7xye6szk5plxtcufj6y": {
-            "ecdsa": "03ae2cee8567997e88db024267e0776f5f72c6da3bd61c28c4b5446482b7d6cdc9"
-          }
-        },
-        verifier_set_id: "23b68feb94699d32d762ad7264d416d5324408018f9ecd172a3aadd38a255c36",
-        expires_at: "4073996",
-        height: "4073986",
-        hash: "2E59170F5E2C123F4381534F404C9CDCFDAA966DE819EDBA3586FB3E394294CB"
-      };
-
-      await handler.handleSigningStarted(realSigningEvent);
-
-      const savedSignature = await db.amplifierSignatureRepo.findBySessionId("2159");
-      expect(savedSignature).toBeTruthy();
-      expect(savedSignature?.chain).toBe("avalanche-fuji");
-      expect(savedSignature?.pubKeys).toHaveLength(1);
-      expect(savedSignature?.status).toBe(SignatureStatus.PENDING);
-      expect(savedSignature?.signatures).toHaveLength(1);
-    });
-
-    it('should process real signing completed event correctly', async () => {
-      const signatureData = {
-        sessionId: "2159",
-        chain: "avalanche-fuji",
-        contractAddress: "axelar19jxy26z0qnnspa45y5nru0l5rmy9d637z5km2ndjxthfxf5qaswst9290r",
-        pubKeys: [{
-          address: "axelar1vtducwafe07uhh2lfkr7xye6szk5plxtcufj6y",
-          ecdsaKey: "03ae2cee8567997e88db024267e0776f5f72c6da3bd61c28c4b5446482b7d6cdc9"
-        }],
-        verifierSetId: "23b68feb94699d32d762ad7264d416d5324408018f9ecd172a3aadd38a255c36",
-        expiresAt: Number("4073996"),
-        height: Number("4073986"),
-        hash: "2E59170F5E2C123F4381534F404C9CDCFDAA966DE819EDBA3586FB3E394294CB",
-        status: SignatureStatus.PENDING,
-        signatures: []
-      };
-      await db.amplifierSignatureRepo.create(signatureData);
-
-      const realSigningCompletedEvent = {
-        session_id: "2159",
-        chain: "avalanche-fuji",
-        completed_at: "4078821"
-      };
-
-      await handler.handleSigningCompleted(realSigningCompletedEvent);
-
-      const updatedSignature = await db.amplifierSignatureRepo.findBySessionId("2159");
-      expect(updatedSignature?.status).toBe(SignatureStatus.COMPLETED);
+      // Aynı poll ID'ye sahip tek bir kayıt olmalı
+      expect(firstPoll?.pollId).toBe(secondPoll?.pollId);
+      const pollCount = await db.amplifierPollRepo.count({ pollId: 'test-poll-123' });
+      expect(pollCount).toBe(1);
     });
   });
 
-  describe('Edge Cases', () => {
-    it('should handle duplicate poll events correctly', async () => {
-      const duplicatePollEvent = {
-        source_chain: "eth-sepolia",
-        poll_id: "164",
-        participants: ["axelar1vtducwafe07uhh2lfkr7xye6szk5plxtcufj6y"],
-        expires_at: "4078821",
-        height: "4078811",
-        hash: "324D4C552F8B2A4E49653E91973BA8D87B835073AEB64F5B361E2F970C1AAAAC"
+  describe('Signature Event Integration', () => {
+    const signStartEvent = {
+      chain: 'ethereum',
+      session_id: 'test-session-456',
+      _contract_address: '0xdef456',
+      pub_keys: {
+        'axelar1test1': { ecdsa: 'key1' },
+        'axelar1test2': { ecdsa: 'key2' }
+      },
+      verifier_set_id: '789',
+      expires_at: '2000',
+      height: '600',
+      hash: '0xghi789'
+    };
+
+    it('should handle complete signature lifecycle', async () => {
+      // 1. Signature session başlatma
+      await handler.handleSigningStarted(signStartEvent);
+
+      // DB'den session'ı kontrol et
+      const createdSession = await db.amplifierSignatureRepo.findBySessionId('test-session-456');
+      expect(createdSession).toBeTruthy();
+      expect(createdSession?.status).toBe(SignatureStatus.PENDING);
+      expect(createdSession?.signatures).toHaveLength(2);
+      expect(createdSession?.signatures[0].status).toBe(SignatureType.UNSUBMITTED);
+
+      // 2. Signature tamamlama
+      const completionEvent = {
+        session_id: 'test-session-456'
       };
+      await handler.handleSigningCompleted(completionEvent);
 
-      // İlk deneme
-      await handler.handlePollStarted(duplicatePollEvent);
-      const firstAttempt = await db.amplifierPollRepo.findByPollId("164");
-
-      // İkinci deneme
-      await handler.handlePollStarted(duplicatePollEvent);
-      const secondAttempt = await db.amplifierPollRepo.findByPollId("164");
-
-      expect(firstAttempt?.createdAt).toEqual(secondAttempt?.createdAt);
+      // Güncellenmiş session'ı kontrol et
+      const completedSession = await db.amplifierSignatureRepo.findBySessionId('test-session-456');
+      expect(completedSession?.status).toBe(SignatureStatus.COMPLETED);
     });
 
-    it('should handle malformed events gracefully', async () => {
-      const malformedEvent = {
-        source_chain: "eth-sepolia",
-        // poll_id eksik
-        participants: []
+    it('should handle error scenarios gracefully', async () => {
+      // Geçersiz event formatı
+      const invalidEvent = {
+        chain: 'ethereum'
+        // Eksik alanlar
       };
 
-      await expect(handler.handlePollStarted(malformedEvent))
-        .rejects.toThrow('Invalid event format');
+      await expect(handler.handleSigningStarted(invalidEvent))
+        .rejects
+        .toThrow('Invalid event format');
+
+      // DB'de hiçbir kayıt oluşturulmamalı
+      const sessionCount = await db.amplifierSignatureRepo.count({});
+      expect(sessionCount).toBe(0);
+    });
+  });
+
+  describe('Error Handling and Recovery', () => {
+    it('should handle database connection issues', async () => {
+      // Veritabanı bağlantısını geçici olarak kes
+      await mongoose.disconnect();
+
+      const pollStartEvent = {
+        source_chain: 'ethereum',
+        poll_id: 'test-poll-789',
+        participants: ['axelar1test1'],
+        expires_at: '1000',
+        height: '500',
+        hash: '0xabc789'
+      };
+
+      // İşlem hata vermeli
+      await expect(handler.handlePollStarted(pollStartEvent)).rejects.toThrow();
+
+      // Bağlantıyı geri yükle
+      await mongoose.connect(mongoServer.getUri());
+
+      // Şimdi işlem başarılı olmalı
+      await handler.handlePollStarted(pollStartEvent);
+      const poll = await db.amplifierPollRepo.findByPollId('test-poll-789');
+      expect(poll).toBeTruthy();
     });
   });
 }); 

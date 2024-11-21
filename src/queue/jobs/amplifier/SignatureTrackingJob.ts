@@ -45,7 +45,7 @@ export class SignatureTrackingJob {
       for (const sig of session.signatures) {
         const currentStatus = await this.queryService.getSignatureStatus(sig.verifier, sessionId);
         if (currentStatus !== sig.status) {
-          await amplifierSignatureRepo.updateSignatureStatus(sessionId, sig.verifier, currentStatus as SignatureType);
+          await amplifierSignatureRepo.updateSignatureStatus(sessionId, sig.verifier, currentStatus);
           this.logger.info(`Updated signature status for ${sig.verifier} in session ${sessionId} to ${currentStatus}`);
         }
       }
