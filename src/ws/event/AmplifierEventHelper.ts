@@ -2,10 +2,10 @@ import { IWsSubscribeEventType } from "@/ws/interface/IWsSubscribeEvent";
 import { BaseSendEvent } from "@/ws/event/BaseSendEvent";
 
 export enum AmplifierEventType {
-  POLL_STARTED = "wasm-messages_poll_started",
-  POLL_COMPLETED = "wasm-quorum_reached",
-  SIGNING_STARTED = "wasm-signing_started",
-  SIGNING_COMPLETED = "wasm-signing_completed"
+  POLL_STARTED = "wasm-messages_poll_started.poll_id",
+  POLL_COMPLETED = "wasm-quorum_reached.poll_id",
+  SIGNING_STARTED = "wasm-signing_started.session_id",
+  SIGNING_COMPLETED = "wasm-signing_completed.session_id"
 }
 
 export class AmplifierSendEvent extends BaseSendEvent {

@@ -58,7 +58,7 @@ export class AxelarWsClient extends EventEmitter {
     this.evmWs.onopen = (event) => {
       this.evmRetryCount = 0;
       this.evmIsReconnecting = false;
-      logger.info("EVM WebSocket connected");
+      logger.info("Connected to Axelar EVM WebSocket");
       super.emit("evm-connect", event);
       this.initEvmSubscriptions();
     };
@@ -69,7 +69,7 @@ export class AxelarWsClient extends EventEmitter {
     };
 
     this.evmWs.onclose = (event) => {
-      logger.error('EVM WebSocket connection closed:', event);
+      logger.error('Disconnected from Axelar EVM WebSocket:', event);
       
       if (this.evmRetryCount < this.MAX_RETRIES) {
         setTimeout(() => {
@@ -90,7 +90,7 @@ export class AxelarWsClient extends EventEmitter {
     if (!this.amplifierWs) return;
 
     this.amplifierWs.onopen = (event) => {
-      logger.info("Connected to Axelar Amplifier WS");
+      logger.info("Connected to Axelar Amplifier WebSocket");
       this.initAmplifierSubscriptions();
       super.emit('amplifier-connect', event);
     };
@@ -101,7 +101,7 @@ export class AxelarWsClient extends EventEmitter {
     };
 
     this.amplifierWs.onclose = () => {
-      logger.info("Disconnected from Axelar Amplifier WS");
+      logger.info("Disconnected from Axelar Amplifier WebSocket");
       super.emit('amplifier-disconnect');
       this.reconnectAmplifierWs();
     };

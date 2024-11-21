@@ -19,7 +19,11 @@ export interface AppConfigType {
   mainnetAxelarLCDRestBaseUrls: string[];
   mainnetAxelarRpcBaseUrls: string[];
   mainnetAxelarWsUrls: string[];
+  testnetAxelarRestBaseUrls: string[];
+  testnetAxelarRpcBaseUrls: string[];
+  testnetAxelarWsUrls: string[];
   tgToken: string;
+  monitoredVerifiers: string[];
   dbConnectionString: string | undefined;
   dbName: string;
   dbUser: string;

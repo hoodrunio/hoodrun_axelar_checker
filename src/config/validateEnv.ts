@@ -16,6 +16,8 @@ const {
   MAINNET_AXELAR_LCD_REST_BASE_URLS,
   MAINNET_AXELAR_WS_URLS,
   TESTNET_AXELAR_REST_BASE_URLS,
+  TESTNET_AXELAR_RPC_BASE_URLS,
+  TESTNET_AXELAR_WS_URLS,
   //Axelar
   AXELAR_VOTER_ADDRESS,
   BROADCASTER_BALANCE_THRESHOLD,
@@ -60,6 +62,9 @@ export const validateEnv = (): AppConfigType => {
     mainnetAxelarRestBaseUrls: parseStringArray(MAINNET_AXELAR_REST_BASE_URLS),
     mainnetAxelarWsUrls: parseStringArray(MAINNET_AXELAR_WS_URLS),
     mainnetAxelarLCDRestBaseUrls: parseStringArray(MAINNET_AXELAR_LCD_REST_BASE_URLS),
+    testnetAxelarRpcBaseUrls: parseStringArray(TESTNET_AXELAR_RPC_BASE_URLS),
+    testnetAxelarRestBaseUrls: parseStringArray(TESTNET_AXELAR_REST_BASE_URLS),
+    testnetAxelarWsUrls: parseStringArray(TESTNET_AXELAR_WS_URLS),
   };
 
   for (const prop in urlArrays) {
@@ -95,6 +100,10 @@ export const validateEnv = (): AppConfigType => {
     mainnetAxelarLCDRestBaseUrls: urlArrays.mainnetAxelarLCDRestBaseUrls,
     mainnetAxelarRpcBaseUrls: urlArrays.mainnetAxelarRpcBaseUrls,
     mainnetAxelarWsUrls: urlArrays.mainnetAxelarWsUrls,
+    testnetAxelarRestBaseUrls: urlArrays.testnetAxelarRestBaseUrls,
+    testnetAxelarRpcBaseUrls: urlArrays.testnetAxelarRpcBaseUrls,
+    testnetAxelarWsUrls: urlArrays.testnetAxelarWsUrls,
+    monitoredVerifiers: (process.env.MONITORED_VERIFIERS as string).split(","),
     tgToken: TG_TOKEN as string,
     dbConnectionString: DB_CONNECTION_STRING,
     dbName: DB_NAME as string,

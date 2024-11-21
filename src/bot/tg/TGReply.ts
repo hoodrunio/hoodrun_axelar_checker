@@ -4,7 +4,9 @@ import {
   RpcEndpointHealthNotification,
   UptimeNotification,
 } from "@/bot/tg/interface/notification";
-import { BroadcasterBalanceLowNotificationDataType, ChainRegistrationStatus } from "@/database/models/notification/notification.interface";
+import {
+  BroadcasterBalanceLowNotificationDataType, ChainRegistrationStatus, AmplifierSignatureNotificationDataType, AmplifierVoteNotificationDataType 
+} from "@/database/models/notification/notification.interface";
 import { PollVoteType } from "@database/models/polls/poll_vote/poll_vote.interface";
 
 import BigNumber from "bignumber.js";
@@ -156,6 +158,34 @@ export class TgReply {
     return `${this.evmSupportedChainReplyTitle(
       params[0]
     )}\n${contents}\n<b>${this.motivationMessage()}</b>`;
+  }
+
+  amplifierVoteReply(data: AmplifierVoteNotificationDataType): string {
+    const { pollId, voter, moniker, vote, timestamp } = data;
+    const date = new Date(timestamp).toLocaleString();
+    
+    return `🚨 <b>Amplifier Vote Alert</b>
+
+Verifier: <code>${moniker}</code> (${voter})
+Poll ID: <code>${pollId}</code>
+Vote Status: <b>${vote}</b>
+Time: ${date}
+
+This vote requires attention as it is either NO or UNSUBMITTED.`;
+  }
+
+  amplifierSignatureReply(data: AmplifierSignatureNotificationDataType): string {
+    const { sessionId, verifier, moniker, status, timestamp } = data;
+    const date = new Date(timestamp).toLocaleString();
+    
+    return `🚨 <b>Amplifier Signature Alert</b>
+
+Verifier: <code>${moniker}</code> (${verifier})
+Session ID: <code>${sessionId}</code>
+Signature Status: <b>${status}</b>
+Time: ${date}
+
+This signature requires attention as it is either INVALID or UNSUBMITTED.`;
   }
 
   motivationMessage() {

@@ -25,6 +25,9 @@ const NotificationSchema: Schema<INotificationDocument> =
     }, // 'telegram', 'email', etc.
     recipient: { type: String, required: true }, // chat ID, email address, etc.
     sent: { type: Boolean, default: false },
+    retryCount: { type: Number, default: 0 },
+    failed: { type: Boolean, default: false },
+    lastError: { type: String },
   });
 
 NotificationSchema.statics.buildModel = (args: INotificationDocument) => {

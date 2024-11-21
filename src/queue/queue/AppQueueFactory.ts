@@ -42,12 +42,15 @@ class AppQueueFactory {
     return AppQueueFactory.instance;
   }
 
-  public static getQueue(name: string): Queue.Queue {
-    if (!this.queues[name]) {
-      this.queues[name] = this.createQueue(name);
+  public static async getQueue<T = any>(name: string): Promise<Queue.Queue<T>> {
+    // If queue exists, remove it first to ensure clean state
+    if (this.queues[name]) {
+      await this.removeQueue(name);
     }
-    return this.queues[name];
+    // Create a new queue
+    return this.createQueue<T>(name);
   }
+
 
   public static createQueue<T>(name: string, deleteOnCompleted?: boolean): Queue.Queue<T> {
     if (!this.queues[name]) {
@@ -121,12 +124,27 @@ class AppQueueFactory {
     return Object.values(this.queues);
   }
 
-  public static removeQueue(name: string) {
+  public static async removeQueue(name: string) {
     if (this.queues[name]) {
-      this.queues[name].removeJobs("*");
-      this.queues[name].close(true);
-      delete this.queues[name];
-      logger.info(`Queue ${name} removed successfully`);
+      try {
+        const queue = this.queues[name];
+        // Remove all listeners first
+        queue.removeAllListeners();
+        // Remove all jobs
+        await queue.empty();
+        // Clean up any failed jobs
+        await queue.clean(0, 'failed');
+        // Clean up any completed jobs
+        await queue.clean(0, 'completed');
+        // Close the queue
+        await queue.close(true);
+        // Remove from our cache
+        delete this.queues[name];
+        logger.info(`Queue ${name} removed successfully`);
+      } catch (error) {
+        logger.error(`Error removing queue ${name}:`, error);
+        throw error;
+      }
     }
   }
 

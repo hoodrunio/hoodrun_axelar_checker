@@ -32,6 +32,11 @@ import {
   initBroadcasterBalanceCheckerQueue,
   addBroadcasterBalanceCheckerJob,
 } from "@/queue/jobs/BroadcasterBalanceCheckerJob";
+import { 
+  initAmplifierTrackingQueues,
+  AMPLIFIER_POLL_TRACKING,
+  AMPLIFIER_SIGNATURE_TRACKING
+} from '@/queue/jobs/amplifier/AmplifierTrackingJobs';
 import { AppDb } from "@database/database";
 import { testRedisConnection } from "@/queue/queue/AppQueueFactory";
 
@@ -135,15 +140,25 @@ export default class App {
   }
 
   private async initQueue() {
-    await initValAllInfoCheckerQueue();
-    await initValsUptimeCheckerQueue();
-    await initPollVoteNotificationQueue();
-    await initSendNotificationsQueue();
-    await initWsMessageResultHandlerQueue();
-    await initNewWsAllPollDataQueue();
-
-    await initRpcEndpointHealthcheckerQueue();
-    await initBroadcasterBalanceCheckerQueue();
+    try {
+      // Initialize all queues in parallel for better performance
+      await Promise.all([
+        initValAllInfoCheckerQueue(),
+        initValsUptimeCheckerQueue(),
+        initPollVoteNotificationQueue(),
+        initSendNotificationsQueue(),
+        initWsMessageResultHandlerQueue(),
+        initNewWsAllPollDataQueue(),
+        initRpcEndpointHealthcheckerQueue(),
+        initBroadcasterBalanceCheckerQueue(),
+        initAmplifierTrackingQueues()
+      ]);
+      
+      logger.info('All queues initialized successfully');
+    } catch (error) {
+      logger.error('Error initializing queues:', error);
+      throw error;
+    }
   }
 
   private async initJobs() {
@@ -154,6 +169,8 @@ export default class App {
       { name: 'pollVoteNotification', job: addPollVoteNotificationJob },
       { name: 'rpcEndpointHealthchecker', job: addRpcEndpointHealthcheckerJob },
       { name: 'broadcasterBalanceChecker', job: addBroadcasterBalanceCheckerJob },
+      { name: AMPLIFIER_POLL_TRACKING, job: () => {} }, // Empty function as jobs are added by events
+      { name: AMPLIFIER_SIGNATURE_TRACKING, job: () => {} },
     ];
 
     for (const { name, job } of jobs) {
@@ -179,14 +196,77 @@ export default class App {
     }
   }
 
+  private async checkQueuesStatus() {
+    try {
+      // Get a snapshot of current queues to avoid race conditions
+      const queueNames = Object.keys(AppQueueFactory['queues']);
+      const queuePromises = queueNames.map(name => AppQueueFactory.getQueue(name));
+      const queues = await Promise.all(queuePromises);
+      
+      for (const queue of queues) {
+        const jobCounts = await queue.getJobCounts();
+        
+        // Log queue status for monitoring
+        logger.info(`Queue ${queue.name} status:`, {
+          active: jobCounts.active,
+          waiting: jobCounts.waiting,
+          delayed: jobCounts.delayed,
+          completed: jobCounts.completed,
+          failed: jobCounts.failed
+        });
+
+        // For critical queues (those in healthyQueues), check if they have any activity
+        if (this.healthyQueues.includes(queue.name)) {
+          if (jobCounts.active === 0 && jobCounts.waiting === 0 && jobCounts.delayed === 0) {
+            logger.error(`Critical queue ${queue.name} is inactive. Job counts:`, jobCounts);
+            return false;
+          }
+        }
+        
+        // Check for failed jobs
+        if (jobCounts.failed > 0) {
+          logger.warn(`Queue ${queue.name} has ${jobCounts.failed} failed jobs`);
+        }
+      }
+      return true;
+    } catch (error) {
+      logger.error(`Queue status check failed: ${error}`);
+      return false;
+    }
+  }
+
   private scheduleJobHealthCheck(name: string, job: () => Promise<void> | void) {
     setInterval(async () => {
       try {
-        const queue = AppQueueFactory.getQueue(name);
+        const queue = await AppQueueFactory.getQueue(name);
         const jobCounts = await queue.getJobCounts();
-        if (jobCounts.active === 0 && jobCounts.waiting === 0) {
-          logger.warn(`Job ${name} seems to be inactive. Restarting...`);
-          await job();
+        
+        // Log job status
+        logger.info(`Health check for job ${name}:`, {
+          active: jobCounts.active,
+          waiting: jobCounts.waiting,
+          delayed: jobCounts.delayed,
+          completed: jobCounts.completed,
+          failed: jobCounts.failed
+        });
+
+        // Check if job is inactive
+        if (jobCounts.active === 0 && jobCounts.waiting === 0 && jobCounts.delayed === 0) {
+          logger.warn(`Job ${name} seems to be inactive. Attempting to restart...`);
+          try {
+            await job();
+            logger.info(`Successfully restarted job ${name}`);
+          } catch (error) {
+            logger.error(`Failed to restart job ${name}:`, error);
+            // Schedule a retry
+            setTimeout(() => this.initSingleJob(name, job), 5000);
+          }
+        }
+
+        // Check and handle failed jobs
+        if (jobCounts.failed > 0) {
+          logger.warn(`Job ${name} has ${jobCounts.failed} failed jobs. Cleaning up...`);
+          await queue.clean(5000, 'failed');  // Clean failed jobs older than 5 seconds
         }
       } catch (error) {
         logger.error(`Error checking health of job ${name}:`, error);
@@ -223,24 +303,6 @@ export default class App {
       }
     } catch (error) {
       logger.error(`Database connection check failed: ${error}`);
-      return false;
-    }
-  }
-
-  private async checkQueuesStatus() {
-    try {
-      const queues = AppQueueFactory.getAllQueues();
-      for (const queue of queues) {
-        const jobCounts = await queue.getJobCounts();
-        if (jobCounts.active === 0 && jobCounts.waiting === 0 && jobCounts.delayed === 0) {
-          if(this.healthyQueues.includes(queue.name)) continue;
-          console.log(`Queue ${queue.name} is inactive.`, jobCounts)
-          return false;
-        }
-      }
-      return true;
-    } catch (error) {
-      logger.error(`Queue status check failed: ${error}`);
       return false;
     }
   }

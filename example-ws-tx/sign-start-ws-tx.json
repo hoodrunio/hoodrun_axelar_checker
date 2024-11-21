@@ -1,0 +1,122 @@
+{
+    "jsonrpc": "2.0",
+    "id": "0",
+    "result": {
+        "query": "tm.event='Tx' AND wasm-signing_started.pub_keys EXISTS",
+        "data": {
+            "type": "tendermint/event/Tx",
+            "value": {
+                "TxResult": {}
+            }
+        },
+        "events": {
+            "coin_spent.amount": [
+                "2031uamplifier"
+            ],
+            "wasm-signing_started._contract_address": [
+                "axelar19jxy26z0qnnspa45y5nru0l5rmy9d637z5km2ndjxthfxf5qaswst9290r"
+            ],
+            "wasm-signing_started.expires_at": [
+                "4211438"
+            ],
+            "wasm-signing_started.pub_keys": [
+                "{\"axelar1vtducwafe07uhh2lfkr7xye6szk5plxtcufj6y\":{\"ecdsa\":\"03ae2cee8567997e88db024267e0776f5f72c6da3bd61c28c4b5446482b7d6cdc9\"},\"axelar1d30v0rf8pwm3vma9h2ms72vlk7zjfvpk3ecgl4\":{\"ecdsa\":\"026e5fa37399ba9bffc1875250d33086adff50f9105c07cde5b741a39ef67213b8\"},\"axelar19xly5upgdf48wrrr83yk6v8exsmnyqprmqzj4z\":{\"ecdsa\":\"02a973dd50c8e49065ea7fda655d373189bd363c7ce68478e2649b197b7640e486\"}}"
+            ],
+            "wasm-signing_started.session_id": [
+                "2374"
+            ],
+            "tx.fee_payer": [
+                "axelar1z5dc9y86hvandwjgp8ta7pqe9xvc6qq4kpfvfy"
+            ],
+            "message.module": [
+                "wasm"
+            ],
+            "wasm-proof_under_construction._contract_address": [
+                "axelar1p22kz5jr7a9ruu8ypg40smual0uagl64dwvz5xt042vu8fa7l7dsl3wx8q"
+            ],
+            "wasm-proof_under_construction.payload_id": [
+                "\"ac2f8134b7877581329f0cb78d95e8c8afd44ea90122e6bd79a74daf58b8908c\""
+            ],
+            "wasm-proof_under_construction.multisig_session_id": [
+                "\"2374\""
+            ],
+            "use_feegrant.grantee": [
+                "axelar163u0n0mnd7ghkgvd0wcf6638rlwynpphmhmw39"
+            ],
+            "transfer.recipient": [
+                "axelar17xpfvakm2amg962yls6f84z3kell8c5l5h4gqu"
+            ],
+            "message.sender": [
+                "axelar1z5dc9y86hvandwjgp8ta7pqe9xvc6qq4kpfvfy",
+                "axelar163u0n0mnd7ghkgvd0wcf6638rlwynpphmhmw39"
+            ],
+            "tx.fee": [
+                "2031uamplifier"
+            ],
+            "message.action": [
+                "/cosmwasm.wasm.v1.MsgExecuteContract"
+            ],
+            "tx.height": [
+                "4211428"
+            ],
+            "coin_received.receiver": [
+                "axelar17xpfvakm2amg962yls6f84z3kell8c5l5h4gqu"
+            ],
+            "tx.signature": [
+                "Z8Fhf2LyBPpoBAee6s5q0gZgD0xMDF/8WUJ+25qiszBbSlo1NJX3n3YbQQWO084CSX9xJXi4iVWklN4p81SKkA=="
+            ],
+            "reply._contract_address": [
+                "axelar1p22kz5jr7a9ruu8ypg40smual0uagl64dwvz5xt042vu8fa7l7dsl3wx8q"
+            ],
+            "wasm-proof_under_construction.message_ids": [
+                "[{\"source_chain\":\"eth-sepolia\",\"message_id\":\"0x7bf03d8fc010f28de8689a24f12a515b7968ea1dc139ed4e7520acfc22f4a0e4-1\"}]"
+            ],
+            "tx.hash": [
+                "9DCC73184379AEC30EA05A3590D694F5F28DE0FBFDBEFC79BDD9ABDE378295A1"
+            ],
+            "set_feegrant.grantee": [
+                "axelar163u0n0mnd7ghkgvd0wcf6638rlwynpphmhmw39"
+            ],
+            "transfer.sender": [
+                "axelar1z5dc9y86hvandwjgp8ta7pqe9xvc6qq4kpfvfy"
+            ],
+            "transfer.amount": [
+                "2031uamplifier"
+            ],
+            "set_feegrant.granter": [
+                "axelar1z5dc9y86hvandwjgp8ta7pqe9xvc6qq4kpfvfy"
+            ],
+            "tx.acc_seq": [
+                "axelar163u0n0mnd7ghkgvd0wcf6638rlwynpphmhmw39/2474"
+            ],
+            "coin_spent.spender": [
+                "axelar1z5dc9y86hvandwjgp8ta7pqe9xvc6qq4kpfvfy"
+            ],
+            "coin_received.amount": [
+                "2031uamplifier"
+            ],
+            "execute._contract_address": [
+                "axelar1p22kz5jr7a9ruu8ypg40smual0uagl64dwvz5xt042vu8fa7l7dsl3wx8q",
+                "axelar19jxy26z0qnnspa45y5nru0l5rmy9d637z5km2ndjxthfxf5qaswst9290r"
+            ],
+            "wasm-signing_started.msg": [
+                "f92deae84836351c97f5e4a1cd5784c6c1a70b1923cf8d03fa8e1ec3b1512cf4"
+            ],
+            "wasm-signing_started.verifier_set_id": [
+                "23b68feb94699d32d762ad7264d416d5324408018f9ecd172a3aadd38a255c36"
+            ],
+            "use_feegrant.granter": [
+                "axelar1z5dc9y86hvandwjgp8ta7pqe9xvc6qq4kpfvfy"
+            ],
+            "wasm-signing_started.chain": [
+                "avalanche-fuji"
+            ],
+            "wasm-proof_under_construction.destination_chain": [
+                "\"avalanche-fuji\""
+            ],
+            "tm.event": [
+                "Tx"
+            ]
+        }
+    }
+}

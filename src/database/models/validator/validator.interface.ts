@@ -16,6 +16,7 @@ export interface IValidator extends IBaseInterface {
   operator_address: string;
   consensus_address: string;
   voter_address: string;
+  verifier_addresses: string[];
   consensus_pubkey: ConsensusPubkey;
   jailed: boolean;
   status: string;

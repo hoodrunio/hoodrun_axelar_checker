@@ -32,7 +32,7 @@ export class AxelarLCDQueryService {
       logger.warn(`No RegisterProxy tx found for ${operatorAddress}`);
       return null;
     }
-
+    
     const firstMessage = response?.txs?.[0]?.body?.messages?.[0];
 
     if (!firstMessage) {

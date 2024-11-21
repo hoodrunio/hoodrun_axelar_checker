@@ -14,6 +14,7 @@ import {
   SignatureStatus,
   SignatureType
 } from "@/database/models/amplifier/signature.interface";
+import { WsMessageTxResult } from "@/ws/message/WsMessageTxResult";
 
 // Type guard fonksiyonları
 function isPollStartedEvent(event: unknown): event is PollStartedEvent {
@@ -212,6 +213,83 @@ export class AmplifierEventHandler {
         error,
         sessionId
       });
+      throw error;
+    }
+  }
+
+  async handleMessageResult(result: WsMessageTxResult): Promise<void> {
+    try {
+      const events = result.events || {};
+      const height = result.getTxHeight();
+      const hash = result.getTxHash() || '';
+      
+      // Handle signing started event
+      if (events['wasm-signing_started.session_id']) {
+        const event: SigningStartedEvent = {
+          chain: events['wasm-signing_started.chain']?.[0] || '',
+          session_id: events['wasm-signing_started.session_id']?.[0] || '',
+          _contract_address: events['wasm-signing_started._contract_address']?.[0] || '',
+          pub_keys: JSON.parse(events['wasm-signing_started.pub_keys']?.[0] || '{}'),
+          verifier_set_id: events['wasm-signing_started.verifier_set_id']?.[0] || '',
+          expires_at: Number(events['wasm-signing_started.expires_at']?.[0] || '0'),
+          height: height || 0,
+          hash
+        };
+        
+        if (isSigningStartedEvent(event)) {
+          await this.handleSigningStarted(event);
+        } else {
+          this.logger.warn('Invalid signing started event format', { event });
+        }
+      }
+      
+      // Handle poll started event
+      if (events['wasm-messages_poll_started.poll_id']) {
+        const event: PollStartedEvent = {
+          source_chain: events['wasm-messages_poll_started.source_chain']?.[0] || '',
+          poll_id: events['wasm-messages_poll_started.poll_id']?.[0] || '',
+          participants: JSON.parse(events['wasm-messages_poll_started.participants']?.[0] || '[]'),
+          expires_at: Number(events['wasm-messages_poll_started.expires_at']?.[0] || '0'),
+          height: height || 0,
+          hash
+        };
+        
+        if (isPollStartedEvent(event)) {
+          await this.handlePollStarted(event);
+        } else {
+          this.logger.warn('Invalid poll started event format', { event });
+        }
+      }
+      
+      // Handle poll completed event
+      if (events['wasm-quorum_reached.poll_id']) {
+        const event = {
+          poll_id: events['wasm-quorum_reached.poll_id']?.[0] || '',
+          status: events['wasm-quorum_reached.status']?.[0] || ''
+        };
+        
+        if (event.poll_id) {
+          await this.handlePollCompleted(event);
+        } else {
+          this.logger.warn('Invalid poll completed event format', { event });
+        }
+      }
+      
+      // Handle signing completed event
+      if (events['wasm-signing_completed.session_id']) {
+        const event = {
+          session_id: events['wasm-signing_completed.session_id']?.[0] || '',
+          status: events['wasm-signing_completed.status']?.[0] || ''
+        };
+        
+        if (event.session_id) {
+          await this.handleSigningCompleted(event);
+        } else {
+          this.logger.warn('Invalid signing completed event format', { event });
+        }
+      }
+    } catch (error) {
+      this.logger.error('Error handling amplifier message:', error);
       throw error;
     }
   }
