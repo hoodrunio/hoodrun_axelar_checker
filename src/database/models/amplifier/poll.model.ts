@@ -11,7 +11,8 @@ const VoteInfoSchema = new Schema({
     required: true,
     enum: ['Yes', 'No', 'Unsubmitted']
   },
-  votedAt: { type: Number }
+  votedAt: { type: Number },
+  lastChecked: { type: Number }
 });
 
 const AmplifierPollSchema: Schema<IAmplifierPollDocument> = createAppSchema<IAmplifierPollDocument>({

@@ -64,17 +64,23 @@ export class AmplifierEventHandler {
 
     try {
       const pollId = event.poll_id.replace(/"/g, '');
-
-      // Poll'u oluştur ve sonucu kullan
       const pollData = await this.createPoll(event);
+      
       if (!pollData) {
         throw new Error(`Failed to create poll for ${pollId}`);
       }
-      
-      // Queue'ya tracking job ekle
-      await this.queueManager.addPollTrackingJob(pollId, Number(event.height));
-      
-      this.logger.info(`Poll ${pollId} created with status ${pollData.status} and tracking job added`);
+
+      // Start tracking only if poll is in valid state
+      if (this.shouldContinueTracking(pollData.expiresAt, pollData.status)) {
+        await this.queueManager.addPollTrackingJob(pollId, Number(event.height));
+        await this.updateTrackingTimestamps(pollId);
+        
+        this.logger.info(`Started tracking for poll ${pollId}`, {
+          status: pollData.status,
+          expiresAt: pollData.expiresAt,
+          height: event.height
+        });
+      }
     } catch (error) {
       this.logger.error('Error handling poll started event:', error);
       throw error;
@@ -89,6 +95,19 @@ export class AmplifierEventHandler {
 
     try {
       const session = await this.createSignatureSession(event);
+      
+      // Start tracking only if session is in valid state
+      if (this.shouldContinueTracking(session.expiresAt, session.status)) {
+        await this.queueManager.addSignatureTrackingJob(session.sessionId, Number(event.height));
+        await this.updateSignatureTrackingTimestamps(session.sessionId);
+        
+        this.logger.info(`Started tracking for signature session ${session.sessionId}`, {
+          status: session.status,
+          expiresAt: session.expiresAt,
+          height: event.height
+        });
+      }
+
       this.logger.info(`Signature session created/found`, {
         sessionId: session.sessionId,
         chain: session.chain,
@@ -130,9 +149,11 @@ export class AmplifierEventHandler {
         throw new Error(`Poll ${poll_id} not found`);
       }
 
-      // Even if poll is completed/failed, we should continue tracking votes until expiration
-      if (poll.expiresAt > Date.now()) {
+      // Use shouldContinueTracking to determine if we should keep monitoring
+      if (this.shouldContinueTracking(poll.expiresAt, status)) {
         await this.queueManager.addPollTrackingJob(poll_id, poll.height);
+        await this.updateTrackingTimestamps(poll_id);
+        
         this.logger.info(`Continued vote tracking for poll ${poll_id} until expiration`, {
           currentStatus: status,
           expiresAt: poll.expiresAt,
@@ -169,9 +190,11 @@ export class AmplifierEventHandler {
         throw new Error(`Signature session ${sessionId} not found`);
       }
 
-      // Even if signing is completed, continue tracking until expiration
-      if (session.expiresAt > Date.now()) {
+      // Use shouldContinueTracking to determine if we should keep monitoring
+      if (this.shouldContinueTracking(session.expiresAt, session.status)) {
         await this.queueManager.addSignatureTrackingJob(sessionId, session.height);
+        await this.updateSignatureTrackingTimestamps(sessionId);
+        
         this.logger.info(`Continued signature tracking for session ${sessionId} until expiration`, {
           currentStatus: session.status,
           expiresAt: session.expiresAt
@@ -218,15 +241,12 @@ export class AmplifierEventHandler {
         status: PollStatus.PENDING,
         votes: event.participants.map(participant => ({
           voter: participant,
-          vote: 'Unsubmitted' as VoteType,
+          vote: VoteType.UNSUBMITTED,
           lastChecked: Date.now()
         }))
       };
 
       const createdPoll = await amplifierPollRepo.create(pollData);
-      
-      // Start tracking immediately
-      await this.queueManager.addPollTrackingJob(pollId, Number(event.height));
       
       this.logger.info(`Created new poll ${pollId}`, {
         sourceChain: event.source_chain,
@@ -278,15 +298,12 @@ export class AmplifierEventHandler {
         status: SignatureStatus.PENDING,
         signatures: Object.entries(event.pub_keys).map(([address]) => ({
           verifier: address,
-          status: 'Unsubmitted' as SignatureType,
+          status: SignatureType.UNSUBMITTED,
           lastChecked: Date.now()
         }))
       };
 
       const createdSession = await amplifierSignatureRepo.create(signatureData);
-      
-      // Start tracking immediately
-      await this.queueManager.addSignatureTrackingJob(sessionId, Number(event.height));
       
       this.logger.info(`Created new signature session ${sessionId}`, {
         chain: event.chain,
@@ -330,11 +347,41 @@ export class AmplifierEventHandler {
         lastChecked: now
       }));
 
-      await amplifierPollRepo.updateVoteStatus(pollId, updatedVotes, );
+      await amplifierPollRepo.updateStatus(pollId, updatedVotes);
     } catch (error) {
       this.logger.error('Error updating tracking timestamps:', {
         error,
         pollId
+      });
+    }
+  }
+
+  private async updateSignatureTrackingTimestamps(sessionId: string): Promise<void> {
+    try {
+      const { amplifierSignatureRepo } = this.db;
+      const session = await amplifierSignatureRepo.findBySessionId(sessionId);
+      
+      if (!session) {
+        this.logger.warn(`Signature session ${sessionId} not found for timestamp update`);
+        return;
+      }
+
+      const now = Date.now();
+      const updatedSignatures = session.signatures.map(sig => ({
+        ...sig,
+        lastChecked: now
+      }));
+
+      await amplifierSignatureRepo.updateSignatures(sessionId, updatedSignatures);
+
+      this.logger.debug(`Updated signature tracking timestamps for session ${sessionId}`, {
+        verifierCount: session.signatures.length,
+        timestamp: now
+      });
+    } catch (error) {
+      this.logger.error('Error updating signature tracking timestamps:', {
+        error,
+        sessionId
       });
     }
   }

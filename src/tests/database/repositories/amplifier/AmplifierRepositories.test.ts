@@ -2,8 +2,8 @@ import { connectTestDb, disconnectTestDb, cleanupCollections } from '@/utils/tes
 import { AmplifierPollRepository } from '@/repositories/amplifier/AmplifierPollRepository';
 import { AmplifierSignatureRepository } from '@/repositories/amplifier/AmplifierSignatureRepository';
 import mongoose from 'mongoose';
-import { PollStatus } from '@/database/models/amplifier/poll.interface';
-import { SignatureStatus } from '@/database/models/amplifier/signature.interface';
+import { PollStatus, VoteType } from '@/database/models/amplifier/poll.interface';
+import { SignatureStatus, SignatureType } from '@/database/models/amplifier/signature.interface';
 
 describe('Amplifier Repositories Tests', () => {
   let pollRepo: AmplifierPollRepository;
@@ -55,11 +55,11 @@ describe('Amplifier Repositories Tests', () => {
       };
 
       await pollRepo.create(pollData);
-      await pollRepo.updateVoteStatus(pollData.pollId, 'axelar1', 'Yes');
+      await pollRepo.updateVoteStatus(pollData.pollId, 'axelar1', VoteType.YES);
 
       const updated = await pollRepo.findByPollId(pollData.pollId);
       expect(updated?.votes[0].voter).toBe('axelar1');
-      expect(updated?.votes[0].vote).toBe('Yes');
+      expect(updated?.votes[0].vote).toBe(VoteType.YES);
     });
 
     it('should handle multiple votes from same voter', async () => {
@@ -75,13 +75,13 @@ describe('Amplifier Repositories Tests', () => {
       };
 
       await pollRepo.create(pollData);
-      await pollRepo.updateVoteStatus(pollData.pollId, 'axelar1', 'No');
-      await pollRepo.updateVoteStatus(pollData.pollId, 'axelar1', 'Yes');
+      await pollRepo.updateVoteStatus(pollData.pollId, 'axelar1', VoteType.NO);
+      await pollRepo.updateVoteStatus(pollData.pollId, 'axelar1', VoteType.YES);
 
       const updated = await pollRepo.findByPollId(pollData.pollId);
       expect(updated?.votes.length).toBe(1);
       expect(updated?.votes[0].voter).toBe('axelar1');
-      expect(updated?.votes[0].vote).toBe('Yes');
+      expect(updated?.votes[0].vote).toBe(VoteType.YES);
     });
 
     it('should update poll status', async () => {
@@ -194,7 +194,7 @@ describe('Amplifier Repositories Tests', () => {
       await pollRepo.create(pollData);
       
       // @ts-expect-error - Geçersiz durum testi
-      await expect(pollRepo.updatePollStatus(pollData.pollId, 'InvalidStatus'))
+      await expect(pollRepo.updatePollStatus(pollData.pollId, SignatureType.INVALID))
         .rejects.toThrow();
     });
   });

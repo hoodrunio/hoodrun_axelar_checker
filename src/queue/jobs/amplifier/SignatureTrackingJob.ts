@@ -4,6 +4,7 @@ import { logger } from "@/utils/logger";
 import { Job } from "bull";
 import { SignatureStatus, SignatureType } from "@/database/models/amplifier/signature.interface";
 import { Logger } from "winston";
+
 interface SignatureTrackingData {
   sessionId: string;
   currentHeight: number;
@@ -44,10 +45,15 @@ export class SignatureTrackingJob {
       // Update signature statuses
       for (const sig of session.signatures) {
         const currentStatus = await this.queryService.getSignatureStatus(sig.verifier, sessionId);
+        const now = Date.now();
+        
         if (currentStatus !== sig.status) {
           await amplifierSignatureRepo.updateSignatureStatus(sessionId, sig.verifier, currentStatus);
           this.logger.info(`Updated signature status for ${sig.verifier} in session ${sessionId} to ${currentStatus}`);
         }
+        
+        // Always update lastChecked timestamp
+        await amplifierSignatureRepo.updateSignatureLastChecked(sessionId, sig.verifier, now);
       }
     } catch (error) {
       this.logger.error(`Error processing signature tracking for ${sessionId}:`, error);

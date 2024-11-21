@@ -43,6 +43,7 @@ export interface SignatureInfo {
   verifier: string;
   status: SignatureType;
   submittedAt?: number;
+  lastChecked?: number;
 }
 
 export enum SignatureType {

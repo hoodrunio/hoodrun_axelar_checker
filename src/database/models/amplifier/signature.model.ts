@@ -16,7 +16,8 @@ const SignatureInfoSchema = new Schema({
     required: true,
     enum: ['Yes', 'Unsubmitted', 'Invalid']
   },
-  submittedAt: { type: Number }
+  submittedAt: { type: Number },
+  lastChecked: { type: Number }
 });
 
 const AmplifierSignatureSchema: Schema<IAmplifierSignatureDocument> = createAppSchema<IAmplifierSignatureDocument>({

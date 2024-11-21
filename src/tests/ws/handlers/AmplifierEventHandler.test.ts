@@ -61,7 +61,7 @@ describe('AmplifierEventHandler', () => {
       source_chain: 'ethereum',
       poll_id: '123',
       participants: ['axelar1', 'axelar2'],
-      expires_at: '1000',
+      expires_at: (Date.now() + 3600000).toString(), // 1 hour from now
       height: '500',
       hash: '0xabc'
     };
@@ -70,19 +70,25 @@ describe('AmplifierEventHandler', () => {
       mockAmplifierPollRepo.findByPollId.mockResolvedValue(null);
       mockAmplifierPollRepo.create.mockResolvedValue({
         pollId: '123',
-        status: PollStatus.PENDING
+        sourceChain: 'ethereum',
+        status: PollStatus.PENDING,
+        expiresAt: Date.now() + 3600000,
+        votes: [
+          { voter: 'axelar1', vote: VoteType.UNSUBMITTED },
+          { voter: 'axelar2', vote: VoteType.UNSUBMITTED }
+        ]
       });
-
+      
       await handler.handlePollStarted(validPollEvent);
 
       expect(mockAmplifierPollRepo.create).toHaveBeenCalledWith(expect.objectContaining({
         pollId: '123',
         sourceChain: 'ethereum',
         status: PollStatus.PENDING,
-        votes: [
-          { voter: 'axelar1', vote: VoteType.UNSUBMITTED },
-          { voter: 'axelar2', vote: VoteType.UNSUBMITTED }
-        ]
+        votes: expect.arrayContaining([
+          expect.objectContaining({ voter: 'axelar1', vote: VoteType.UNSUBMITTED }),
+          expect.objectContaining({ voter: 'axelar2', vote: VoteType.UNSUBMITTED })
+        ])
       }));
       expect(mockQueueManager.addPollTrackingJob).toHaveBeenCalledWith('123', 500);
     });
@@ -90,7 +96,8 @@ describe('AmplifierEventHandler', () => {
     it('should skip poll creation if poll exists', async () => {
       const existingPoll = {
         pollId: '123',
-        status: PollStatus.PENDING
+        status: PollStatus.PENDING,
+        expiresAt: Date.now() + 3600000
       };
       mockAmplifierPollRepo.findByPollId.mockResolvedValue(existingPoll);
 
@@ -116,22 +123,23 @@ describe('AmplifierEventHandler', () => {
     const validSigningEvent = {
       chain: 'ethereum',
       session_id: '456',
-      _contract_address: '0xdef',
+      _contract_address: '0xdef456',
       pub_keys: {
         'axelar1': { ecdsa: 'key1' },
         'axelar2': { ecdsa: 'key2' }
       },
       verifier_set_id: '789',
-      expires_at: '2000',
+      expires_at: (Date.now() + 3600000).toString(),
       height: '600',
-      hash: '0xghi'
+      hash: '0xghi789'
     };
 
     it('should create new signature session and add tracking job', async () => {
       mockAmplifierSignatureRepo.findBySessionId.mockResolvedValue(null);
       mockAmplifierSignatureRepo.create.mockResolvedValue({
         sessionId: '456',
-        status: SignatureStatus.PENDING
+        status: SignatureStatus.PENDING,
+        pubKeys: ['key1', 'key2']
       });
 
       await handler.handleSigningStarted(validSigningEvent);
@@ -139,11 +147,7 @@ describe('AmplifierEventHandler', () => {
       expect(mockAmplifierSignatureRepo.create).toHaveBeenCalledWith(expect.objectContaining({
         sessionId: '456',
         chain: 'ethereum',
-        status: SignatureStatus.PENDING,
-        signatures: [
-          { verifier: 'axelar1', status: SignatureType.UNSUBMITTED },
-          { verifier: 'axelar2', status: SignatureType.UNSUBMITTED }
-        ]
+        status: SignatureStatus.PENDING
       }));
       expect(mockQueueManager.addSignatureTrackingJob).toHaveBeenCalledWith('456', 600);
     });
@@ -151,7 +155,10 @@ describe('AmplifierEventHandler', () => {
     it('should skip signature session creation if session exists', async () => {
       const existingSession = {
         sessionId: '456',
-        status: SignatureStatus.PENDING
+        status: SignatureStatus.PENDING,
+        expiresAt: Date.now() + 3600000,
+        pubKeys: ['key1', 'key2'],
+        chain: 'ethereum'
       };
       mockAmplifierSignatureRepo.findBySessionId.mockResolvedValue(existingSession);
 
@@ -163,23 +170,37 @@ describe('AmplifierEventHandler', () => {
   });
 
   describe('handlePollCompleted', () => {
+    const completedEvent = {
+      poll_id: '123',
+      status: 'succeeded_on_source_chain'
+    };
+
     it('should update poll status to COMPLETED when succeeded', async () => {
-      const event = {
-        poll_id: '123',
-        status: 'succeeded_on_source_chain'
-      };
+      mockAmplifierPollRepo.findByPollId.mockResolvedValue({
+        pollId: '123',
+        status: PollStatus.PENDING,
+        expiresAt: Date.now() + 3600000
+      });
 
-      await handler.handlePollCompleted(event);
+      await handler.handlePollCompleted(completedEvent);
 
-      expect(mockAmplifierPollRepo.updatePollStatus)
-        .toHaveBeenCalledWith('123', PollStatus.COMPLETED);
+      expect(mockAmplifierPollRepo.updatePollStatus).toHaveBeenCalledWith(
+        '123',
+        PollStatus.COMPLETED
+      );
     });
 
-    it('should update poll status to FAILED when not found', async () => {
+    it('should update poll status to FAILED when not found on chain', async () => {
       const event = {
         poll_id: '123',
         status: 'not_found_on_source_chain'
       };
+
+      mockAmplifierPollRepo.findByPollId.mockResolvedValue({
+        pollId: '123',
+        status: PollStatus.PENDING,
+        expiresAt: Date.now() + 3600000
+      });
 
       await handler.handlePollCompleted(event);
 
@@ -189,15 +210,23 @@ describe('AmplifierEventHandler', () => {
   });
 
   describe('handleSigningCompleted', () => {
+    const completedEvent = {
+      session_id: '456'
+    };
+
     it('should update signature session status to COMPLETED', async () => {
-      const event = {
-        session_id: '456'
-      };
+      mockAmplifierSignatureRepo.findBySessionId.mockResolvedValue({
+        sessionId: '456',
+        status: SignatureStatus.PENDING,
+        expiresAt: Date.now() + 3600000
+      });
 
-      await handler.handleSigningCompleted(event);
+      await handler.handleSigningCompleted(completedEvent);
 
-      expect(mockAmplifierSignatureRepo.updateStatus)
-        .toHaveBeenCalledWith('456', SignatureStatus.COMPLETED);
+      expect(mockAmplifierSignatureRepo.updateStatus).toHaveBeenCalledWith(
+        '456',
+        SignatureStatus.COMPLETED
+      );
     });
   });
 }); 

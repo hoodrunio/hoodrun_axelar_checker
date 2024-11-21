@@ -45,10 +45,15 @@ export class PollTrackingJob {
       // Update vote statuses
       for (const vote of poll.votes) {
         const currentStatus = await this.queryService.getVoteStatus(vote.voter, pollId);
+        const now = Date.now();
+        
         if (currentStatus !== vote.vote) {
           await amplifierPollRepo.updateVoteStatus(pollId, vote.voter, currentStatus);
           this.logger.info(`Updated vote status for ${vote.voter} in poll ${pollId} to ${currentStatus}`);
         }
+        
+        // Always update lastChecked timestamp
+        await amplifierPollRepo.updateVoteLastChecked(pollId, vote.voter, now);
       }
     } catch (error) {
       this.logger.error(`Error processing poll tracking for ${pollId}:`, error);

@@ -3,8 +3,8 @@ EventEmitter.defaultMaxListeners = 20;
 import App from "@/app/App";
 import { logger } from "@/utils/logger";
 import "@extensions/array.extensions";
-import AppQueueFactory from "queue/queue/AppQueueFactory";
-import { testRedisConnection } from "queue/queue/AppQueueFactory";
+import AppQueueFactory from "@/queue/queue/AppQueueFactory";
+import { testRedisConnection } from "@/queue/queue/AppQueueFactory";
 import appConfig from "@config/index";
 
 // There are some duplicated loggers in the codebase. We can remove the following loggers:

@@ -43,4 +43,25 @@ export class AmplifierPollRepository extends BaseRepository<IAmplifierPoll, IAmp
   async count(filter: Record<string, any> = {}): Promise<number> {
     return await this.getModel().countDocuments(filter).exec();
   }
+
+  async updateStatus(
+    pollId: string,
+    updatedVotes: VoteInfo[]
+  ): Promise<void> {
+    await this.updateOne(
+      { pollId },
+      { votes: updatedVotes }
+    );
+  }
+
+  async updateVoteLastChecked(
+    pollId: string,
+    voter: string,
+    lastChecked: number
+  ): Promise<void> {
+    await this.getModel().updateOne(
+      { pollId, "votes.voter": voter },
+      { $set: { "votes.$.lastChecked": lastChecked } }
+    );
+  }
 } 

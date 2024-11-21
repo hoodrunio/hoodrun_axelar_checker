@@ -1,5 +1,5 @@
 import BaseRepository from '@/repositories/base.repository';
-import { IAmplifierSignature, IAmplifierSignatureDocument, SignatureStatus, SignatureType } from '@/database/models/amplifier/signature.interface';
+import { IAmplifierSignature, IAmplifierSignatureDocument, SignatureStatus, SignatureType, SignatureInfo } from '@/database/models/amplifier/signature.interface';
 import AmplifierSignatureDbModel from '@/database/models/amplifier/signature.model';
 
 export class AmplifierSignatureRepository extends BaseRepository<IAmplifierSignature, IAmplifierSignatureDocument> {
@@ -24,7 +24,7 @@ export class AmplifierSignatureRepository extends BaseRepository<IAmplifierSigna
       signature.signatures.push({ verifier, status: status as SignatureType, submittedAt: Date.now() });
     } else {
       signature.signatures[sigIndex] = { 
-        ...signature.signatures[sigIndex], 
+        verifier,  
         status: status as SignatureType, 
         submittedAt: Date.now() 
       };
@@ -42,6 +42,27 @@ export class AmplifierSignatureRepository extends BaseRepository<IAmplifierSigna
     }
     
     await this.updateOne({ sessionId }, { status });
+  }
+
+  async updateSignatures(
+    sessionId: string,
+    signatures: SignatureInfo[]
+  ): Promise<void> {
+    await this.updateOne(
+      { sessionId },
+      { signatures }
+    );
+  }
+
+  async updateSignatureLastChecked(
+    sessionId: string,
+    verifier: string,
+    lastChecked: number
+  ): Promise<void> {
+    await this.getModel().updateOne(
+      { sessionId, "signatures.verifier": verifier },
+      { $set: { "signatures.$.lastChecked": lastChecked } }
+    );
   }
 
   async count(filter: Record<string, any> = {}): Promise<number> {

@@ -36,6 +36,7 @@ export interface VoteInfo {
   voter: string;
   vote: VoteType;
   votedAt?: number;
+  lastChecked?: number;
 }
   
 export enum VoteType {
@@ -53,6 +54,7 @@ export interface IAmplifierPoll extends IBaseInterface {
   hash: string;
   status: PollStatus;
   votes: VoteInfo[];
+  timestamp?: number;
 }
 
 export interface IAmplifierPollDocument extends Document, IAmplifierPoll {}

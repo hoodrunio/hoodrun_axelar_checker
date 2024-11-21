@@ -71,7 +71,7 @@ describe('AmplifierEventHandler Integration Tests', () => {
       source_chain: 'ethereum',
       poll_id: 'test-poll-123',
       participants: ['axelar1test1', 'axelar1test2'],
-      expires_at: '1000',
+      expires_at: (Date.now() + 3600000).toString(), // 1 hour from now
       height: '500',
       hash: '0xabc123'
     };
@@ -181,7 +181,7 @@ describe('AmplifierEventHandler Integration Tests', () => {
         source_chain: 'ethereum',
         poll_id: 'test-poll-789',
         participants: ['axelar1test1'],
-        expires_at: '1000',
+        expires_at: (Date.now() + 3600000).toString(), // 1 hour from now
         height: '500',
         hash: '0xabc789'
       };
