@@ -1,5 +1,5 @@
 import { EventEmitter } from 'events';
-EventEmitter.defaultMaxListeners = 20;
+EventEmitter.defaultMaxListeners = 50;
 import App from "@/app/App";
 import { logger } from "@/utils/logger";
 import "@extensions/array.extensions";

@@ -2,23 +2,28 @@ import { IBaseInterface, IBaselModel } from "@database/base/model.interface";
 import { Document } from "mongoose";
 
 export interface SignatureResponse {
-  tx_responses: Array<{
+  txs: any[];
+  tx_responses: {
+    height: string;
+    txhash: string;
     tx: {
       body: {
         messages: Array<{
+          '@type': string;
           sender: string;
-          msg?: {
+          contract: string;
+          msg: {
             submit_signature?: {
               session_id: string;
               signature?: string;
             };
           };
+          funds: any[];
         }>;
       };
     };
-  }>;
+  }[];
   pagination: {
-    next_key: string | null;
     total: string;
   };
 }

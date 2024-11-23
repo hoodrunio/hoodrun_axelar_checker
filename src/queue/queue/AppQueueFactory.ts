@@ -43,71 +43,75 @@ class AppQueueFactory {
   }
 
   public static async getQueue<T = any>(name: string): Promise<Queue.Queue<T>> {
-    // If queue exists, remove it first to ensure clean state
-    if (this.queues[name]) {
-      await this.removeQueue(name);
-    }
-    // Create a new queue
-    return this.createQueue<T>(name);
-  }
-
-
-  public static createQueue<T>(name: string, deleteOnCompleted?: boolean): Queue.Queue<T> {
     if (!this.queues[name]) {
-      try {
-        const queue = new Queue(name, {
-          createClient: (type) => {
-            switch (type) {
-              case 'client':
-                return redisClient;
-              case 'subscriber':
-                return redisClient.duplicate();
-              case 'bclient':
-                return redisClient.duplicate();
-              default:
-                return redisClient;
-            }
-          },
-          limiter: { max: 5000, duration: 1000 },
-          defaultJobOptions: {
-            attempts: 3,
-            backoff: {
-              type: 'exponential',
-              delay: 1000,
-            },
-            removeOnComplete: true,
-            removeOnFail: false,
-          },
-        });
-        this.onQueueError(queue, name);
-        this.onQueueCompleted(queue, name, deleteOnCompleted);
-        
-        // queue.empty() çağrısını kaldırdık
-
-        this.queues[name] = queue;
-        logger.info(`Queue ${name} created successfully`);
-      } catch (error) {
-        logger.error(`Error creating queue ${name}: ${error}`);
-        throw error;
-      }
-     }
-
+      this.queues[name] = this.createQueue<T>(name);
+    }
     return this.queues[name];
   }
 
-  private static onQueueError(queue: Queue.Queue, name: string) {
-    queue.on("error", (error) => {
-      logger.error(`Queue ${name} error: ${error}`);
-    });
-  }
+  public static createQueue<T>(name: string, deleteOnCompleted?: boolean): Queue.Queue<T> {
+    try {
+      const queue = new Queue(name, {
+        createClient: (type) => {
+          switch (type) {
+            case 'client':
+              return redisClient;
+            case 'subscriber':
+              return redisClient.duplicate();
+            case 'bclient':
+              return redisClient.duplicate();
+            default:
+              return redisClient;
+          }
+        },
+        limiter: { max: 5000, duration: 1000 },
+        defaultJobOptions: {
+          attempts: 3,
+          backoff: {
+            type: 'exponential',
+            delay: 1000,
+          },
+          removeOnComplete: false, // Don't remove completed jobs by default for repeatable jobs
+          removeOnFail: false,
+          timeout: 30000, // 30 second timeout
+        },
+        settings: {
+          stalledInterval: 30000, // Check for stalled jobs every 30 seconds
+          maxStalledCount: 2, // Consider a job stalled after 2 checks
+          drainDelay: 5, // Small delay between processing jobs
+        }
+      });
 
-  private static onQueueCompleted(queue: Queue.Queue, name: string, deleteOnCompleted?: boolean) {
-    queue.on("completed", (job) => {
-      logger.info(`Queue ${name} job completed: ${job.id}`);
-      if(deleteOnCompleted) {
-        this.removeQueue(name);
-      }
-    });
+      // Set up queue-level error handling
+      queue.on('error', (error) => {
+        logger.error(`Queue ${name} error:`, error);
+      });
+
+      queue.on('waiting', (jobId) => {
+        logger.debug(`Job ${jobId} is waiting in queue ${name}`);
+      });
+
+      queue.on('active', (job) => {
+        logger.debug(`Processing job ${job.id} in queue ${name}`);
+      });
+
+      queue.on('completed', (job) => {
+        logger.info(`Job ${job.id} completed in queue ${name}`);
+      });
+
+      queue.on('failed', (job, error) => {
+        logger.error(`Job ${job.id} failed in queue ${name}:`, error);
+      });
+
+      queue.on('stalled', (job) => {
+        logger.warn(`Job ${job.id} has stalled in queue ${name}`);
+      });
+
+      return queue;
+    } catch (error) {
+      logger.error(`Error creating queue ${name}: ${error}`);
+      throw error;
+    }
   }
 
   public static async checkRedisConnection() {
@@ -161,7 +165,6 @@ class AppQueueFactory {
     logger.info('Redis connection closed');
   }
 
-  
   public static async removeAllQueueListeners() {
     for (const [name, queue] of Object.entries(this.queues)) {
       try {

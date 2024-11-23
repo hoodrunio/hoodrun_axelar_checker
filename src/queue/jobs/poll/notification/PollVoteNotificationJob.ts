@@ -88,16 +88,29 @@ class PollVoteNotificationQueueManager {
               sort: { createdAt: -1 },
             });
 
-            const promisses = allNoPollVotes?.map(async (pollVote) => {
+            if (!allNoPollVotes || allNoPollVotes.length === 0) {
+              logger.info('No new poll votes to process');
+              return;
+            }
+
+            const promises = allNoPollVotes.map(async (pollVote) => {
               const voterValidator = await validatorRepository.findOne({
                 voter_address: pollVote.voter_address,
               });
-              if (!voterValidator) return Promise.resolve();
+              if (!voterValidator) {
+                logger.warn(`No validator found for voter address: ${pollVote.voter_address}`);
+                return;
+              }
 
               const tgUsers = await telegramUserRepo.findAll({});
-              if (!tgUsers || tgUsers.length < 1) Promise.resolve();
+              if (!tgUsers || tgUsers.length < 1) {
+                logger.warn('No telegram users found to notify');
+                return;
+              }
+
               const pollVoteCondition = createPollVoteCondition(pollVote);
-              for (const tgUser of tgUsers) {
+              
+              await Promise.all(tgUsers.map(async (tgUser) => {
                 const chatId = tgUser.chat_id;
                 const data: PollVoteNotificationDataType = {
                   chain: pollVote.pollChain,
@@ -120,19 +133,19 @@ class PollVoteNotificationQueueManager {
                     sent: false,
                   }
                 );
-              }
+              }));
 
               await pollVoteRepo.updateOne(pollVote._id!, {
                 checkedForNotification: true,
               });
             });
 
-            await Promise.allSettled(promisses);
+            await Promise.allSettled(promises);
+            logger.info(`Successfully processed ${allNoPollVotes.length} poll votes`);
           } catch (error) {
             logger.error("Error in Poll Vote Notification Job", error);
-            return Promise.resolve(error);
+            throw error; // Properly throw the error for Bull to handle
           }
-          return Promise.resolve();
         });
 
         // Add error handler

@@ -207,10 +207,14 @@ export class SignatureTrackingJob {
       // Update signature statuses
       for (const sig of session.signatures) {
         try {
+          this.logger.info(`Checking signature status for verifier ${sig.verifier} in session ${sessionId}`);
           const currentStatus = await this.queryService.getSignatureStatus(sig.verifier, sessionId);
           const now = Date.now();
           
+          this.logger.info(`Current status for verifier ${sig.verifier}: ${currentStatus}, previous status: ${sig.status}`);
+          
           if (currentStatus !== sig.status) {
+            this.logger.info(`Updating signature status for verifier ${sig.verifier} from ${sig.status} to ${currentStatus}`);
             await amplifierSignatureRepo.updateSignatureStatus(sessionId, sig.verifier, currentStatus);
             
             // Check if we should notify about this signature
@@ -223,6 +227,8 @@ export class SignatureTrackingJob {
                 `Success: ${result.successCount}, Failed: ${result.failureCount}`
               );
             }
+          } else {
+            this.logger.debug(`No status change for verifier ${sig.verifier}, still ${currentStatus}`);
           }
           
           // Update lastChecked timestamp

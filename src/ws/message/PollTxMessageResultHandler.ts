@@ -33,6 +33,11 @@ export class PollTxMessageResultHandler {
   private extractWhichPollEventMessage(
     result: WsMessageTxResult
   ): PollSendEvent | undefined {
+    if (!result?.query) {
+      logger.error('Received message with undefined query:', result);
+      return undefined;
+    }
+
     const allEvents = { ...ActivePollEvents, ...ActivePollVotedEvents };
     const pollEvent = Object.values(allEvents).find((event) =>
       result.query.includes(event.getQuery())
@@ -44,6 +49,11 @@ export class PollTxMessageResultHandler {
     result: WsMessageTxResult,
     events: { [x: string]: PollSendEvent }
   ) {
+    if (!result?.query) {
+      logger.error('Received message with undefined query:', result);
+      return false;
+    }
+
     return Object.values(events).some((event) =>
       result.query.includes(event.getQuery())
     );

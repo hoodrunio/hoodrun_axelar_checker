@@ -2,11 +2,27 @@ import { IBaseInterface, IBaselModel } from "@database/base/model.interface";
 import { Document } from "mongoose";
 
 export interface VoteResponse {
-  tx_responses: Array<{
+  txs: any[];
+  tx_responses: {
+    height: string;
+    txhash: string;
     tx: {
       body: {
         messages: Array<{
+          '@type': string;
           sender: string;
+          messages?: Array<{
+            '@type': string;
+            sender: string;
+            contract: string;
+            msg: {
+              vote?: {
+                poll_id: string;
+                votes: string[];
+              };
+            };
+            funds: any[];
+          }>;
           msg?: {
             vote?: {
               poll_id: string;
@@ -16,9 +32,8 @@ export interface VoteResponse {
         }>;
       };
     };
-  }>;
+  }[];
   pagination: {
-    next_key: string | null;
     total: string;
   };
 }

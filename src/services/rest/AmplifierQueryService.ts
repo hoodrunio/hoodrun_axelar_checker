@@ -3,6 +3,7 @@ import { VoteResponse } from '@database/models/amplifier/poll.interface';
 import { SignatureResponse } from '@database/models/amplifier/signature.interface';
 import { SignatureType } from '@database/models/amplifier/signature.interface';
 import { VoteType } from '@database/models/amplifier/poll.interface';
+
 export class AmplifierQueryService {
   constructor(
     private readonly axiosClient: AxiosInstance,
@@ -11,13 +12,27 @@ export class AmplifierQueryService {
     console.log('Service initialized with base URL:', baseUrl);
   }
 
+  private processMessages(messages: any[]): any[] {
+    const processedMessages: any[] = [];
+    
+    for (const message of messages) {
+      if (message['@type'] === '/cosmwasm.wasm.v1.MsgExecuteContract') {
+        processedMessages.push(message);
+      } else if (message['@type'] === '/axelar.auxiliary.v1beta1.BatchRequest' && Array.isArray(message.messages)) {
+        // For devnet: extract messages from BatchRequest
+        processedMessages.push(...message.messages);
+      }
+    }
+    
+    return processedMessages;
+  }
+
   async getVoteStatus(voterAddress: string, pollId: string): Promise<VoteType> {
     try {
       const url = `${this.baseUrl}/cosmos/tx/v1beta1/txs`;
       
       let offset = 0;
       const limit = 100;
-      let status: VoteType = VoteType.UNSUBMITTED;
       let total = 0;
 
       do {
@@ -31,29 +46,28 @@ export class AmplifierQueryService {
           }
         });
 
-        // console.log('Response received:', response.data);
-
         if (offset === 0) {
           total = parseInt(response.data.pagination.total || '0');
         }
 
-        // Find vote for specific poll_id
-        const voteTx = response.data.tx_responses.find(tx => {
-          const msg = tx.tx.body.messages[0].msg;
-          return msg?.vote?.poll_id === pollId && tx.tx.body.messages[0].sender === voterAddress;
-        });
-
-        if (voteTx) {
-          const votes = voteTx.tx.body.messages[0].msg?.vote?.votes || [];
-          status = votes.includes('succeeded_on_chain') ? VoteType.YES : VoteType.NO;
-          break;
+        for (const txResponse of response.data.tx_responses) {
+          const messages = this.processMessages(txResponse.tx.body.messages);
+          
+          for (const message of messages) {
+            if (message['@type'] === '/cosmwasm.wasm.v1.MsgExecuteContract') {
+              const voteMsg = message.msg?.vote;
+              if (voteMsg && voteMsg.poll_id === pollId) {
+                const votes = voteMsg.votes || [];
+                return votes.includes('succeeded_on_chain') ? VoteType.YES : VoteType.NO;
+              }
+            }
+          }
         }
 
         offset += limit;
-
       } while (offset < total);
 
-      return status;
+      return VoteType.UNSUBMITTED;
 
     } catch (error) {
       console.error(`Error fetching vote status for voter ${voterAddress} and poll ${pollId}:`, error);
@@ -84,20 +98,20 @@ export class AmplifierQueryService {
           total = parseInt(response.data.pagination.total || '0');
         }
 
-        // Find signature for specific session_id
-        const signatureTx = response.data.tx_responses.find(tx => {
-          const msg = tx.tx.body.messages[0].msg;
-          return msg?.submit_signature?.session_id === sessionId && 
-                 tx.tx.body.messages[0].sender === verifierAddress;
-        });
-
-        if (signatureTx) {
-          const hasSignature = signatureTx.tx.body.messages[0].msg?.submit_signature?.signature;
-          return hasSignature ? SignatureType.YES : SignatureType.INVALID;
+        for (const txResponse of response.data.tx_responses) {
+          const messages = this.processMessages(txResponse.tx.body.messages);
+          
+          for (const message of messages) {
+            if (message['@type'] === '/cosmwasm.wasm.v1.MsgExecuteContract' && message.sender === verifierAddress) {
+              const submissionMsg = message.msg?.submit_signature;
+              if (submissionMsg && submissionMsg.session_id === sessionId) {
+                return submissionMsg.signature ? SignatureType.YES : SignatureType.INVALID;
+              }
+            }
+          }
         }
 
         offset += limit;
-
       } while (offset < total);
 
       return SignatureType.UNSUBMITTED;

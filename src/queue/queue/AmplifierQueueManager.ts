@@ -6,6 +6,7 @@ import { SignatureTrackingJob } from '../jobs/amplifier/SignatureTrackingJob';
 import { logger } from '@/utils/logger';
 import AppQueueFactory from './AppQueueFactory';
 import { Logger } from 'winston';
+
 export class AmplifierQueueManager {
   private readonly pollQueue: Bull.Queue;
   private readonly signatureQueue: Bull.Queue;
@@ -49,7 +50,12 @@ export class AmplifierQueueManager {
         backoff: {
           type: 'exponential',
           delay: 1000
-        }
+        },
+        repeat: {
+          every: 10000, // Check every 10 seconds
+          limit: 10 // Stop after 100 attempts or when poll is complete/expired
+        },
+        removeOnComplete: true
       }
     );
   }
@@ -62,7 +68,12 @@ export class AmplifierQueueManager {
         backoff: {
           type: 'exponential',
           delay: 1000
-        }
+        },
+        repeat: {
+          every: 10000, // Check every 10 seconds
+          limit: 10 // Stop after 100 attempts or when session is complete/expired
+        },
+        removeOnComplete: true
       }
     );
   }
@@ -71,4 +82,4 @@ export class AmplifierQueueManager {
     await this.pollQueue.close();
     await this.signatureQueue.close();
   }
-} 
+}

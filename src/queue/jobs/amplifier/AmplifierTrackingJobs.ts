@@ -165,10 +165,14 @@ export const addPollTrackingJob = async (pollId: string, currentHeight: number) 
         delay: 1000
       },
       removeOnComplete: true,
-      removeOnFail: false
+      removeOnFail: false,
+      repeat: {
+        every: 10000, // Check every 10 seconds
+        limit: 10 // Stop after 10 attempts or when poll is complete/expired
+      }
     }
   );
-  logger.info(`Added poll tracking job for poll ${pollId} at height ${currentHeight}`);
+  logger.info(`Added repeatable poll tracking job for poll ${pollId} at height ${currentHeight}`);
 };
 
 export const addSignatureTrackingJob = async (sessionId: string, currentHeight: number) => {
@@ -181,9 +185,13 @@ export const addSignatureTrackingJob = async (sessionId: string, currentHeight: 
         type: 'exponential',
         delay: 1000
       },
+      repeat: {
+        every: 10000, // Check every 10 seconds
+        limit: 10 // Stop after 10 attempts or when session is complete/expired
+      },
       removeOnComplete: true,
       removeOnFail: false
     }
   );
-  logger.info(`Added signature tracking job for session ${sessionId} at height ${currentHeight}`);
+  logger.info(`Added repeatable signature tracking job for session ${sessionId} at height ${currentHeight}`);
 };

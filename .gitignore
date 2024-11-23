@@ -144,3 +144,12 @@ package-lock.json
 package-lock.json
 amplifier-guide
 .DS_Store
+example-ws-tx/lcd-sign-2.json
+example-ws-tx/lcd-sign.json
+example-ws-tx/lcd-vote-2.json
+example-ws-tx/lcd-vote.json
+example-ws-tx/sign-start-ws-tx.json
+example-ws-tx/ws-poll-complete.json
+example-ws-tx/ws-poll-start.json
+example-ws-tx/ws-sign-complete.json
+example-ws-tx/ws-sign-start.json
