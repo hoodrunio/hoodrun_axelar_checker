@@ -45,11 +45,15 @@ class BaseRepository<T extends IBaseInterface, TD extends T & Document> {
     query: FilterQuery<T>,
     data: Partial<CRUDDoc<T>>
   ): Promise<TD | null> {
+    // Create a clean copy of the data
+    const cleanData = JSON.parse(JSON.stringify(data));
+    
     return await this._model
-      .findOneAndUpdate(query, data as UpdateQuery<TD>, {
-        new: true,
-        upsert: true,
-      })
+      .findOneAndUpdate(
+        query,
+        { ...cleanData, updatedAt: new Date() },
+        { new: true, upsert: true }
+      )
       .exec();
   }
 
@@ -79,6 +83,9 @@ class BaseRepository<T extends IBaseInterface, TD extends T & Document> {
     return await this._model
       .findByIdAndUpdate(id, { updatedAt: new Date() }, { new: true })
       .exec();
+  }
+  async count(filter: Record<string, any> = {}): Promise<number> {
+    return await this._model.countDocuments(filter).exec();
   }
 }
 

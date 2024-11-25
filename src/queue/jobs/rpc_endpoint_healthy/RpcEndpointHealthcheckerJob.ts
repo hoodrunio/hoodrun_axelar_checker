@@ -12,68 +12,141 @@ import appJobProducer from "@/queue/producer/AppJobProducer";
 import AppQueueFactory from "@/queue/queue/AppQueueFactory";
 import { AxlRpcHealthService } from "@/services/rpc/axelarRpcHealth/AxlRpcHealthService";
 import { logger } from "@/utils/logger";
+import { Queue, Job } from 'bull';
 
 const RPC_ENDPOINT_HEALTHCHECKER_JOB = "RpcEndpointHealthcheckerJob";
 
-export const initRpcEndpointHealthcheckerQueue = async () => {
-  const rpcEndpointHealthcheckerJobQueue = AppQueueFactory.createQueue(
-    RPC_ENDPOINT_HEALTHCHECKER_JOB
-  );
+class RpcEndpointHealthcheckerQueueManager {
+  private static instance: RpcEndpointHealthcheckerQueueManager;
+  private queue: Queue | null = null;
+  private isInitialized = false;
+  private initializationPromise: Promise<void> | null = null;
 
-  rpcEndpointHealthcheckerJobQueue.process(async () => {
-    const { validatorRepository } = new AppDb();
+  private constructor() {}
 
-    try {
-      const envValidator = await validatorRepository.findOne({
-        voter_address: appConfig.axelarVoterAddress,
-      });
-      const rpcEndpointsHealthBatchResult = await getRpcEndpointsHealth();
-      //This can not be concurrent because of the db write is not concurrent for same document
-      rpcEndpointsHealthBatchResult.forEach(async (rpcEndpointHealthResult) => {
-        const {
-          isHealthy: newIsHealthy,
-          name,
-          endpoint,
-        } = rpcEndpointHealthResult;
+  public static getInstance(): RpcEndpointHealthcheckerQueueManager {
+    if (!RpcEndpointHealthcheckerQueueManager.instance) {
+      RpcEndpointHealthcheckerQueueManager.instance = new RpcEndpointHealthcheckerQueueManager();
+    }
+    return RpcEndpointHealthcheckerQueueManager.instance;
+  }
 
-        if (envValidator) {
+  public async getQueue(): Promise<Queue> {
+    if (this.initializationPromise) {
+      await this.initializationPromise;
+    }
+    if (!this.queue) {
+      await this.initQueue();
+    }
+    return this.queue!;
+  }
+
+  private async initQueue(): Promise<void> {
+    if (this.initializationPromise) {
+      return this.initializationPromise;
+    }
+
+    this.initializationPromise = (async () => {
+      try {
+        if (this.isInitialized && this.queue) {
           try {
-            const currentRpcEndpointHealth =
-              await validatorRepository.getRpcHealthEndpointWithName(
-                {
-                  operator_address: envValidator.operator_address,
-                },
-                name
-              );
-
-            if (currentRpcEndpointHealth?.isHealthy != newIsHealthy) {
-              await addRpcEndpointHealthForNotification(
-                rpcEndpointHealthResult,
-                envValidator
-              );
-            }
-
-            const rpcHealthEndpoint = {
-              name,
-              isHealthy: newIsHealthy,
-              rpcEndpoint: endpoint,
-            };
-            await validatorRepository.upsertRpcHealthEndpoint(
-              { voter_address: appConfig.axelarVoterAddress },
-              rpcHealthEndpoint
-            );
+            await this.queue.getJobCounts();
+            return;
           } catch (error) {
-            console.error(
-              `Error upserting rpc health endpoint for ${name}`,
-              error
-            );
+            logger.error('Queue check failed, reinitializing...', error);
+            this.isInitialized = false;
+            this.queue = null;
           }
         }
-      });
-    } catch (error) {
-      console.error("Error in RpcEndpointHealthcheckerJob", error);
-    }
-  });
+
+        this.queue = AppQueueFactory.createQueue(RPC_ENDPOINT_HEALTHCHECKER_JOB);
+
+        this.queue.process(async () => {
+          const { validatorRepository } = new AppDb();
+
+          try {
+            const envValidator = await validatorRepository.findOne({
+              voter_address: appConfig.axelarVoterAddress,
+            });
+            const rpcEndpointsHealthBatchResult = await getRpcEndpointsHealth();
+            
+            //This can not be concurrent because of the db write is not concurrent for same document
+            for (const rpcEndpointHealthResult of rpcEndpointsHealthBatchResult) {
+              const {
+                isHealthy: newIsHealthy,
+                name,
+                endpoint,
+              } = rpcEndpointHealthResult;
+
+              if (envValidator) {
+                try {
+                  const currentRpcEndpointHealth =
+                    await validatorRepository.getRpcHealthEndpointWithName(
+                      {
+                        operator_address: envValidator.operator_address,
+                      },
+                      name
+                    );
+
+                  if (currentRpcEndpointHealth?.isHealthy != newIsHealthy) {
+                    await addRpcEndpointHealthForNotification(
+                      rpcEndpointHealthResult,
+                      envValidator
+                    );
+                  }
+
+                  const rpcHealthEndpoint = {
+                    name,
+                    isHealthy: newIsHealthy,
+                    rpcEndpoint: endpoint,
+                  };
+                  await validatorRepository.upsertRpcHealthEndpoint(
+                    { voter_address: appConfig.axelarVoterAddress },
+                    rpcHealthEndpoint
+                  );
+                } catch (error) {
+                  logger.error(
+                    `Error upserting rpc health endpoint for ${name}`,
+                    error
+                  );
+                }
+              }
+            }
+          } catch (error) {
+            logger.error("Error in RpcEndpointHealthcheckerJob", error);
+            throw error;
+          }
+        });
+
+        // Add error handler
+        this.queue.on('error', (error: Error) => {
+          logger.error('Queue error:', error);
+        });
+
+        // Add stalled handler
+        this.queue.on('stalled', (job: Job) => {
+          logger.warn('Job stalled:', job.id);
+        });
+
+        this.isInitialized = true;
+        logger.info('RpcEndpointHealthchecker queue initialized successfully');
+      } catch (error) {
+        logger.error('Error initializing RpcEndpointHealthchecker queue:', error);
+        throw error;
+      } finally {
+        this.initializationPromise = null;
+      }
+    })();
+
+    return this.initializationPromise;
+  }
+}
+
+// Singleton instance
+const queueManager = RpcEndpointHealthcheckerQueueManager.getInstance();
+
+export const initRpcEndpointHealthcheckerQueue = async () => {
+  await queueManager.getQueue();
 };
 
 export const addRpcEndpointHealthcheckerJob = () => {
@@ -89,6 +162,7 @@ export interface RpcEndpointHealthResult {
   name: string;
   endpoint: string;
 }
+
 const getRpcEndpointsHealth = async (): Promise<RpcEndpointHealthResult[]> => {
   const rpcEndpoints = appConfig.parsedRpcEndpoints;
   const requests = rpcEndpoints.map(async (rpcEndpoint) => {
@@ -122,7 +196,7 @@ const addRpcEndpointHealthForNotification = async (
   const { notificationRepo, telegramUserRepo } = new AppDb();
   const tgUsers = await telegramUserRepo.findAll({});
   if (!tgUsers || tgUsers.length < 1) return;
-  //give current timesstamp as notification id
+  
   const currentTimestamp = new Date().getTime();
   const notificationId = `rpc_health_change-${rpcEndpointResult.name}-${validator.operator_address}${currentTimestamp}`;
   const condition = createRpcEndpointHealthCondition(

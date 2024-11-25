@@ -1,6 +1,8 @@
 import { PollVoteType } from "@/database/models/polls/poll_vote/poll_vote.interface";
 import { IBaseInterface, IBaselModel } from "@database/base/model.interface";
 import { Document } from "mongoose";
+import { VoteType } from "@database/models/amplifier/poll.interface";
+import { SignatureType } from "@database/models/amplifier/signature.interface";
 
 export enum NotificationEvent {
   UPTIME = "UPTIME_EVENT",
@@ -8,6 +10,8 @@ export enum NotificationEvent {
   RPC_ENDPOINT_HEALTH = "RPC_ENDPOINT_HEALTH_EVENT",
   EVM_SUPPORTED_CHAIN_REGISTRATION = "EVM_SUPPORTED_CHAIN_REGISTRATION_EVENT",
   BROADCASTER_BALANCE_LOW = "BROADCASTER_BALANCE_LOW_EVENT",
+  AMPLIFIER_VOTE = "AMPLIFIER_VOTE_EVENT",
+  AMPLIFIER_SIGNATURE = "AMPLIFIER_SIGNATURE_EVENT"
 }
 
 export enum NotificationType {
@@ -23,11 +27,16 @@ export interface INotification extends IBaseInterface {
     | PollVoteNotificationDataType
     | RpcEndpointHealthNotificationDataType
     | EvmSupprtedChainRegistrationNotificationDataType
-    | BroadcasterBalanceLowNotificationDataType;
+    | BroadcasterBalanceLowNotificationDataType
+    | AmplifierVoteNotificationDataType
+    | AmplifierSignatureNotificationDataType;
   condition: string;
   type: NotificationType;
   recipient: string;
   sent: boolean;
+  retryCount?: number;
+  failed?: boolean;
+  lastError?: string;
 }
 
 export interface INotificationDocument extends Document, INotification {}
@@ -62,6 +71,7 @@ export enum ChainRegistrationStatus {
   REGISTERED = "REGISTERED",
   DEREGISTERED = "DEREGISTERED",
 }
+
 export interface EvmSupprtedChainRegistrationNotificationDataType {
   chain: string;
   operatorAddress: string;
@@ -74,4 +84,20 @@ export interface BroadcasterBalanceLowNotificationDataType {
   threshold: number;
   operatorAddress: string;
   moniker: string;
+}
+
+export interface AmplifierVoteNotificationDataType {
+  pollId: string;
+  voter: string;
+  moniker: string;
+  vote: VoteType;
+  timestamp: number;
+}
+
+export interface AmplifierSignatureNotificationDataType {
+  sessionId: string;
+  verifier: string;
+  moniker: string;
+  status: SignatureType;
+  timestamp: number;
 }

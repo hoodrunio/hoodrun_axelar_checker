@@ -16,23 +16,28 @@
     "strictFunctionTypes": true,
     "forceConsistentCasingInFileNames": true,
     "outDir": "dist",
-    "baseUrl": "src",
+    "baseUrl": ".",
     "paths": {
-      "@/*": ["*"],
-      "@app/*": ["app/*"],
-      "@database/*": ["database/*"],
-      "@config/*": ["config/*"],
-      "@repositories/*": ["repositories/*"],
-      "@services/*": ["services/*"],
-      "@utils/*": ["utils/*"],
-      "@extensions/*": ["extensions/*"]
+      "@/*": ["src/*"],
+      "@app/*": ["src/app/*"],
+      "@database/*": ["src/database/*"],
+      "@config/*": ["src/config/*"],
+      "@repositories/*": ["src/repositories/*"],
+      "@services/*": ["src/services/*"],
+      "@utils/*": ["src/utils/*"],
+      "@extensions/*": ["src/extensions/*"],
+      "@tests/*": ["src/tests/*"]
     },
-    "typeRoots": ["app/**/types", "node_modules/@types"],
+    "typeRoots": ["node_modules/@types"],
     "plugins": [
       { "transform": "typescript-transform-paths" },
       { "transform": "typescript-transform-paths", "afterDeclarations": true }
     ]
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules/*", "dist/*", "scripts/*"]
+  "include": [
+    "src/**/*",
+    "jest.config.ts",
+    "jest.setup.ts"
+  ],
+  "exclude": ["node_modules", "dist"]
 }

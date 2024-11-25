@@ -18,7 +18,7 @@ export class AxiosService {
 
     this.axiosInstances = baseUrls.map((baseUrl: string) => {
       const instance = axios.create({
-        baseURL: `${baseUrl}${prefix}`,
+        baseURL: baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl + (prefix || ''),
         headers: {
           "Content-Type": "application/json",
         },

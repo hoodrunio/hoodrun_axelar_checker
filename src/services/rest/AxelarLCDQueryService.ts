@@ -18,7 +18,7 @@ export class AxelarLCDQueryService {
   ): Promise<RegisterProxyGetResponse> {
     const response = await this.restClient.request<RegisterProxyGetResponse>({
       method: "GET",
-      url: `cosmos/tx/v1beta1/txs?events=message.sender='${operatorAddress}'&events=message.action='RegisterProxy'`,
+      url: `/cosmos/tx/v1beta1/txs?events=message.sender='${operatorAddress}'&events=message.action='RegisterProxy'`,
     });
 
     return response?.data;
@@ -32,7 +32,7 @@ export class AxelarLCDQueryService {
       logger.warn(`No RegisterProxy tx found for ${operatorAddress}`);
       return null;
     }
-
+    
     const firstMessage = response?.txs?.[0]?.body?.messages?.[0];
 
     if (!firstMessage) {

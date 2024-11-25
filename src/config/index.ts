@@ -15,11 +15,17 @@ export interface AppConfigType {
   parsedRpcEndpoints: RpcEnvEndpoint[];
   maxLastXHourPollVoteNotification: number;
   axelarVoterAddress: string;
+  axelarOperatorAddress?: string;
+  denom: string;
   mainnetAxelarRestBaseUrls: string[];
   mainnetAxelarLCDRestBaseUrls: string[];
   mainnetAxelarRpcBaseUrls: string[];
   mainnetAxelarWsUrls: string[];
+  testnetAxelarRestBaseUrls: string[];
+  testnetAxelarRpcBaseUrls: string[];
+  testnetAxelarWsUrls: string[];
   tgToken: string;
+  monitoredVerifiers: string[];
   dbConnectionString: string | undefined;
   dbName: string;
   dbUser: string;

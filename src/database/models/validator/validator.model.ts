@@ -48,6 +48,11 @@ const ValidatorSchema: Schema<IValidatorDocument> =
       default: 0.0,
       set: (value: number) => modelNumberPrecisionFixer({ value }),
     },
+    verifier_addresses: { 
+      type: [String], 
+      required: false, 
+      default: [] 
+    },
     is_active: { type: Boolean, required: true, default: false },
     rpc_health_endpoints: { type: [ValRpcHealthEndpointSchema], default: [] },
   });

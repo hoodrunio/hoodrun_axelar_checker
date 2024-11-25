@@ -100,4 +100,38 @@ export class ValidatorRepository extends BaseRepository<
 
     return endpoint || null;
   }
+
+  async upsertOne(
+    filter: FilterQuery<IValidatorDocument>,
+    data: Partial<IValidator>
+  ): Promise<IValidatorDocument | null> {
+    // Create a new object to avoid modifying the input
+    const updateData = { ...data };
+
+    // Ensure verifier_addresses is a flat array of strings
+    if (updateData.verifier_addresses !== undefined) {
+      try {
+        let addresses: string[];
+        
+        if (Array.isArray(updateData.verifier_addresses)) {
+          // If it's already an array, map each element to ensure they're strings
+          addresses = updateData.verifier_addresses.map(addr => String(addr));
+        } else if (typeof updateData.verifier_addresses === 'string') {
+          // If it's a string, try to parse it
+          const parsed = JSON.parse(updateData.verifier_addresses);
+          addresses = Array.isArray(parsed) ? parsed.map(addr => String(addr)) : [];
+        } else {
+          addresses = [];
+        }
+
+        // Assign the cleaned array back to the update data
+        updateData.verifier_addresses = addresses;
+      } catch (error) {
+        console.error('Error processing verifier addresses:', error);
+        updateData.verifier_addresses = [];
+      }
+    }
+
+    return super.upsertOne(filter, updateData);
+  }
 }

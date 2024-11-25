@@ -4,185 +4,187 @@ import {
   RpcEndpointHealthNotification,
   UptimeNotification,
 } from "@/bot/tg/interface/notification";
-import { BroadcasterBalanceLowNotificationDataType, ChainRegistrationStatus } from "@/database/models/notification/notification.interface";
+import {
+  BroadcasterBalanceLowNotificationDataType,
+  ChainRegistrationStatus,
+  AmplifierSignatureNotificationDataType,
+  AmplifierVoteNotificationDataType 
+} from "@/database/models/notification/notification.interface";
 import { PollVoteType } from "@database/models/polls/poll_vote/poll_vote.interface";
-
 import BigNumber from "bignumber.js";
 
 export class TgReply {
-  startReply() {
+  startReply(): string {
     return `
-<b style="text-align:center"><strong>Welcome HoodRun Axelar Validator Checker 🚀 </strong></b>
+🚀 <b>Welcome to Axelar Validator Checker!</b>
 
-<b>👋 Hello! I'm Axelar Validator Checker Bot. I can help you to check your validator status and uptime. </b>
+👋 Hello! I'm your personal Axelar Validator Assistant. I'm here to help you monitor your validator status and uptime.
 
-<b>🔗 To get started, you can use the following commands:</b>
+🔗 <b>Get started with these commands:</b>
 
+📋 /list_validators - View your validators
+❓ /help - Learn how to use this bot
 
-- /list_validators - List your validators
-- /help - To see how bot works
+Let's keep your validators in top shape! 💪
     `;
   }
 
   uptimeReply(params: UptimeNotification): string {
     const { moniker, operatorAddress, currentUptime } = params;
-    const uptime = new BigNumber(currentUptime)
-      .times(100)
-      .decimalPlaces(2)
-      .toNumber();
+    const uptime = new BigNumber(currentUptime).times(100).decimalPlaces(2).toNumber();
+    const uptimeEmoji = uptime >= 99 ? "🌟" : uptime >= 95 ? "👍" : "⚠️";
+
     return `
-<b><strong>${moniker} Uptime</strong></b>
+🕒 <b>${moniker} Uptime Report</b>
 
-<b>Operator Address:</b> ${operatorAddress}
-<b>Uptime:</b> ${uptime}% <b>🤘</b>
+🔑 <b>Operator:</b> <code>${operatorAddress}</code>
+📊 <b>Uptime:</b> ${uptime}% ${uptimeEmoji}
 
-<b>${this.motivationMessage()}</b>
-`;
+${this.motivationMessage(uptime)}
+    `;
   }
 
   private pollVoteTitleText(params: PollVoteNotification): string {
     const { moniker, operatorAddress } = params;
-    return `<b><strong>${moniker} Poll Vote</strong></b>\n\n<b>Operator Address:</b> ${operatorAddress}`;
+    return `🗳️ <b>${moniker} Poll Vote</b>\n\n🔑 <b>Operator:</b> <code>${operatorAddress}</code>`;
   }
 
-  private pollVoteContentText(params: PollVoteNotification) {
+  private pollVoteContentText(params: PollVoteNotification): string {
     const { vote, pollId, chain } = params;
-    let voteEmoji = "";
-    if (vote == PollVoteType.UNSUBMITTED) {
-      voteEmoji = "🤷‍♂️";
-    } else if (vote == PollVoteType.YES) {
-      voteEmoji = "✅";
-    } else {
-      voteEmoji = "❌";
-    }
+    const voteEmoji = vote === PollVoteType.UNSUBMITTED ? "🤷‍♂️" : vote === PollVoteType.YES ? "✅" : "❌";
 
-    return `<b>Pool ID:</b> ${pollId}\n<b>Vote:</b> ${vote} ${voteEmoji}\n<b>Chain:</b> ${chain.toUpperCase()}\n<b>Link To Poll:</b> https://axelarscan.io/evm-poll/${pollId}\n`;
+    return `
+🆔 <b>Poll ID:</b> ${pollId}
+🔗 <b>Chain:</b> ${chain.toUpperCase()}
+🗳️ <b>Vote:</b> ${vote} ${voteEmoji}
+🔗 <b>View Poll:</b> <a href="https://axelarscan.io/evm-poll/${pollId}">Axelarscan</a>
+    `;
   }
 
   pollVoteReply(params: PollVoteNotification): string {
-    return `${this.pollVoteTitleText(params)}\n${this.pollVoteContentText(
-      params
-    )}\n<b>${this.motivationMessage()}</b>`;
+    return `${this.pollVoteTitleText(params)}\n\n${this.pollVoteContentText(params)}\n\n${this.motivationMessage()}`;
   }
 
   batchValidatorPollVoteReply(params: PollVoteNotification[]): string {
-    if (params.length == 0) {
-      return `No poll vote data found`;
-    }
-    const contents = params
-      .map((param) => {
-        return `\n${this.pollVoteContentText(param)}\n`;
-      })
-      .join(" ");
+    if (params.length === 0) return "📭 No poll vote data found";
 
-    return `${this.pollVoteTitleText(
-      params[0]
-    )}\n${contents}\n<b>${this.motivationMessage()}</b>`;
+    const contents = params.map(param => this.pollVoteContentText(param)).join("\n\n");
+    return `${this.pollVoteTitleText(params[0])}\n\n${contents}\n\n${this.motivationMessage()}`;
   }
 
   rpcEndpointHealthTitle(params: RpcEndpointHealthNotification): string {
     const { moniker, operatorAddress } = params;
-    return `<b><strong>${moniker} RPC Endpoint Health</strong></b>\n<b>Operator Address:</b> ${operatorAddress}`;
+    return `🖥️ <b>${moniker} RPC Endpoint Health</b>\n\n🔑 <b>Operator:</b> <code>${operatorAddress}</code>`;
   }
 
-  rpcEndpointHealthContent(params: RpcEndpointHealthNotification) {
+  rpcEndpointHealthContent(params: RpcEndpointHealthNotification): string {
     const { isHealthy, rpcEndpoint, name } = params;
     const status = isHealthy ? "Healthy" : "Unhealthy";
     const icon = isHealthy ? "✅" : "❌";
-    return `<b>RPC Chain:</b> ${name}\n<b>RPC Status:</b> ${status} ${icon}\n<b>RPC Endpoint:</b> ${rpcEndpoint}`;
+
+    return `
+🔗 <b>Chain:</b> ${name}
+🏥 <b>Status:</b> ${status} ${icon}
+🌐 <b>Endpoint:</b> <code>${rpcEndpoint}</code>
+    `;
   }
 
   rpcEndpointHealthReply(params: RpcEndpointHealthNotification): string {
-    return `${this.rpcEndpointHealthTitle(
-      params
-    )}\n\n${this.rpcEndpointHealthContent(
-      params
-    )}\n\n<b>${this.motivationMessage()}</b>
-    `;
+    return `${this.rpcEndpointHealthTitle(params)}\n\n${this.rpcEndpointHealthContent(params)}\n\n${this.motivationMessage()}`;
   }
 
   rpcEndpointHealthBatchReply(params: RpcEndpointHealthNotification[]): string {
-    if (params.length == 0) {
-      return `No rpc endpoint health data found`;
-    }
-    const contents = params
-      .map((param) => {
-        return `\n${this.rpcEndpointHealthContent(param)}\n`;
-      })
-      .join(" ");
+    if (params.length === 0) return "📭 No RPC endpoint health data found";
 
-    return `${this.rpcEndpointHealthTitle(
-      params[0]
-    )}\n${contents}\n<b>${this.motivationMessage()}</b>`;
+    const contents = params.map(param => this.rpcEndpointHealthContent(param)).join("\n\n");
+    return `${this.rpcEndpointHealthTitle(params[0])}\n\n${contents}\n\n${this.motivationMessage()}`;
   }
 
-  evmSupportedChainReplyTitle(
-    params: EvmSupprtedChainRegistrationNotification
-  ): string {
+  evmSupportedChainReplyTitle(params: EvmSupprtedChainRegistrationNotification): string {
     const { moniker, operatorAddress } = params;
-    return `<b><strong>${moniker} EVM Supported Chain</strong></b>\n\n<b>Operator Address:</b> ${operatorAddress}`;
+    return `🌐 <b>${moniker} EVM Supported Chain</b>\n\n🔑 <b>Operator:</b> <code>${operatorAddress}</code>`;
   }
 
-  evmSupportedChainReplyContent(
-    params: EvmSupprtedChainRegistrationNotification
-  ): string {
-    const { status } = params;
-    const icon = status == ChainRegistrationStatus.REGISTERED ? "✅" : "❌";
-    return `<b>Chain:</b> ${params.chain.toUpperCase()}\n<b>Status:</b> ${status} ${icon}`;
+  evmSupportedChainReplyContent(params: EvmSupprtedChainRegistrationNotification): string {
+    const { status, chain } = params;
+    const icon = status === ChainRegistrationStatus.REGISTERED ? "✅" : "❌";
+    return `🔗 <b>Chain:</b> ${chain.toUpperCase()}\n📊 <b>Status:</b> ${status} ${icon}`;
   }
-  evmSupportedChainReply(
-    params: EvmSupprtedChainRegistrationNotification
-  ): string {
-    return `${this.evmSupportedChainReplyTitle(
-      params
-    )}\n\n${this.evmSupportedChainReplyContent(
-      params
-    )}\n\n<b>${this.motivationMessage()}</b>
+
+  evmSupportedChainReply(params: EvmSupprtedChainRegistrationNotification): string {
+    return `${this.evmSupportedChainReplyTitle(params)}\n\n${this.evmSupportedChainReplyContent(params)}\n\n${this.motivationMessage()}`;
+  }
+
+  evmSupportedChainBatchReply(params: EvmSupprtedChainRegistrationNotification[]): string {
+    if (params.length === 0) return "📭 No EVM supported chain data found";
+
+    const contents = params.map(param => this.evmSupportedChainReplyContent(param)).join("\n\n");
+    return `${this.evmSupportedChainReplyTitle(params[0])}\n\n${contents}\n\n${this.motivationMessage()}`;
+  }
+
+  amplifierVoteReply(data: AmplifierVoteNotificationDataType): string {
+    const { pollId, voter, moniker, vote, timestamp } = data;
+    const date = new Date(timestamp).toLocaleString();
+    
+    return `
+🚨 <b>Amplifier Vote Alert</b>
+
+👤 <b>Verifier:</b> <code>${moniker}</code> (${voter})
+🆔 <b>Poll ID:</b> <code>${pollId}</code>
+🗳️ <b>Vote Status:</b> <b>${vote}</b>
+🕒 <b>Time:</b> ${date}
+
+⚠️ This ${vote} vote requires your attention!
     `;
   }
 
-  evmSupportedChainBatchReply(
-    params: EvmSupprtedChainRegistrationNotification[]
-  ): string {
-    if (params.length == 0) {
-      return `No evm supported chain data found`;
+  amplifierSignatureReply(data: AmplifierSignatureNotificationDataType): string {
+    const { sessionId, verifier, moniker, status, timestamp } = data;
+    const date = new Date(timestamp).toLocaleString();
+    
+    return `
+🚨 <b>Amplifier Signature Alert</b>
+
+👤 <b>Verifier:</b> <code>${moniker}</code> (${verifier})
+🆔 <b>Session ID:</b> <code>${sessionId}</code>
+✍️ <b>Signature Status:</b> <b>${status}</b>
+🕒 <b>Time:</b> ${date}
+
+⚠️ This ${status} signature requires your attention!
+    `;
+  }
+
+  motivationMessage(uptime?: number): string {
+    if (uptime !== undefined) {
+      if (uptime >= 99) return "🌟 Excellent uptime! Keep up the fantastic work!";
+      if (uptime >= 95) return "👍 Good job! Let's aim for even higher uptime!";
+      return "💪 There's room for improvement. Let's work on increasing that uptime!";
     }
-    const contents = params
-      .map((param) => {
-        return `\n${this.evmSupportedChainReplyContent(param)}\n`;
-      })
-      .join(" ");
-
-    return `${this.evmSupportedChainReplyTitle(
-      params[0]
-    )}\n${contents}\n<b>${this.motivationMessage()}</b>`;
+    return "🚀 Keep up the great work!";
   }
 
-  motivationMessage() {
-    return `🚀 Keep up the good work!`;
+  successFullAddOperatorAddress(operatorAddress: string): string {
+    return `✅ Success! Operator address <code>${operatorAddress}</code> has been added to the chat.`;
   }
 
-  successFullAddOperatorAddress(operatorAddress: string) {
-    return `Operator address ${operatorAddress} has been added to the chat`;
-  }
-
-  listMessage(list: string[]) {
-    const htmlMessage = list
-      .map((platform, index) => `<b>${index + 1}. ${platform}</b>`)
-      .join("\n");
-    return htmlMessage;
+  listMessage(list: string[]): string {
+    return list.map((item, index) => `${index + 1}. <b>${item}</b>`).join("\n");
   }
 
   broadcasterBalanceLowReply(params: BroadcasterBalanceLowNotificationDataType): string {
     const { balance, threshold, moniker, operatorAddress } = params;
+    const currentBalance = balance / 1000000;
+    const thresholdBalance = threshold / 1000000;
+
     return `
-<b><strong>${moniker} Broadcaster Balance Low</strong></b>
+⚠️ <b>${moniker} Broadcaster Balance Alert</b>
 
-<b>Operator Address:</b> ${operatorAddress}
-<b>Current Balance:</b> ${balance / 1000000} AXL
-<b>Threshold:</b> ${threshold / 1000000} AXL
+🔑 <b>Operator:</b> <code>${operatorAddress}</code>
+💰 <b>Current Balance:</b> ${currentBalance.toFixed(6)} AXL
+🚨 <b>Threshold:</b> ${thresholdBalance.toFixed(6)} AXL
 
-<b>⚠️ Warning: Broadcaster balance is below the threshold!</b>
-`;
+<b>Warning: Broadcaster balance is below the threshold!</b>
+Please top up your balance to ensure uninterrupted operations.
+    `;
   }
 }

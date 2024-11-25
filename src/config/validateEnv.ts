@@ -2,7 +2,7 @@
 
 import { AppConfigType } from "@/config/index";
 import { parseRpcEndpoints } from "@/config/parseRpcEndpoints";
-import { isValidVoterAddress } from "@utils/cosmos/axelar/addressUtil";
+import { isValidVoterAddress, isValidOperatorAddress } from "@utils/cosmos/axelar/addressUtil";
 import { isSafeUrl } from "@utils/url";
 import { config } from "dotenv";
 config({ path: `.env` });
@@ -16,8 +16,12 @@ const {
   MAINNET_AXELAR_LCD_REST_BASE_URLS,
   MAINNET_AXELAR_WS_URLS,
   TESTNET_AXELAR_REST_BASE_URLS,
+  TESTNET_AXELAR_RPC_BASE_URLS,
+  TESTNET_AXELAR_WS_URLS,
   //Axelar
   AXELAR_VOTER_ADDRESS,
+  AXELAR_OPERATOR_ADDRESS,
+  DENOM,
   BROADCASTER_BALANCE_THRESHOLD,
   BROADCASTER_BALANCE_CHECK_INTERVAL,
   UPTIME_THRESHOLD_LOW,
@@ -37,6 +41,7 @@ const {
   //Redis
   REDIS_HOST,
   REDIS_PORT,
+  MONITORED_VERIFIERS,
 } = process.env;
 
 const isDev = process.env.NODE_ENV === "development";
@@ -53,63 +58,88 @@ if (isNaN(broadcasterBalanceCheckInterval) || broadcasterBalanceCheckInterval <=
   throw new Error('Invalid BROADCASTER_BALANCE_CHECK_INTERVAL');
 }
 
+const axelarVoterAddress = AXELAR_VOTER_ADDRESS as string;
+if (!isValidVoterAddress(axelarVoterAddress)) {
+  throw new Error(`‼️ Invalid Axelar Voter Address in Env file please fix it : ${axelarVoterAddress}`);
+}
+
+// Optional operator address validation
+const axelarOperatorAddress = AXELAR_OPERATOR_ADDRESS as string | undefined;
+if (axelarOperatorAddress && !isValidOperatorAddress(axelarOperatorAddress)) {
+  throw new Error(`‼️ Invalid Axelar Operator Address in Env file please fix it : ${axelarOperatorAddress}`);
+}
+
+const monitoredVerifiers = JSON.parse(MONITORED_VERIFIERS || '[]');
+if (!Array.isArray(monitoredVerifiers)) {
+    throw new Error('MONITORED_VERIFIERS must be a JSON array');
+}
+
+const maxLastXHourPollVoteNotification = LAST_X_HOUR_POLL_VOTE_NOTIFICATION ?? "12";
+const urlArrays: { [x: string]: string[] } = {
+  mainnetAxelarRpcBaseUrls: parseStringArray(MAINNET_AXELAR_RPC_BASE_URLS),
+  mainnetAxelarRestBaseUrls: parseStringArray(MAINNET_AXELAR_REST_BASE_URLS),
+  mainnetAxelarWsUrls: parseStringArray(MAINNET_AXELAR_WS_URLS),
+  mainnetAxelarLCDRestBaseUrls: parseStringArray(MAINNET_AXELAR_LCD_REST_BASE_URLS),
+  testnetAxelarRpcBaseUrls: parseStringArray(TESTNET_AXELAR_RPC_BASE_URLS),
+  testnetAxelarRestBaseUrls: parseStringArray(TESTNET_AXELAR_REST_BASE_URLS),
+  testnetAxelarWsUrls: parseStringArray(TESTNET_AXELAR_WS_URLS),
+};
+
+for (const prop in urlArrays) {
+  const urls = urlArrays[prop];
+  urls.forEach((url) => {
+    if (!isSafeUrl(url)) {
+      throw new Error(`‼️ Invalid URL for ${prop} with !! this ${url} !! in Env file please fix it`);
+    }
+  });
+}
+
+if (isNaN(parseFloat(BROADCASTER_BALANCE_THRESHOLD as string))) {
+  throw new Error('‼️ Invalid BALANCE_THRESHOLD in Env file');
+}
+
+const balanceThreshold = parseFloat(BROADCASTER_BALANCE_THRESHOLD as string);
+
 export const validateEnv = (): AppConfigType => {
-  const maxLastXHourPollVoteNotification = LAST_X_HOUR_POLL_VOTE_NOTIFICATION ?? "12";
-  const urlArrays: { [x: string]: string[] } = {
-    mainnetAxelarRpcBaseUrls: parseStringArray(MAINNET_AXELAR_RPC_BASE_URLS),
-    mainnetAxelarRestBaseUrls: parseStringArray(MAINNET_AXELAR_REST_BASE_URLS),
-    mainnetAxelarWsUrls: parseStringArray(MAINNET_AXELAR_WS_URLS),
-    mainnetAxelarLCDRestBaseUrls: parseStringArray(MAINNET_AXELAR_LCD_REST_BASE_URLS),
-  };
-
-  for (const prop in urlArrays) {
-    const urls = urlArrays[prop];
-    urls.forEach((url) => {
-      if (!isSafeUrl(url)) {
-        throw new Error(`‼️ Invalid URL for ${prop} with !! this ${url} !! in Env file please fix it`);
-      }
-    });
+  try {
+    
+    return {
+      axelarVoterAddress,
+      axelarOperatorAddress,
+      denom: DENOM as string,
+      parsedRpcEndpoints: parseRpcEndpoints(),
+      uptimeThreshold: {
+        low: parseFloat(UPTIME_THRESHOLD_LOW as string),
+        medium: parseFloat(UPTIME_THRESHOLD_MEDIUM as string),
+        high: parseFloat(UPTIME_THRESHOLD_HIGH as string),
+      },
+      maxLastXHourPollVoteNotification: parseInt(maxLastXHourPollVoteNotification),
+      mainnetAxelarRestBaseUrls: urlArrays.mainnetAxelarRestBaseUrls,
+      mainnetAxelarLCDRestBaseUrls: urlArrays.mainnetAxelarLCDRestBaseUrls,
+      mainnetAxelarRpcBaseUrls: urlArrays.mainnetAxelarRpcBaseUrls,
+      mainnetAxelarWsUrls: urlArrays.mainnetAxelarWsUrls,
+      testnetAxelarRestBaseUrls: urlArrays.testnetAxelarRestBaseUrls,
+      testnetAxelarRpcBaseUrls: urlArrays.testnetAxelarRpcBaseUrls,
+      testnetAxelarWsUrls: urlArrays.testnetAxelarWsUrls,
+      monitoredVerifiers,  // Use the properly parsed array
+      tgToken: TG_TOKEN as string,
+      dbConnectionString: DB_CONNECTION_STRING,
+      dbName: DB_NAME as string,
+      dbUser: DB_USER as string,
+      dbPwd: DB_PWD as string,
+      dbHost: DB_HOST as string,
+      dbPort: DB_PORT as string,
+      logFormat: LOG_FORMAT as string,
+      logDir: LOG_DIR as string,
+      redisHost: isDev ? defaultRedisHost : (REDIS_HOST as string),
+      redisPort: parseInt(REDIS_PORT ?? defaultRedisPort),
+      broadcasterBalanceThreshold,
+      broadcasterBalanceCheckInterval,
+      balanceThreshold,
+    };
+  } catch (error) {
+    throw new Error(`Failed to parse environment variables: ${error}`);
   }
-
-  const axelarVoterAddress = AXELAR_VOTER_ADDRESS as string;
-  if (!isValidVoterAddress(axelarVoterAddress)) {
-    throw new Error(`‼️ Invalid Axelar Voter Address in Env file please fix it : ${axelarVoterAddress}`);
-  }
-
-  if (isNaN(parseFloat(BROADCASTER_BALANCE_THRESHOLD as string))) {
-    throw new Error('‼️ Invalid BALANCE_THRESHOLD in Env file');
-  }
-
-  const balanceThreshold = parseFloat(BROADCASTER_BALANCE_THRESHOLD as string);
-
-  return {
-    axelarVoterAddress,
-    parsedRpcEndpoints: parseRpcEndpoints(),
-    uptimeThreshold: {
-      low: parseFloat(UPTIME_THRESHOLD_LOW as string),
-      medium: parseFloat(UPTIME_THRESHOLD_MEDIUM as string),
-      high: parseFloat(UPTIME_THRESHOLD_HIGH as string),
-    },
-    maxLastXHourPollVoteNotification: parseInt(maxLastXHourPollVoteNotification),
-    mainnetAxelarRestBaseUrls: urlArrays.mainnetAxelarRestBaseUrls,
-    mainnetAxelarLCDRestBaseUrls: urlArrays.mainnetAxelarLCDRestBaseUrls,
-    mainnetAxelarRpcBaseUrls: urlArrays.mainnetAxelarRpcBaseUrls,
-    mainnetAxelarWsUrls: urlArrays.mainnetAxelarWsUrls,
-    tgToken: TG_TOKEN as string,
-    dbConnectionString: DB_CONNECTION_STRING,
-    dbName: DB_NAME as string,
-    dbUser: DB_USER as string,
-    dbPwd: DB_PWD as string,
-    dbHost: DB_HOST as string,
-    dbPort: DB_PORT as string,
-    logFormat: LOG_FORMAT as string,
-    logDir: LOG_DIR as string,
-    redisHost: isDev ? defaultRedisHost : (REDIS_HOST as string),
-    redisPort: parseInt(REDIS_PORT ?? defaultRedisPort),
-    broadcasterBalanceThreshold,
-    broadcasterBalanceCheckInterval,
-    balanceThreshold,
-  };
 };
 
 function parseStringArray(str?: string): string[] {

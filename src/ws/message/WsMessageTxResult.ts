@@ -1,7 +1,7 @@
 import {
   IWsEventMessageTxResult,
   TxResult,
-} from "ws/interface/IWsEventMessageTx";
+} from "@/ws/interface/IWsEventMessageTx";
 
 export class WsMessageTxResult implements IWsEventMessageTxResult {
   query: string;

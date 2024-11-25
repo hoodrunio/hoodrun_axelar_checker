@@ -24,7 +24,7 @@ export class AxelarBalanceQueryService {
       });
 
       const uaxlBalance = response.data.balances.find(
-        (balance) => balance.denom === "uaxl"
+        (balance) => balance.denom === appConfig.denom
       );
 
       if (!uaxlBalance) {

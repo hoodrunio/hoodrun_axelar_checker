@@ -28,4 +28,6 @@ export const TgQuery = {
   EvmSupChains: new QueryHelper("evmChains", ":"),
   Last30Votes: new QueryHelper("last30Votes", ":"),
   RpcHealth: new QueryHelper("rpcHealth", ":"),
+  AmplifierPolls: new QueryHelper("ampPolls", ":"),
+  AmplifierSigs: new QueryHelper("ampSigs", ":")
 };

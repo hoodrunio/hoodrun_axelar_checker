@@ -12,6 +12,8 @@ import { chatSaverMiddleware } from "@/bot/tg/middlewares/chatSaverMiddleware";
 import appConfig from "@config/index";
 import { AppDb } from "@database/database";
 import {
+  AmplifierSignatureNotificationDataType,
+  AmplifierVoteNotificationDataType,
   BroadcasterBalanceLowNotificationDataType,
   ChainRegistrationStatus,
   INotification,
@@ -22,7 +24,8 @@ import {
 } from "@database/models/notification/notification.interface";
 import { logger } from "@utils/logger";
 import { Bot, InlineKeyboard } from "grammy";
-
+import { IAmplifierPoll } from "@database/models/amplifier/poll.interface";
+import { IAmplifierSignature } from "@database/models/amplifier/signature.interface";
 export class TGBot {
   private static _instance: TGBot | null = null;
   bot: Bot;
@@ -122,6 +125,20 @@ export class TGBot {
     );
   }
 
+  private async sendAmplifierVoteNotification(data: AmplifierVoteNotificationDataType & { chat_id: number }) {
+    await this.sendMessageToUser(
+      { chat_id: data.chat_id },
+      this.tgReply.amplifierVoteReply(data)
+    );
+  }
+
+  private async sendAmplifierSignatureNotification(data: AmplifierSignatureNotificationDataType & { chat_id: number }) {
+    await this.sendMessageToUser(
+      { chat_id: data.chat_id },
+      this.tgReply.amplifierSignatureReply(data)
+    );
+  }
+
   public async sendNotification(
     notification: INotification
   ): Promise<{ sentSuccess: boolean }> {
@@ -161,6 +178,20 @@ export class TGBot {
       case NotificationEvent.BROADCASTER_BALANCE_LOW:
         await this.sendBroadcasterBalanceLowNotification({
           ...(data as BroadcasterBalanceLowNotificationDataType),
+          chat_id: tgRecipient,
+        });
+        sentSuccess = true;
+        break;
+      case NotificationEvent.AMPLIFIER_VOTE:
+        await this.sendAmplifierVoteNotification({
+          ...(data as AmplifierVoteNotificationDataType),
+          chat_id: tgRecipient,
+        });
+        sentSuccess = true;
+        break;
+      case NotificationEvent.AMPLIFIER_SIGNATURE:
+        await this.sendAmplifierSignatureNotification({
+          ...(data as AmplifierSignatureNotificationDataType),
           chat_id: tgRecipient,
         });
         sentSuccess = true;
@@ -261,13 +292,25 @@ export class TGBot {
       const rpcHealthCallbackQueryData =
         TgQuery.RpcHealth.queryBuilder(operatorAddress);
 
+      const amplifierPollsButton = `📊 Amplifier Polls`;
+      const amplifierPollsCallBackQueryData =
+        TgQuery.AmplifierPolls.queryBuilder(operatorAddress);
+
+      const amplifierSignaturesButton = `✍️ Amplifier Signatures`;
+      const amplifierSignaturesCallBackQueryData =
+        TgQuery.AmplifierSigs.queryBuilder(operatorAddress);
+
       keyboard
         .text(uptimeButton, uptimeCallBackQueryData)
         .text(evmSupprtedChainsButton, evmSupChainsCallBackQueryData)
         .row()
         .text(last30PollVoteButton, last30PollVoteCallBackQueryData)
         .row()
-        .text(rpcHealthButton, rpcHealthCallbackQueryData);
+        .text(rpcHealthButton, rpcHealthCallbackQueryData)
+        .row()
+        .text(amplifierPollsButton, amplifierPollsCallBackQueryData)
+        .row()
+        .text(amplifierSignaturesButton, amplifierSignaturesCallBackQueryData);
 
       ctx.reply(
         `🚜 *${moniker} ${elipsizedOperatorAddress} Validator Actions*`,
@@ -443,6 +486,147 @@ export class TGBot {
     });
   }
 
+  private async _amplifierPollsCMD() {
+    const event = TgQuery.AmplifierPolls.event;
+  
+    this.bot.callbackQuery(event, async (ctx) => {
+      const input = ctx.update.callback_query?.data;
+      const operatorAddress = TgQuery.AmplifierPolls.queryExtractor(input);
+  
+      if (!operatorAddress) {
+        ctx.reply("Invalid operator address");
+        return;
+      }
+  
+      const validator = await this.appDb.validatorRepository.findOne({
+        operator_address: operatorAddress,
+      });
+  
+      if (!validator) {
+        ctx.reply("Invalid operator address");
+        return;
+      }
+  
+      // Only show amplifier polls if this validator matches our monitored voter address
+      if (validator.voter_address !== appConfig.axelarVoterAddress) {
+        ctx.reply("This validator is not configured for amplifier monitoring");
+        return;
+      }
+  
+      console.log('Monitored verifiers:', appConfig.monitoredVerifiers);
+      
+      // Use the monitored verifiers from config
+      const verifier = appConfig.monitoredVerifiers[0];
+      console.log('Searching for verifier:', verifier);
+      
+      // Get all polls and filter in memory
+      const pollModel = this.appDb.amplifierPollRepo.getModel();
+      const allPolls = await pollModel.find({})
+        .sort({ createdAt: -1 })
+        .limit(50)
+        .exec();
+
+      console.log('Total polls found:', allPolls.length);
+      
+      // Filter polls that have our verifier
+      const polls = allPolls.filter(poll => 
+        poll.participants.includes(verifier) || 
+        poll.votes.some(vote => vote.voter === verifier)
+      ).slice(0, 10);
+
+      console.log('Filtered polls:', polls.length);
+
+      if (!polls || polls.length === 0) {
+        ctx.reply("No recent amplifier polls found for the monitored verifiers");
+        return;
+      }
+  
+      // Format the poll data
+      const pollsText = polls.map((poll: IAmplifierPoll) => {
+        const verifierVotes = poll.votes.filter(v => appConfig.monitoredVerifiers.includes(v.voter));
+        const timestamp = poll.createdAt ? poll.createdAt : new Date();
+const date = new Date(timestamp).toLocaleString();
+        const votesSummary = verifierVotes.map(v => `${v.voter.slice(-4)}: ${v.vote}`).join(', ');
+        return `Poll ID: ${poll.pollId}\nChain: ${poll.sourceChain}\nVotes: ${votesSummary}\nTime: ${date}\n`;
+      }).join('\n');
+  
+      ctx.reply(`📊 Last 10 Amplifier Polls for ${validator.description.moniker}'s Verifiers:\n\n${pollsText}`, {
+        parse_mode: "HTML"
+      });
+    });
+  }
+
+  private async _amplifierSignaturesCMD() {
+  const event = TgQuery.AmplifierSigs.event;
+
+  this.bot.callbackQuery(event, async (ctx) => {
+    const input = ctx.update.callback_query?.data;
+    const operatorAddress = TgQuery.AmplifierSigs.queryExtractor(input);
+
+    if (!operatorAddress) {
+      ctx.reply("Invalid operator address");
+      return;
+    }
+
+    const validator = await this.appDb.validatorRepository.findOne({
+      operator_address: operatorAddress,
+    });
+
+    if (!validator) {
+      ctx.reply("Invalid operator address");
+      return;
+    }
+
+    // Only show amplifier signatures if this validator matches our monitored voter address
+    if (validator.voter_address !== appConfig.axelarVoterAddress) {
+      ctx.reply("This validator is not configured for amplifier monitoring");
+      return;
+    }
+
+    console.log('Looking for signatures...');
+      
+    // Use the monitored verifiers from config
+    const verifier = appConfig.monitoredVerifiers[0];
+    console.log('Searching for verifier:', verifier);
+      
+    // Get all signatures and filter in memory
+    const sigModel = this.appDb.amplifierSignatureRepo.getModel();
+    const allSessions = await sigModel.find({})
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .exec();
+
+    console.log('Total sessions found:', allSessions.length);
+      
+    // Filter sessions that have our verifier
+    const sessions = allSessions.filter(session => 
+      session.pubKeys.some(key => key.address === verifier) ||
+      session.signatures.some(sig => sig.verifier === verifier)
+    ).slice(0, 10);
+
+    console.log('Filtered sessions:', sessions.length);
+
+    if (!sessions || sessions.length === 0) {
+      ctx.reply("No recent signature sessions found for the monitored verifiers");
+      return;
+    }
+
+    // Format the signature session data
+    const sessionsText = sessions.map((session: IAmplifierSignature) => {
+      const verifierSignatures = session.signatures.filter(s => appConfig.monitoredVerifiers.includes(s.verifier));
+      // Use current time as fallback if createdAt is undefined
+      const timestamp = session.createdAt ? session.createdAt : new Date();
+      const date = new Date(timestamp).toLocaleString();
+      const signaturesSummary = verifierSignatures.map(s => `${s.verifier.slice(-4)}: ${s.status}`).join(', ');
+      return `Session ID: ${session.sessionId}\nChain: ${session.chain}\nSignatures: ${signaturesSummary}\nTime: ${date}\n`;
+    }).join('\n');
+
+    ctx.reply(`✍️ Last 10 Signature Sessions for ${validator.description.moniker}'s Verifiers:\n\n${sessionsText}`, {
+      parse_mode: "HTML"
+    });
+  });
+}
+
   private _initCMDS() {
     // Start Bot And Brief Introduction
     this._initStartCMD();
@@ -462,6 +646,8 @@ export class TGBot {
     this._uptimeValidatorCMD();
     this._last30PollVoteCMD();
     this._rpcHealthCMD();
+    this._amplifierPollsCMD();
+    this._amplifierSignaturesCMD();
   }
 
   private _initStartCMD() {

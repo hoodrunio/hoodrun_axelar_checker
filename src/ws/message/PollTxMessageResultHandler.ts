@@ -3,17 +3,17 @@ import {
   NewWsPollDataTypeEnum,
   NewWsPollDto,
   NewWsPollVoteDto,
-} from "queue/jobs/poll/dto/NewWsPollDtos";
-import { IParticipantsData } from "ws/event/ParticipantsData";
+} from "@/queue/jobs/poll/dto/NewWsPollDtos";
+import { IParticipantsData } from "@/ws/event/ParticipantsData";
 import {
   ActivePollEvents,
   ActivePollVotedEvents,
   PollSendEvent,
-} from "ws/event/PollSendEvent";
+} from "@/ws/event/PollSendEvent";
 
-import { addNewWsAllPollDataJob } from "queue/jobs/poll/NewWsAllPollDataJob";
-import { logger } from "@utils/logger";
-import { genPollVoteCustomId } from "@database/models/polls/poll_vote/poll_vote.interface";
+import { addNewWsAllPollDataJob } from "@/queue/jobs/poll/NewWsAllPollDataJob";
+import { logger } from "@/utils/logger";
+import { genPollVoteCustomId } from "@/database/models/polls/poll_vote/poll_vote.interface";
 import { WsMessageTxResult } from "@/ws/message/WsMessageTxResult";
 
 export class PollTxMessageResultHandler {
@@ -33,6 +33,11 @@ export class PollTxMessageResultHandler {
   private extractWhichPollEventMessage(
     result: WsMessageTxResult
   ): PollSendEvent | undefined {
+    if (!result?.query) {
+      logger.error('Received message with undefined query:', result);
+      return undefined;
+    }
+
     const allEvents = { ...ActivePollEvents, ...ActivePollVotedEvents };
     const pollEvent = Object.values(allEvents).find((event) =>
       result.query.includes(event.getQuery())
@@ -44,6 +49,11 @@ export class PollTxMessageResultHandler {
     result: WsMessageTxResult,
     events: { [x: string]: PollSendEvent }
   ) {
+    if (!result?.query) {
+      logger.error('Received message with undefined query:', result);
+      return false;
+    }
+
     return Object.values(events).some((event) =>
       result.query.includes(event.getQuery())
     );

@@ -12,76 +12,156 @@ import { createUptimeCondition } from "@/notification/condition/uptime";
 import { xSeconds } from "@/queue/jobHelper";
 import appJobProducer from "@/queue/producer/AppJobProducer";
 import AppQueueFactory from "@/queue/queue/AppQueueFactory";
+import { Queue, Job } from 'bull';
 
 export const VALIDATOR_UPTIME_CHECKER = "valUptimeChecker";
 
-export const initValsUptimeCheckerQueue = async () => {
-  const validatorUptimeCheckerQueue = AppQueueFactory.createQueue(
-    VALIDATOR_UPTIME_CHECKER
-  );
+class ValsUptimeCheckerQueueManager {
+  private static instance: ValsUptimeCheckerQueueManager;
+  private queue: Queue | null = null;
+  private isInitialized = false;
+  private initializationPromise: Promise<void> | null = null;
 
-  validatorUptimeCheckerQueue.process(4, async (job) => {
-    const db = new AppDb();
-    // const activeValidators = [await db.validatorRepository.activeValidators()];
-    const activeValidators = [];
+  private constructor() {}
 
-    const envValidator = await db.validatorRepository.findOne({
-      voter_address: appConfig.axelarVoterAddress,
-      is_active: true,
-    });
-
-    if (envValidator) {
-      activeValidators.push(envValidator);
+  public static getInstance(): ValsUptimeCheckerQueueManager {
+    if (!ValsUptimeCheckerQueueManager.instance) {
+      ValsUptimeCheckerQueueManager.instance = new ValsUptimeCheckerQueueManager();
     }
-    const promises = activeValidators.map(async (validator) => {
-      const {
-        uptime,
-        operator_address,
-        description: { moniker },
-      } = validator;
+    return ValsUptimeCheckerQueueManager.instance;
+  }
 
-      const event = NotificationEvent.UPTIME;
-      const { value: currentUptimeCondition, threshold: closestThreshold } =
-        createUptimeCondition({
-          operatorAddress: operator_address,
-          uptime,
+  public async getQueue(): Promise<Queue> {
+    if (this.initializationPromise) {
+      await this.initializationPromise;
+    }
+    if (!this.queue) {
+      await this.initQueue();
+    }
+    return this.queue!;
+  }
+
+  private async initQueue(): Promise<void> {
+    if (this.initializationPromise) {
+      return this.initializationPromise;
+    }
+
+    this.initializationPromise = (async () => {
+      try {
+        if (this.isInitialized && this.queue) {
+          try {
+            await this.queue.getJobCounts();
+            return;
+          } catch (error) {
+            logger.error('Queue check failed, reinitializing...', error);
+            this.isInitialized = false;
+            this.queue = null;
+          }
+        }
+
+        this.queue = AppQueueFactory.createQueue(VALIDATOR_UPTIME_CHECKER);
+
+        // Set a higher concurrency for better performance
+        this.queue.process(4, async (job) => {
+          const db = new AppDb();
+          // const activeValidators = [await db.validatorRepository.activeValidators()];
+          const activeValidators = [];
+
+          const envValidator = await db.validatorRepository.findOne({
+            voter_address: appConfig.axelarVoterAddress,
+            is_active: true,
+          });
+
+          if (envValidator) {
+            activeValidators.push(envValidator);
+          }
+
+          const promises = activeValidators.map(async (validator) => {
+            const {
+              uptime,
+              operator_address,
+              description: { moniker },
+            } = validator;
+
+            const event = NotificationEvent.UPTIME;
+            const { value: currentUptimeCondition, threshold: closestThreshold } =
+              createUptimeCondition({
+                operatorAddress: operator_address,
+                uptime,
+              });
+
+            // Get all telegram users
+            const tempAllTgUsers = await db.telegramUserRepo.findAll({});
+
+            const tgUserProcessPromisses = tempAllTgUsers.map(
+              async (tgUser) =>
+                await processTgUser({
+                  moniker,
+                  tgUser,
+                  operator_address,
+                  uptime,
+                  closestThreshold,
+                  currentUptimeCondition,
+                  event,
+                })
+            );
+
+            try {
+              await Promise.all(tgUserProcessPromisses);
+              return Promise.resolve();
+            } catch (error) {
+              logger.error("Error in uptime notification creation job", error);
+            }
+          });
+
+          try {
+            (await Promise.all(promises)).removeNulls();
+          } catch (error) {
+            logger.error("Error in uptime checker job", error);
+          }
+
+          return Promise.resolve();
         });
 
-      // const validatorTgUsers = await db.telegramUserRepo.findAll({
-      //   operator_addresses: { $in: operator_address },
-      // });
+        // Add error handler
+        this.queue.on('error', (error: Error) => {
+          logger.error('Queue error:', error);
+        });
 
-      const tempAllTgUsers = await db.telegramUserRepo.findAll({});
+        // Add stalled handler
+        this.queue.on('stalled', (job: Job) => {
+          logger.warn('Job stalled:', job.id);
+        });
 
-      const tgUserProcessPromisses = tempAllTgUsers.map(
-        async (tgUser) =>
-          await processTgUser({
-            moniker,
-            tgUser,
-            operator_address,
-            uptime,
-            closestThreshold,
-            currentUptimeCondition,
-            event,
-          })
-      );
-      try {
-        await Promise.all(tgUserProcessPromisses);
-
-        return Promise.resolve();
+        this.isInitialized = true;
+        logger.info('ValsUptimeChecker queue initialized successfully');
       } catch (error) {
-        logger.error("Error in uptime notification creation job", error);
+        logger.error('Error initializing ValsUptimeChecker queue:', error);
+        throw error;
+      } finally {
+        this.initializationPromise = null;
       }
-    });
+    })();
 
-    try {
-      (await Promise.all(promises)).removeNulls();
-    } catch (error) {
-      logger.error("Error in uptime checker job", error);
+    return this.initializationPromise;
+  }
+}
+
+// Singleton instance
+const queueManager = ValsUptimeCheckerQueueManager.getInstance();
+
+export const initValsUptimeCheckerQueue = async () => {
+  await queueManager.getQueue();
+};
+
+export const addValUptimeCheckerJob = () => {
+  appJobProducer.addJob(
+    VALIDATOR_UPTIME_CHECKER,
+    {},
+    {
+      repeat: { every: xSeconds(10) },
     }
-
-    return Promise.resolve();
-  });
+  );
 };
 
 interface ProcessTgUserParams {
@@ -135,13 +215,3 @@ async function processTgUser(params: ProcessTgUserParams) {
     );
   }
 }
-
-export const addValUptimeCheckerJob = () => {
-  appJobProducer.addJob(
-    VALIDATOR_UPTIME_CHECKER,
-    {},
-    {
-      repeat: { every: xSeconds(10) },
-    }
-  );
-};
