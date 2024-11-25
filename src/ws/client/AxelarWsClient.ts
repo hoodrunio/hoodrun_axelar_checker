@@ -64,8 +64,18 @@ export class AxelarWsClient extends EventEmitter {
     };
 
     this.evmWs.onmessage = (event) => {
-      addWsMessageResultHandlerJob({ messageData: event?.data });
-      super.emit('evm-message', event);
+      try {
+        // Quick check for subscription acknowledgment
+        const message = JSON.parse(typeof event.data === 'string' ? event.data : event.data.toString());
+        if (message.id === '0' && Object.keys(message.result || {}).length === 0) {
+          return; // Skip subscription acknowledgments
+        }
+        
+        addWsMessageResultHandlerJob({ messageData: event?.data });
+        super.emit('evm-message', event);
+      } catch (error) {
+        logger.error('Error in EVM message handler:', error);
+      }
     };
 
     this.evmWs.onclose = (event) => {
@@ -96,8 +106,18 @@ export class AxelarWsClient extends EventEmitter {
     };
 
     this.amplifierWs.onmessage = (event) => {
-      addWsMessageResultHandlerJob({ messageData: event?.data });
-      super.emit('amplifier-message', event);
+      try {
+        // Quick check for subscription acknowledgment
+        const message = JSON.parse(typeof event.data === 'string' ? event.data : event.data.toString());
+        if (message.id === '0' && Object.keys(message.result || {}).length === 0) {
+          return; // Skip subscription acknowledgments
+        }
+        
+        addWsMessageResultHandlerJob({ messageData: event?.data });
+        super.emit('amplifier-message', event);
+      } catch (error) {
+        logger.error('Error in Amplifier message handler:', error);
+      }
     };
 
     this.amplifierWs.onclose = () => {

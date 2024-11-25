@@ -231,7 +231,6 @@ export class PollTrackingJob {
         } catch (error) {
           this.logger.error(`Error processing vote for ${vote.voter} in poll ${pollId}:`, error);
           errorCount++;
-          // Continue processing other votes
           continue;
         }
       }

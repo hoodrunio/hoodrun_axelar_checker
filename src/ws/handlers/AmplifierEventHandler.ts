@@ -147,8 +147,8 @@ export class AmplifierEventHandler {
     }
   }
 
-  async handlePollCompleted(event: { poll_id: string; status: string }): Promise<void> {
-    const { poll_id, status: eventStatus } = event;
+  async handlePollCompleted(event: { poll_id: string; status: string; hash: string }): Promise<void> {
+    const { poll_id, status: eventStatus, hash } = event;
     let status: PollStatus;
     let reason: string;
 
@@ -165,11 +165,47 @@ export class AmplifierEventHandler {
 
     try {
       const { amplifierPollRepo } = this.db;
-      const poll = await amplifierPollRepo.findByPollId(poll_id);
+      
+      // Add retry logic for poll lookup
+      let poll = null;
+      let retryCount = 0;
+      const maxRetries = 3;
+      const retryDelay = 1000; // 1 second
+
+      while (!poll && retryCount < maxRetries) {
+        poll = await amplifierPollRepo.findByPollId(poll_id);
+        if (!poll) {
+          this.logger.info(`Poll ${poll_id} not found, retry ${retryCount + 1}/${maxRetries}`);
+          await new Promise(resolve => setTimeout(resolve, retryDelay));
+          retryCount++;
+        }
+      }
       
       if (!poll) {
-        throw new Error(`Poll ${poll_id} not found`);
+        // If poll is still not found after retries, create it
+        this.logger.info(`Creating poll ${poll_id} from completion event`);
+        const currentHeight = await this.queryService.getCurrentBlockHeight();
+        poll = await amplifierPollRepo.create({
+          pollId: poll_id,
+          sourceChain: 'unknown', // We don't have this info from the completion event
+          participants: [], // Will be populated by tracking job
+          expiresAt: currentHeight + 100, // Default expiration window
+          height: currentHeight,
+          hash,
+          status: PollStatus.PENDING,
+          votes: []
+        });
       }
+
+      // Update status first
+      await amplifierPollRepo.updatePollStatus(poll_id, status);
+      this.logger.info(`Updated poll ${poll_id} status`, {
+        previousStatus: poll.status,
+        newStatus: status,
+        reason,
+        eventStatus,
+        expiresAt: poll.expiresAt
+      });
 
       const queueManager = await this.getQueueManager();
       // Use shouldContinueTracking to determine if we should keep monitoring
@@ -190,15 +226,6 @@ export class AmplifierEventHandler {
           reason
         });
       }
-
-      await amplifierPollRepo.updatePollStatus(poll_id, status);
-      this.logger.info(`Updated poll ${poll_id} status`, {
-        previousStatus: poll.status,
-        newStatus: status,
-        reason,
-        eventStatus,
-        expiresAt: poll.expiresAt
-      });
     } catch (error) {
       this.logger.error('Error handling poll completed event:', {
         error,
@@ -260,6 +287,14 @@ export class AmplifierEventHandler {
       const hash = result.getTxHash() || '';
       const currentHeight = await this.queryService.getCurrentBlockHeight();
       
+      // Debug log all events
+      this.logger.debug('Received amplifier message events:', {
+        eventKeys: Object.keys(events),
+        events: events,
+        height,
+        hash
+      });
+      
       // Handle signing started event
       if (events['wasm-signing_started.session_id']) {
         const event: SigningStartedEvent = {
@@ -288,7 +323,7 @@ export class AmplifierEventHandler {
       if (events['wasm-messages_poll_started.poll_id']) {
         const event: PollStartedEvent = {
           source_chain: events['wasm-messages_poll_started.source_chain']?.[0] || '',
-          poll_id: events['wasm-messages_poll_started.poll_id']?.[0] || '',
+          poll_id: events['wasm-messages_poll_started.poll_id']?.[0].replace(/"/g, '') || '',
           participants: JSON.parse(events['wasm-messages_poll_started.participants']?.[0] || '[]'),
           expires_at: Number(events['wasm-messages_poll_started.expires_at']?.[0] || '0'),
           height: height || 0,
@@ -309,15 +344,31 @@ export class AmplifierEventHandler {
       
       // Handle poll completed event
       if (events['wasm-quorum_reached.poll_id']) {
+        this.logger.debug('Found quorum_reached event', {
+          pollId: events['wasm-quorum_reached.poll_id']?.[0],
+          status: events['wasm-quorum_reached.status']?.[0],
+          allEvents: events,
+          txHash: hash
+        });
+        
         const event = {
-          poll_id: events['wasm-quorum_reached.poll_id']?.[0] || '',
-          status: events['wasm-quorum_reached.status']?.[0] || ''
+          poll_id: events['wasm-quorum_reached.poll_id']?.[0].replace(/"/g, '') || '',
+          status: events['wasm-quorum_reached.status']?.[0].replace(/"/g, '') || '',
+          hash // Pass the transaction hash to handlePollCompleted
         };
         
         if (event.poll_id) {
           await this.handlePollCompleted(event);
         } else {
           this.logger.warn('Invalid poll completed event format', { event });
+        }
+      } else {
+        // Debug log when we don't find the quorum event
+        if (events['wasm-messages_poll_started.poll_id']) {
+          this.logger.debug('Poll event received but no quorum_reached event', {
+            pollId: events['wasm-messages_poll_started.poll_id']?.[0],
+            eventKeys: Object.keys(events)
+          });
         }
       }
       
