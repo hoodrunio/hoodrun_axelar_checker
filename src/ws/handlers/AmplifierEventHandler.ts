@@ -46,15 +46,22 @@ function isSigningStartedEvent(event: unknown): event is SigningStartedEvent {
 
 export class AmplifierEventHandler {
   private readonly logger: typeof logger;
-  private readonly queueManager: AmplifierQueueManager;
+  private queueManager: AmplifierQueueManager | null = null;
 
   constructor(
     private readonly db: AppDb,
     private readonly queryService: AmplifierQueryService,
     queueManager?: AmplifierQueueManager
   ) {
-    this.logger = logger;
-    this.queueManager = queueManager || new AmplifierQueueManager(db, queryService);
+    this.logger = logger.child({ name: AmplifierEventHandler.name });
+    this.queueManager = queueManager || null; // Initialize as null
+  }
+
+  private async getQueueManager(): Promise<AmplifierQueueManager> {
+    if (!this.queueManager) {
+      this.queueManager = await AmplifierQueueManager.getInstance();
+    }
+    return this.queueManager;
   }
 
   async handlePollStarted(event: unknown): Promise<void> {
@@ -71,15 +78,22 @@ export class AmplifierEventHandler {
         throw new Error(`Failed to create poll for ${pollId}`);
       }
 
+      const queueManager = await this.getQueueManager();
       // Start tracking only if poll is in valid state
-      if (this.shouldContinueTracking(pollData.expiresAt, pollData.status)) {
-        await this.queueManager.addPollTrackingJob(pollId, Number(event.height));
+      if (await this.shouldContinueTracking(pollData.expiresAt, pollData.status)) {
+        await queueManager.addPollTrackingJob(pollId, Number(event.height));
         await this.updateTrackingTimestamps(pollId);
         
         this.logger.info(`Started tracking for poll ${pollId}`, {
           status: pollData.status,
           expiresAt: pollData.expiresAt,
           height: event.height
+        });
+      } else {
+        this.logger.info(`Not tracking poll ${pollId}`, {
+          expired: await this.isExpired(pollData.expiresAt),
+          status: pollData.status,
+          expiresAt: pollData.expiresAt
         });
       }
     } catch (error) {
@@ -96,16 +110,23 @@ export class AmplifierEventHandler {
 
     try {
       const session = await this.createSignatureSession(event);
+      const queueManager = await this.getQueueManager();
       
       // Start tracking only if session is in valid state
-      if (this.shouldContinueTracking(session.expiresAt, session.status)) {
-        await this.queueManager.addSignatureTrackingJob(session.sessionId, Number(event.height));
+      if (await this.shouldContinueTracking(session.expiresAt, session.status)) {
+        await queueManager.addSignatureTrackingJob(session.sessionId, Number(event.height));
         await this.updateSignatureTrackingTimestamps(session.sessionId);
         
         this.logger.info(`Started tracking for signature session ${session.sessionId}`, {
           status: session.status,
           expiresAt: session.expiresAt,
           height: event.height
+        });
+      } else {
+        this.logger.info(`Not tracking signature session ${session.sessionId}`, {
+          expired: await this.isExpired(session.expiresAt),
+          status: session.status,
+          expiresAt: session.expiresAt
         });
       }
 
@@ -150,13 +171,21 @@ export class AmplifierEventHandler {
         throw new Error(`Poll ${poll_id} not found`);
       }
 
+      const queueManager = await this.getQueueManager();
       // Use shouldContinueTracking to determine if we should keep monitoring
-      if (this.shouldContinueTracking(poll.expiresAt, status)) {
-        await this.queueManager.addPollTrackingJob(poll_id, poll.height);
+      if (await this.shouldContinueTracking(poll.expiresAt, status)) {
+        await queueManager.addPollTrackingJob(poll_id, poll.height);
         await this.updateTrackingTimestamps(poll_id);
         
         this.logger.info(`Continued vote tracking for poll ${poll_id} until expiration`, {
           currentStatus: status,
+          expiresAt: poll.expiresAt,
+          reason
+        });
+      } else {
+        this.logger.info(`Not continuing vote tracking for poll ${poll_id}`, {
+          expired: await this.isExpired(poll.expiresAt),
+          status,
           expiresAt: poll.expiresAt,
           reason
         });
@@ -191,13 +220,20 @@ export class AmplifierEventHandler {
         throw new Error(`Signature session ${sessionId} not found`);
       }
 
+      const queueManager = await this.getQueueManager();
       // Use shouldContinueTracking to determine if we should keep monitoring
-      if (this.shouldContinueTracking(session.expiresAt, session.status)) {
-        await this.queueManager.addSignatureTrackingJob(sessionId, session.height);
+      if (await this.shouldContinueTracking(session.expiresAt, session.status)) {
+        await queueManager.addSignatureTrackingJob(sessionId, session.height);
         await this.updateSignatureTrackingTimestamps(sessionId);
         
         this.logger.info(`Continued signature tracking for session ${sessionId} until expiration`, {
           currentStatus: session.status,
+          expiresAt: session.expiresAt
+        });
+      } else {
+        this.logger.info(`Not continuing signature tracking for session ${sessionId}`, {
+          expired: await this.isExpired(session.expiresAt),
+          status: session.status,
           expiresAt: session.expiresAt
         });
       }
@@ -222,6 +258,7 @@ export class AmplifierEventHandler {
       const events = result.events || {};
       const height = result.getTxHeight();
       const hash = result.getTxHash() || '';
+      const currentHeight = await this.queryService.getCurrentBlockHeight();
       
       // Handle signing started event
       if (events['wasm-signing_started.session_id']) {
@@ -237,6 +274,10 @@ export class AmplifierEventHandler {
         };
         
         if (isSigningStartedEvent(event)) {
+          this.logger.debug('Received signing started event', {
+            sessionId: event.session_id,
+            expiresAt: event.expires_at,
+          });
           await this.handleSigningStarted(event);
         } else {
           this.logger.warn('Invalid signing started event format', { event });
@@ -255,6 +296,11 @@ export class AmplifierEventHandler {
         };
         
         if (isPollStartedEvent(event)) {
+          this.logger.debug('Received poll started event', {
+            pollId: event.poll_id,
+            expiresAt: event.expires_at,
+            currentHeight
+          });
           await this.handlePollStarted(event);
         } else {
           this.logger.warn('Invalid poll started event format', { event });
@@ -402,14 +448,39 @@ export class AmplifierEventHandler {
     }
   }
 
-  private isExpired(expiresAt: number): boolean {
-    return expiresAt <= Date.now();
+  private async isExpired(expiresAt: number): Promise<boolean> {
+    try {
+      const currentHeight = await this.queryService.getCurrentBlockHeight();
+      const isExpired = currentHeight >= expiresAt;
+      
+      this.logger.debug(`Checking block height expiration`, {
+        currentHeight,
+        expiresAt,
+        isExpired
+      });
+      
+      return isExpired;
+    } catch (error) {
+      this.logger.error('Error checking block height expiration:', error);
+      // If we can't get the current height, assume not expired to be safe
+      return false;
+    }
   }
 
-  private shouldContinueTracking(expiresAt: number, status: PollStatus | SignatureStatus): boolean {
-    return !this.isExpired(expiresAt) && 
+  private async shouldContinueTracking(expiresAt: number, status: PollStatus | SignatureStatus): Promise<boolean> {
+    const isExpired = await this.isExpired(expiresAt);
+    const shouldTrack = !isExpired && 
            status !== PollStatus.FAILED && 
            status !== SignatureStatus.FAILED;
+    
+    this.logger.debug(`Checking if should continue tracking`, {
+      expiresAt,
+      status,
+      shouldTrack,
+      isExpired
+    });
+    
+    return shouldTrack;
   }
 
   private async updateTrackingTimestamps(pollId: string): Promise<void> {

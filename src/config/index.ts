@@ -15,6 +15,7 @@ export interface AppConfigType {
   parsedRpcEndpoints: RpcEnvEndpoint[];
   maxLastXHourPollVoteNotification: number;
   axelarVoterAddress: string;
+  denom: string;
   mainnetAxelarRestBaseUrls: string[];
   mainnetAxelarLCDRestBaseUrls: string[];
   mainnetAxelarRpcBaseUrls: string[];

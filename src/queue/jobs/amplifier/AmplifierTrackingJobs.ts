@@ -150,8 +150,9 @@ class AmplifierTrackingQueueManager {
 // Singleton instance
 const queueManager = AmplifierTrackingQueueManager.getInstance();
 
-export const initAmplifierTrackingQueues = async () => {
-  await queueManager.getQueues();
+export const initAmplifierTrackingQueues = async (): Promise<void> => {
+  // This is now handled by AmplifierQueueManager
+  return Promise.resolve();
 };
 
 export const addPollTrackingJob = async (pollId: string, currentHeight: number) => {
@@ -168,7 +169,7 @@ export const addPollTrackingJob = async (pollId: string, currentHeight: number) 
       removeOnFail: false,
       repeat: {
         every: 10000, // Check every 10 seconds
-        limit: 10 // Stop after 10 attempts or when poll is complete/expired
+        limit: 5 // Stop after 10 attempts or when poll is complete/expired
       }
     }
   );

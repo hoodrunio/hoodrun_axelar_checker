@@ -20,6 +20,7 @@ const {
   TESTNET_AXELAR_WS_URLS,
   //Axelar
   AXELAR_VOTER_ADDRESS,
+  DENOM,
   BROADCASTER_BALANCE_THRESHOLD,
   BROADCASTER_BALANCE_CHECK_INTERVAL,
   UPTIME_THRESHOLD_LOW,
@@ -89,6 +90,7 @@ export const validateEnv = (): AppConfigType => {
 
   return {
     axelarVoterAddress,
+    denom: DENOM as string,
     parsedRpcEndpoints: parseRpcEndpoints(),
     uptimeThreshold: {
       low: parseFloat(UPTIME_THRESHOLD_LOW as string),

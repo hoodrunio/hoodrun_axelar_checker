@@ -13,12 +13,31 @@ const redisClient = new Redis({
   retryStrategy(times) {
     const delay = Math.min(times * 50, 2000);
     return delay;
+  },
+  reconnectOnError: (err) => {
+    const targetError = 'READONLY';
+    if (err.message.includes(targetError)) {
+      return true; // Reconnect on READONLY error
+    }
+    return false;
   }
 });
 
+let isRedisHealthy = false;
+redisClient.on('ready', () => {
+  isRedisHealthy = true;
+  logger.info('Redis client is ready');
+});
+
 redisClient.on('error', (error) => {
+  isRedisHealthy = false;
   logger.error(`Redis connection error: ${error.message}`);
   logger.error(`Redis connection details: host=${redisHost}, port=${redisPort}`);
+});
+
+redisClient.on('end', () => {
+  isRedisHealthy = false;
+  logger.warn('Redis connection ended');
 });
 
 redisClient.on('connect', () => {
@@ -120,6 +139,19 @@ class AppQueueFactory {
       return true;
     } catch (error) {
       logger.error('Redis connection check failed:', error);
+      return false;
+    }
+  }
+
+  public static async checkRedisHealth() {
+    if (!isRedisHealthy) {
+      throw new Error('Redis connection is not healthy');
+    }
+    try {
+      await redisClient.ping();
+      return true;
+    } catch (error) {
+      logger.error('Redis health check failed:', error);
       return false;
     }
   }

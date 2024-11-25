@@ -39,6 +39,7 @@ import {
 } from '@/queue/jobs/amplifier/AmplifierTrackingJobs';
 import { AppDb } from "@database/database";
 import { testRedisConnection } from "@/queue/queue/AppQueueFactory";
+import { AmplifierQueueManager } from '@/queue/queue/AmplifierQueueManager';
 
 export default class App {
   axelarQueryService: AxelarQueryService;
@@ -164,82 +165,92 @@ export default class App {
   }
 
   private async initJobs() {
-    const jobs = [
-      { name: 'sendNotifications', job: addSendNotificationsJob },
-      { name: 'valAllInfoChecker', job: addValAllInfoCheckerJob },
-      { name: 'valUptimeChecker', job: addValUptimeCheckerJob },
-      { name: 'pollVoteNotification', job: addPollVoteNotificationJob },
-      { name: 'rpcEndpointHealthchecker', job: addRpcEndpointHealthcheckerJob },
-      { name: 'broadcasterBalanceChecker', job: addBroadcasterBalanceCheckerJob },
-      { name: AMPLIFIER_POLL_TRACKING, job: () => {} },
-      { name: AMPLIFIER_SIGNATURE_TRACKING, job: () => {} },
-    ];
+    try {
+      // Initialize AmplifierQueueManager first
+      const queueManager = await AmplifierQueueManager.getInstance();
+      logger.info('AmplifierQueueManager initialized successfully');
+      
+      const jobs = [
+        { name: 'sendNotifications', job: addSendNotificationsJob },
+        { name: 'valAllInfoChecker', job: addValAllInfoCheckerJob },
+        { name: 'valUptimeChecker', job: addValUptimeCheckerJob },
+        { name: 'pollVoteNotification', job: addPollVoteNotificationJob },
+        { name: 'rpcEndpointHealthchecker', job: addRpcEndpointHealthcheckerJob },
+        { name: 'broadcasterBalanceChecker', job: addBroadcasterBalanceCheckerJob },
+        { name: AMPLIFIER_POLL_TRACKING, job: () => {} },
+        { name: AMPLIFIER_SIGNATURE_TRACKING, job: () => {} }
+      ];
 
-    this.jobs = jobs;
+      this.jobs = jobs;
 
-    // Initialize all queues first
-    const queues = await Promise.all(
-      jobs.map(async ({ name }) => {
-        try {
-          const queue = await AppQueueFactory.getQueue(name);
-          // Clear any existing jobs to start fresh
-          await queue.empty();
-          return { name, queue, error: null };
-        } catch (error) {
-          return { name, queue: null, error };
-        }
-      })
-    );
-
-    // Log queue initialization results
-    queues.forEach(({ name, error }) => {
-      if (error) {
-        logger.error(`Failed to initialize queue ${name}:`, error);
-      } else {
-        logger.info(`Successfully initialized queue ${name}`);
-      }
-    });
-
-    // Now initialize jobs
-    for (const { name, job } of jobs) {
-      try {
-        if (typeof job === 'function') {
-          await job();
-          logger.info(`Successfully initialized job: ${name}`);
-          
-          if (this.healthyQueues.includes(name)) {
+      // Initialize all queues first
+      const queues = await Promise.all(
+        jobs.map(async ({ name }) => {
+          try {
             const queue = await AppQueueFactory.getQueue(name);
-            // Remove any existing repeatable jobs
-            const existingJobs = await queue.getRepeatableJobs();
-            await Promise.all(
-              existingJobs.map(job => queue.removeRepeatableByKey(job.key))
-            );
-            
-            // Add new repeatable job
-            await queue.add(
-              `${name}_repeatable`,
-              {},
-              {
-                repeat: {
-                  every: 10000, // 10 seconds
-                  limit: 1000000 // Prevent infinite growth
-                },
-                removeOnComplete: true,
-                attempts: 3,
-                backoff: {
-                  type: 'exponential',
-                  delay: 1000
-                }
-              }
-            );
-            logger.info(`Added repeatable job for ${name}`);
+            // Clear any existing jobs to start fresh
+            await queue.empty();
+            return { name, queue, error: null };
+          } catch (error) {
+            return { name, queue: null, error };
           }
+        })
+      );
+
+      // Log queue initialization results
+      queues.forEach(({ name, error }) => {
+        if (error) {
+          logger.error(`Failed to initialize queue ${name}:`, error);
+        } else {
+          logger.info(`Successfully initialized queue ${name}`);
         }
-      } catch (error) {
-        logger.error(`Failed to initialize job ${name}:`, error);
-        // Don't use setTimeout here, use proper retry mechanism
-        await this.retryJobInitialization(name, job);
+      });
+
+      // Initialize each job
+      for (const { name, job } of jobs) {
+        try {
+          if (typeof job === 'function') {
+            await job();
+            logger.info(`Successfully initialized job: ${name}`);
+            
+            if (this.healthyQueues.includes(name)) {
+              const queue = await AppQueueFactory.getQueue(name);
+              // Remove any existing repeatable jobs
+              const existingJobs = await queue.getRepeatableJobs();
+              await Promise.all(
+                existingJobs.map(job => queue.removeRepeatableByKey(job.key))
+              );
+              
+              // Add new repeatable job
+              await queue.add(
+                `${name}_repeatable`,
+                {},
+                {
+                  repeat: {
+                    every: 10000, // 10 seconds
+                    limit: 1000000 // Prevent infinite growth
+                  },
+                  removeOnComplete: true,
+                  attempts: 3,
+                  backoff: {
+                    type: 'exponential',
+                    delay: 1000
+                  }
+                }
+              );
+              logger.info(`Added repeatable job for ${name}`);
+            }
+          }
+        } catch (error) {
+          logger.error(`Failed to initialize job ${name}:`, error);
+          await this.retryJobInitialization(name, job);
+        }
       }
+
+      logger.info('All jobs initialized successfully');
+    } catch (error) {
+      logger.error('Failed to initialize jobs:', error);
+      throw error;
     }
   }
 
@@ -330,8 +341,8 @@ export default class App {
     }
   }
 
-  private initHealthCheck() {
-    // Single health check interval
+  private async initHealthCheck() {
+    // Check services health every 30 seconds
     setInterval(async () => {
       try {
         const redisStatus = await AppQueueFactory.checkRedisConnection();
@@ -339,24 +350,68 @@ export default class App {
         const queuesStatus = await this.checkQueuesStatus();
 
         if (!redisStatus || !dbStatus) {
-          logger.error("Critical service (Redis/DB) failed. Attempting to reinitialize application.");
-          await this.initalizeApplication(true);
-        } else if (!queuesStatus) {
-          logger.warn("Queue health check failed. Attempting to reinitialize queues.");
-          try {
-            await this.initQueue();
-            await this.initJobs();
-            logger.info("Successfully reinitialized queues");
-          } catch (error) {
-            logger.error("Failed to reinitialize queues:", error);
+          logger.warn("Service connection issues detected, attempting recovery...");
+          if (!dbStatus) {
+            logger.warn('Database connection unhealthy, attempting to reconnect...');
+            await this.connectWithRetry();
           }
-        } else {
-          logger.info('Health check passed successfully');
+          if (!redisStatus) {
+            logger.warn('Redis connection unhealthy, attempting to recover queues...');
+            await this.initQueue();
+          }
+        }
+
+        if (!queuesStatus) {
+          logger.warn("Queue health check failed, attempting recovery...");
+          await this.initQueue();
         }
       } catch (error) {
-        logger.error(`Error during health check: ${error}`);
+        logger.error(`Health check failed:`, error);
       }
-    }, 5 * 60 * 1000); // Check every 5 minutes
+    }, 30000); // 30 seconds
+
+    // Listen for system resume events (OS specific)
+    if (process.platform === 'darwin') { // macOS
+      process.on('SIGCONT', async () => {
+        logger.info('System resumed from sleep, checking connections...');
+        await this.checkAndRecoverConnections();
+      });
+    }
+  }
+
+  private async checkAndRecoverConnections() {
+    try {
+      const redisStatus = await AppQueueFactory.checkRedisConnection();
+      const dbStatus = await this.checkDatabaseConnection();
+      const queuesStatus = await this.checkQueuesStatus();
+
+      if (!redisStatus || !dbStatus || !queuesStatus) {
+        logger.info('Recovering connections after system resume...');
+        await this.initalizeApplication(true);
+      }
+    } catch (error) {
+      logger.error('Error recovering connections after system resume:', error);
+    }
+  }
+
+  private async connectWithRetry(attempt = 1, maxAttempts = 5): Promise<boolean> {
+    try {
+      await this.initDbConn(); // Using existing initDbConn instead of appDb.connect
+      logger.info('Successfully connected to database');
+      return true;
+    } catch (error) {
+      logger.error(`Database connection attempt ${attempt} failed:`, error);
+      
+      if (attempt < maxAttempts) {
+        const delay = Math.min(attempt * 1000, 5000);
+        logger.info(`Retrying connection in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return this.connectWithRetry(attempt + 1, maxAttempts);
+      } else {
+        logger.error(`Failed to connect to database after ${maxAttempts} attempts`);
+        return false;
+      }
+    }
   }
 
   private async checkDatabaseConnection() {

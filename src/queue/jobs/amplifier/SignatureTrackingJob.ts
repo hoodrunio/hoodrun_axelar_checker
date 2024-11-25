@@ -9,7 +9,6 @@ import appConfig from "@/config/index";
 
 interface SignatureTrackingData {
   sessionId: string;
-  currentHeight: number;
 }
 
 interface NotificationResult {
@@ -180,7 +179,7 @@ export class SignatureTrackingJob {
   }
 
   async process(job: Job<SignatureTrackingData>): Promise<void> {
-    const { sessionId, currentHeight } = job.data;
+    const { sessionId } = job.data;
     const { amplifierSignatureRepo } = this.db;
     const startTime = Date.now();
 
@@ -191,14 +190,27 @@ export class SignatureTrackingJob {
         return;
       }
 
+      // Get current block height
+      const currentHeight = await this.queryService.getCurrentBlockHeight();
+
       // Check if session has expired
       if (currentHeight >= session.expiresAt) {
         if (session.status === SignatureStatus.PENDING) {
           await amplifierSignatureRepo.updateStatus(sessionId, SignatureStatus.FAILED);
-          this.logger.info(`Session ${sessionId} marked as Failed due to expiration`);
+          this.logger.info(`Session ${sessionId} marked as Failed due to expiration`, {
+            currentHeight,
+            expiresAt: session.expiresAt,
+            status: session.status
+          });
         }
         return;
       }
+
+      this.logger.debug(`Processing signature session ${sessionId}`, {
+        currentHeight,
+        expiresAt: session.expiresAt,
+        status: session.status
+      });
 
       let processedCount = 0;
       let errorCount = 0;

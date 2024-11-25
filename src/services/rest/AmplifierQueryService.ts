@@ -12,6 +12,11 @@ export class AmplifierQueryService {
     console.log('Service initialized with base URL:', baseUrl);
   }
 
+  getCurrentBlockHeight(): Promise<number> {
+    const url = `${this.baseUrl}/cosmos/base/tendermint/v1beta1/blocks/latest`;
+    return this.axiosClient.get(url).then(response => response.data.block.header.height);
+  }
+
   private processMessages(messages: any[]): any[] {
     const processedMessages: any[] = [];
     
