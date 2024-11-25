@@ -41,6 +41,7 @@ const {
   //Redis
   REDIS_HOST,
   REDIS_PORT,
+  MONITORED_VERIFIERS,
 } = process.env;
 
 const isDev = process.env.NODE_ENV === "development";
@@ -66,6 +67,11 @@ if (!isValidVoterAddress(axelarVoterAddress)) {
 const axelarOperatorAddress = AXELAR_OPERATOR_ADDRESS as string | undefined;
 if (axelarOperatorAddress && !isValidOperatorAddress(axelarOperatorAddress)) {
   throw new Error(`‼️ Invalid Axelar Operator Address in Env file please fix it : ${axelarOperatorAddress}`);
+}
+
+const monitoredVerifiers = JSON.parse(MONITORED_VERIFIERS || '[]');
+if (!Array.isArray(monitoredVerifiers)) {
+    throw new Error('MONITORED_VERIFIERS must be a JSON array');
 }
 
 const maxLastXHourPollVoteNotification = LAST_X_HOUR_POLL_VOTE_NOTIFICATION ?? "12";
@@ -95,40 +101,45 @@ if (isNaN(parseFloat(BROADCASTER_BALANCE_THRESHOLD as string))) {
 const balanceThreshold = parseFloat(BROADCASTER_BALANCE_THRESHOLD as string);
 
 export const validateEnv = (): AppConfigType => {
-  return {
-    axelarVoterAddress,
-    axelarOperatorAddress,
-    denom: DENOM as string,
-    parsedRpcEndpoints: parseRpcEndpoints(),
-    uptimeThreshold: {
-      low: parseFloat(UPTIME_THRESHOLD_LOW as string),
-      medium: parseFloat(UPTIME_THRESHOLD_MEDIUM as string),
-      high: parseFloat(UPTIME_THRESHOLD_HIGH as string),
-    },
-    maxLastXHourPollVoteNotification: parseInt(maxLastXHourPollVoteNotification),
-    mainnetAxelarRestBaseUrls: urlArrays.mainnetAxelarRestBaseUrls,
-    mainnetAxelarLCDRestBaseUrls: urlArrays.mainnetAxelarLCDRestBaseUrls,
-    mainnetAxelarRpcBaseUrls: urlArrays.mainnetAxelarRpcBaseUrls,
-    mainnetAxelarWsUrls: urlArrays.mainnetAxelarWsUrls,
-    testnetAxelarRestBaseUrls: urlArrays.testnetAxelarRestBaseUrls,
-    testnetAxelarRpcBaseUrls: urlArrays.testnetAxelarRpcBaseUrls,
-    testnetAxelarWsUrls: urlArrays.testnetAxelarWsUrls,
-    monitoredVerifiers: (process.env.MONITORED_VERIFIERS as string).split(","),
-    tgToken: TG_TOKEN as string,
-    dbConnectionString: DB_CONNECTION_STRING,
-    dbName: DB_NAME as string,
-    dbUser: DB_USER as string,
-    dbPwd: DB_PWD as string,
-    dbHost: DB_HOST as string,
-    dbPort: DB_PORT as string,
-    logFormat: LOG_FORMAT as string,
-    logDir: LOG_DIR as string,
-    redisHost: isDev ? defaultRedisHost : (REDIS_HOST as string),
-    redisPort: parseInt(REDIS_PORT ?? defaultRedisPort),
-    broadcasterBalanceThreshold,
-    broadcasterBalanceCheckInterval,
-    balanceThreshold,
-  };
+  try {
+    
+    return {
+      axelarVoterAddress,
+      axelarOperatorAddress,
+      denom: DENOM as string,
+      parsedRpcEndpoints: parseRpcEndpoints(),
+      uptimeThreshold: {
+        low: parseFloat(UPTIME_THRESHOLD_LOW as string),
+        medium: parseFloat(UPTIME_THRESHOLD_MEDIUM as string),
+        high: parseFloat(UPTIME_THRESHOLD_HIGH as string),
+      },
+      maxLastXHourPollVoteNotification: parseInt(maxLastXHourPollVoteNotification),
+      mainnetAxelarRestBaseUrls: urlArrays.mainnetAxelarRestBaseUrls,
+      mainnetAxelarLCDRestBaseUrls: urlArrays.mainnetAxelarLCDRestBaseUrls,
+      mainnetAxelarRpcBaseUrls: urlArrays.mainnetAxelarRpcBaseUrls,
+      mainnetAxelarWsUrls: urlArrays.mainnetAxelarWsUrls,
+      testnetAxelarRestBaseUrls: urlArrays.testnetAxelarRestBaseUrls,
+      testnetAxelarRpcBaseUrls: urlArrays.testnetAxelarRpcBaseUrls,
+      testnetAxelarWsUrls: urlArrays.testnetAxelarWsUrls,
+      monitoredVerifiers,  // Use the properly parsed array
+      tgToken: TG_TOKEN as string,
+      dbConnectionString: DB_CONNECTION_STRING,
+      dbName: DB_NAME as string,
+      dbUser: DB_USER as string,
+      dbPwd: DB_PWD as string,
+      dbHost: DB_HOST as string,
+      dbPort: DB_PORT as string,
+      logFormat: LOG_FORMAT as string,
+      logDir: LOG_DIR as string,
+      redisHost: isDev ? defaultRedisHost : (REDIS_HOST as string),
+      redisPort: parseInt(REDIS_PORT ?? defaultRedisPort),
+      broadcasterBalanceThreshold,
+      broadcasterBalanceCheckInterval,
+      balanceThreshold,
+    };
+  } catch (error) {
+    throw new Error(`Failed to parse environment variables: ${error}`);
+  }
 };
 
 function parseStringArray(str?: string): string[] {

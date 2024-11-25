@@ -135,12 +135,11 @@ class ValAllInfoCheckerQueueManager {
               }
 
               // Update verifier addresses if this is our validator
-              let verifierAddresses: string[] = dbValidator?.verifier_addresses ?? [];
+              let verifierAddresses: string[] = [];
+
               if (voterAddress === appConfig.axelarVoterAddress) {
-                // Parse monitoredVerifiers if it's a string
-                verifierAddresses = Array.isArray(appConfig.monitoredVerifiers) 
-                  ? appConfig.monitoredVerifiers 
-                  : JSON.parse(appConfig.monitoredVerifiers);
+                // Direct assignment of monitored verifiers - no extra parsing needed
+                verifierAddresses = appConfig.monitoredVerifiers;
                 
                 logger.info(
                   `Updated verifier addresses for validator ${operatorAddress}: ${verifierAddresses.join(', ')}`
@@ -200,7 +199,7 @@ class ValAllInfoCheckerQueueManager {
                     min_self_delegation: validator.min_self_delegation,
                     supported_evm_chains: valEvmSupportedChains,
                     ...(voterAddress ? { voter_address: voterAddress } : {}),
-                    verifier_addresses: verifierAddresses,  // Now properly stored as array
+                    verifier_addresses: verifierAddresses,
                     uptime,
                     is_active,
                   }

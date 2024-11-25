@@ -513,13 +513,29 @@ export class TGBot {
         return;
       }
   
+      console.log('Monitored verifiers:', appConfig.monitoredVerifiers);
+      
       // Use the monitored verifiers from config
-      const polls = await this.appDb.amplifierPollRepo.findAll({
-        filter: { "votes.voter": { $in: appConfig.monitoredVerifiers } },
-        limit: 10,
-        sort: { createdAt: -1 }
-      });
-  
+      const verifier = appConfig.monitoredVerifiers[0];
+      console.log('Searching for verifier:', verifier);
+      
+      // Get all polls and filter in memory
+      const pollModel = this.appDb.amplifierPollRepo.getModel();
+      const allPolls = await pollModel.find({})
+        .sort({ createdAt: -1 })
+        .limit(50)
+        .exec();
+
+      console.log('Total polls found:', allPolls.length);
+      
+      // Filter polls that have our verifier
+      const polls = allPolls.filter(poll => 
+        poll.participants.includes(verifier) || 
+        poll.votes.some(vote => vote.voter === verifier)
+      ).slice(0, 10);
+
+      console.log('Filtered polls:', polls.length);
+
       if (!polls || polls.length === 0) {
         ctx.reply("No recent amplifier polls found for the monitored verifiers");
         return;
@@ -567,12 +583,28 @@ const date = new Date(timestamp).toLocaleString();
       return;
     }
 
+    console.log('Looking for signatures...');
+      
     // Use the monitored verifiers from config
-    const sessions = await this.appDb.amplifierSignatureRepo.findAll({
-      filter: { "signatures.verifier": { $in: appConfig.monitoredVerifiers } },
-      limit: 10,
-      sort: { createdAt: -1 }
-    });
+    const verifier = appConfig.monitoredVerifiers[0];
+    console.log('Searching for verifier:', verifier);
+      
+    // Get all signatures and filter in memory
+    const sigModel = this.appDb.amplifierSignatureRepo.getModel();
+    const allSessions = await sigModel.find({})
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .exec();
+
+    console.log('Total sessions found:', allSessions.length);
+      
+    // Filter sessions that have our verifier
+    const sessions = allSessions.filter(session => 
+      session.pubKeys.some(key => key.address === verifier) ||
+      session.signatures.some(sig => sig.verifier === verifier)
+    ).slice(0, 10);
+
+    console.log('Filtered sessions:', sessions.length);
 
     if (!sessions || sessions.length === 0) {
       ctx.reply("No recent signature sessions found for the monitored verifiers");
