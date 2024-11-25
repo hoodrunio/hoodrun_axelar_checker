@@ -110,11 +110,41 @@ class ValAllInfoCheckerQueueManager {
               let voterAddress = dbValidator?.voter_address ?? null;
 
               try {
+                // First try to get voter address from LCD service
                 voterAddress = await axelarLCDService.getValidatorVoterAddress(
                   operatorAddress
                 );
+                
+                // If LCD service fails and we have a configured operator address that matches
+                if (!voterAddress && appConfig.axelarOperatorAddress === operatorAddress) {
+                  voterAddress = appConfig.axelarVoterAddress;
+                  logger.info(
+                    `Using configured voter address for operator ${operatorAddress}`
+                  );
+                }
               } catch (error) {
                 logger.error(`Failed to get voter address: ${error}`);
+                
+                // Fallback to configured mapping if LCD fails
+                if (appConfig.axelarOperatorAddress === operatorAddress) {
+                  voterAddress = appConfig.axelarVoterAddress;
+                  logger.info(
+                    `Using configured voter address after LCD failure for operator ${operatorAddress}`
+                  );
+                }
+              }
+
+              // Update verifier addresses if this is our validator
+              let verifierAddresses: string[] = dbValidator?.verifier_addresses ?? [];
+              if (voterAddress === appConfig.axelarVoterAddress) {
+                // Parse monitoredVerifiers if it's a string
+                verifierAddresses = Array.isArray(appConfig.monitoredVerifiers) 
+                  ? appConfig.monitoredVerifiers 
+                  : JSON.parse(appConfig.monitoredVerifiers);
+                
+                logger.info(
+                  `Updated verifier addresses for validator ${operatorAddress}: ${verifierAddresses.join(', ')}`
+                );
               }
 
               try {
@@ -170,6 +200,7 @@ class ValAllInfoCheckerQueueManager {
                     min_self_delegation: validator.min_self_delegation,
                     supported_evm_chains: valEvmSupportedChains,
                     ...(voterAddress ? { voter_address: voterAddress } : {}),
+                    verifier_addresses: verifierAddresses,  // Now properly stored as array
                     uptime,
                     is_active,
                   }

@@ -100,4 +100,21 @@ export class ValidatorRepository extends BaseRepository<
 
     return endpoint || null;
   }
+
+  async upsertOne(
+    filter: FilterQuery<IValidatorDocument>,
+    data: Partial<IValidator>
+  ): Promise<IValidatorDocument | null> {
+    // Ensure arrays are properly handled
+    if (data.verifier_addresses) {
+      // Make sure verifier_addresses is a proper array
+      data.verifier_addresses = Array.isArray(data.verifier_addresses)
+        ? data.verifier_addresses
+        : typeof data.verifier_addresses === 'string'
+        ? JSON.parse(data.verifier_addresses)
+        : [];
+    }
+
+    return super.upsertOne(filter, data);
+  }
 }

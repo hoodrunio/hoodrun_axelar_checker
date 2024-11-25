@@ -2,7 +2,7 @@
 
 import { AppConfigType } from "@/config/index";
 import { parseRpcEndpoints } from "@/config/parseRpcEndpoints";
-import { isValidVoterAddress } from "@utils/cosmos/axelar/addressUtil";
+import { isValidVoterAddress, isValidOperatorAddress } from "@utils/cosmos/axelar/addressUtil";
 import { isSafeUrl } from "@utils/url";
 import { config } from "dotenv";
 config({ path: `.env` });
@@ -20,6 +20,7 @@ const {
   TESTNET_AXELAR_WS_URLS,
   //Axelar
   AXELAR_VOTER_ADDRESS,
+  AXELAR_OPERATOR_ADDRESS,
   DENOM,
   BROADCASTER_BALANCE_THRESHOLD,
   BROADCASTER_BALANCE_CHECK_INTERVAL,
@@ -56,40 +57,47 @@ if (isNaN(broadcasterBalanceCheckInterval) || broadcasterBalanceCheckInterval <=
   throw new Error('Invalid BROADCASTER_BALANCE_CHECK_INTERVAL');
 }
 
+const axelarVoterAddress = AXELAR_VOTER_ADDRESS as string;
+if (!isValidVoterAddress(axelarVoterAddress)) {
+  throw new Error(`‼️ Invalid Axelar Voter Address in Env file please fix it : ${axelarVoterAddress}`);
+}
+
+// Optional operator address validation
+const axelarOperatorAddress = AXELAR_OPERATOR_ADDRESS as string | undefined;
+if (axelarOperatorAddress && !isValidOperatorAddress(axelarOperatorAddress)) {
+  throw new Error(`‼️ Invalid Axelar Operator Address in Env file please fix it : ${axelarOperatorAddress}`);
+}
+
+const maxLastXHourPollVoteNotification = LAST_X_HOUR_POLL_VOTE_NOTIFICATION ?? "12";
+const urlArrays: { [x: string]: string[] } = {
+  mainnetAxelarRpcBaseUrls: parseStringArray(MAINNET_AXELAR_RPC_BASE_URLS),
+  mainnetAxelarRestBaseUrls: parseStringArray(MAINNET_AXELAR_REST_BASE_URLS),
+  mainnetAxelarWsUrls: parseStringArray(MAINNET_AXELAR_WS_URLS),
+  mainnetAxelarLCDRestBaseUrls: parseStringArray(MAINNET_AXELAR_LCD_REST_BASE_URLS),
+  testnetAxelarRpcBaseUrls: parseStringArray(TESTNET_AXELAR_RPC_BASE_URLS),
+  testnetAxelarRestBaseUrls: parseStringArray(TESTNET_AXELAR_REST_BASE_URLS),
+  testnetAxelarWsUrls: parseStringArray(TESTNET_AXELAR_WS_URLS),
+};
+
+for (const prop in urlArrays) {
+  const urls = urlArrays[prop];
+  urls.forEach((url) => {
+    if (!isSafeUrl(url)) {
+      throw new Error(`‼️ Invalid URL for ${prop} with !! this ${url} !! in Env file please fix it`);
+    }
+  });
+}
+
+if (isNaN(parseFloat(BROADCASTER_BALANCE_THRESHOLD as string))) {
+  throw new Error('‼️ Invalid BALANCE_THRESHOLD in Env file');
+}
+
+const balanceThreshold = parseFloat(BROADCASTER_BALANCE_THRESHOLD as string);
+
 export const validateEnv = (): AppConfigType => {
-  const maxLastXHourPollVoteNotification = LAST_X_HOUR_POLL_VOTE_NOTIFICATION ?? "12";
-  const urlArrays: { [x: string]: string[] } = {
-    mainnetAxelarRpcBaseUrls: parseStringArray(MAINNET_AXELAR_RPC_BASE_URLS),
-    mainnetAxelarRestBaseUrls: parseStringArray(MAINNET_AXELAR_REST_BASE_URLS),
-    mainnetAxelarWsUrls: parseStringArray(MAINNET_AXELAR_WS_URLS),
-    mainnetAxelarLCDRestBaseUrls: parseStringArray(MAINNET_AXELAR_LCD_REST_BASE_URLS),
-    testnetAxelarRpcBaseUrls: parseStringArray(TESTNET_AXELAR_RPC_BASE_URLS),
-    testnetAxelarRestBaseUrls: parseStringArray(TESTNET_AXELAR_REST_BASE_URLS),
-    testnetAxelarWsUrls: parseStringArray(TESTNET_AXELAR_WS_URLS),
-  };
-
-  for (const prop in urlArrays) {
-    const urls = urlArrays[prop];
-    urls.forEach((url) => {
-      if (!isSafeUrl(url)) {
-        throw new Error(`‼️ Invalid URL for ${prop} with !! this ${url} !! in Env file please fix it`);
-      }
-    });
-  }
-
-  const axelarVoterAddress = AXELAR_VOTER_ADDRESS as string;
-  if (!isValidVoterAddress(axelarVoterAddress)) {
-    throw new Error(`‼️ Invalid Axelar Voter Address in Env file please fix it : ${axelarVoterAddress}`);
-  }
-
-  if (isNaN(parseFloat(BROADCASTER_BALANCE_THRESHOLD as string))) {
-    throw new Error('‼️ Invalid BALANCE_THRESHOLD in Env file');
-  }
-
-  const balanceThreshold = parseFloat(BROADCASTER_BALANCE_THRESHOLD as string);
-
   return {
     axelarVoterAddress,
+    axelarOperatorAddress,
     denom: DENOM as string,
     parsedRpcEndpoints: parseRpcEndpoints(),
     uptimeThreshold: {
