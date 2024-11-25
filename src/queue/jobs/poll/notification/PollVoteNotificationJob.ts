@@ -80,20 +80,20 @@ class PollVoteNotificationQueueManager {
               xHourAgoDate.getHours() - appConfig.maxLastXHourPollVoteNotification
             );
 
-            const vote = PollVoteType.NO;
-            const allNoPollVotes = await pollVoteRepo.findAll({
-              vote,
+            const votes = [PollVoteType.NO, PollVoteType.UNSUBMITTED];
+            const allPollVotes = await pollVoteRepo.findAll({
+              vote: { $in: votes },
               createdAt: { $gte: xHourAgoDate },
               checkedForNotification: false,
               sort: { createdAt: -1 },
             });
 
-            if (!allNoPollVotes || allNoPollVotes.length === 0) {
+            if (!allPollVotes || allPollVotes.length === 0) {
               logger.info('No new poll votes to process');
               return;
             }
 
-            const promises = allNoPollVotes.map(async (pollVote) => {
+            const promises = allPollVotes.map(async (pollVote) => {
               const voterValidator = await validatorRepository.findOne({
                 voter_address: pollVote.voter_address,
               });
@@ -141,7 +141,7 @@ class PollVoteNotificationQueueManager {
             });
 
             await Promise.allSettled(promises);
-            logger.info(`Successfully processed ${allNoPollVotes.length} poll votes`);
+            logger.info(`Successfully processed ${allPollVotes.length} poll votes`);
           } catch (error) {
             logger.error("Error in Poll Vote Notification Job", error);
             throw error; // Properly throw the error for Bull to handle

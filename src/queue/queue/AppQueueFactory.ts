@@ -83,21 +83,25 @@ class AppQueueFactory {
               return redisClient;
           }
         },
-        limiter: { max: 5000, duration: 1000 },
+        limiter: { 
+          max: 100,  // Process max 100 jobs
+          duration: 1000  // Per second
+        },
         defaultJobOptions: {
-          attempts: 3,
+          attempts: 5,  // Increase retry attempts
           backoff: {
             type: 'exponential',
             delay: 1000,
           },
-          removeOnComplete: false, // Don't remove completed jobs by default for repeatable jobs
-          removeOnFail: false,
-          timeout: 30000, // 30 second timeout
+          removeOnComplete: true,  // Clean up completed jobs
+          removeOnFail: true,      // Clean up failed jobs after max attempts
+          timeout: 60000,  // Increase timeout to 60 seconds
         },
         settings: {
-          stalledInterval: 30000, // Check for stalled jobs every 30 seconds
-          maxStalledCount: 2, // Consider a job stalled after 2 checks
-          drainDelay: 5, // Small delay between processing jobs
+          stalledInterval: 10000,  // Check for stalled jobs more frequently
+          maxStalledCount: 3,      // Allow more stalled attempts
+          drainDelay: 5,           // Small delay between processing jobs
+          lockDuration: 30000,     // Lock jobs for 30 seconds
         }
       });
 

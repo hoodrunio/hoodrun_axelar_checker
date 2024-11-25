@@ -61,34 +61,69 @@ class NewWsAllPollDataQueueManager {
 
         this.queue.process(async (job: Job<NewWsPollAndVoteDto>) => {
           const { type, data } = job.data;
+          logger.info(`Processing ${type} job`, { 
+            jobId: job.id,
+            pollId: type === NewWsPollDataTypeEnum.NEW_POLL ? data.pollId : data.customId,
+            type 
+          });
 
-          if (type == NewWsPollDataTypeEnum.NEW_POLL) {
-            try {
+          try {
+            if (type === NewWsPollDataTypeEnum.NEW_POLL) {
               await handleOnNewPoll(data);
-            } catch (error) {
-              logger.error("Error in handleOnNewPoll", error);
+              logger.info(`Successfully processed NEW_POLL`, { 
+                jobId: job.id, 
+                pollId: data.pollId,
+                chain: data.pollChain 
+              });
             }
-          }
 
-          if (type == NewWsPollDataTypeEnum.NEW_POLL_VOTE) {
-            try {
+            if (type === NewWsPollDataTypeEnum.NEW_POLL_VOTE) {
               await handleOnNewPollVote(data);
-            } catch (error) {
-              logger.error("Error in handleOnNewPollVote", error);
+              logger.info(`Successfully processed NEW_POLL_VOTE`, { 
+                jobId: job.id, 
+                pollId: data.pollId,
+                voter: data.voter_address 
+              });
             }
+          } catch (error) {
+            logger.error(`Failed to process ${type} job`, {
+              jobId: job.id,
+              pollId: type === NewWsPollDataTypeEnum.NEW_POLL ? data.pollId : data.customId,
+              error: (error as Error).message,
+              stack: (error as Error).stack
+            });
+            // Re-throw the error to trigger Bull's retry mechanism
+            throw error;
           }
-
-          return Promise.resolve();
         });
 
         // Add error handler
         this.queue.on('error', (error: Error) => {
-          logger.error('Queue error:', error);
+          logger.error('Queue error:', { error: error.message, stack: error.stack });
         });
 
         // Add stalled handler
         this.queue.on('stalled', (job: Job<NewWsPollAndVoteDto>) => {
-          logger.warn('Job stalled:', job.id);
+          logger.warn('Job stalled:', { 
+            jobId: job.id,
+            type: job.data.type,
+            pollId: job.data.type === NewWsPollDataTypeEnum.NEW_POLL ? 
+              job.data.data.pollId : 
+              job.data.data.customId
+          });
+        });
+
+        // Add failed handler
+        this.queue.on('failed', (job: Job<NewWsPollAndVoteDto>, error: Error) => {
+          logger.error('Job failed:', { 
+            jobId: job.id,
+            type: job.data.type,
+            pollId: job.data.type === NewWsPollDataTypeEnum.NEW_POLL ? 
+              job.data.data.pollId : 
+              job.data.data.customId,
+            error: error.message,
+            stack: error.stack
+          });
         });
 
         this.isInitialized = true;
