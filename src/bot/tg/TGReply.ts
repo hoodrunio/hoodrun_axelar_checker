@@ -8,12 +8,15 @@ import {
   BroadcasterBalanceLowNotificationDataType,
   ChainRegistrationStatus,
   AmplifierSignatureNotificationDataType,
-  AmplifierVoteNotificationDataType 
+  AmplifierVoteNotificationDataType ,
+  WebSocketConnectionNotificationDataType
 } from "@/database/models/notification/notification.interface";
 import { PollVoteType } from "@database/models/polls/poll_vote/poll_vote.interface";
-import BigNumber from "bignumber.js";
+import appConfig from "@config/index";
 
 export class TgReply {
+  private readonly thresholds = appConfig.uptimeThreshold;
+
   startReply(): string {
     return `
 🚀 <b>Welcome to Axelar Validator Checker!</b>
@@ -31,14 +34,33 @@ Let's keep your validators in top shape! 💪
 
   uptimeReply(params: UptimeNotification): string {
     const { moniker, operatorAddress, currentUptime } = params;
-    const uptime = new BigNumber(currentUptime).times(100).decimalPlaces(2).toNumber();
-    const uptimeEmoji = uptime >= 99 ? "🌟" : uptime >= 95 ? "👍" : "⚠️";
+    
+    // Add validation and conversion
+    let uptime = 0;
+    try {
+      // Handle Decimal128 string format from MongoDB
+      const uptimeStr = currentUptime?.toString() || '0';
+      const uptimeNum = parseFloat(uptimeStr);
+      if (!isNaN(uptimeNum)) {
+        uptime = uptimeNum;
+      }
+    } catch (error) {
+      console.error('Error processing uptime:', error);
+    }
+    
+    // Convert to percentage for display
+    const uptimePercent = Math.round(uptime * 1000) / 10;
+    
+    // Use custom thresholds for emoji
+    const uptimeEmoji = uptime >= this.thresholds.high ? "🌟" : 
+                       uptime >= this.thresholds.medium ? "👍" : 
+                       uptime >= this.thresholds.low ? "⚠️" : "🚨";
 
     return `
 🕒 <b>${moniker} Uptime Report</b>
 
 🔑 <b>Operator:</b> <code>${operatorAddress}</code>
-📊 <b>Uptime:</b> ${uptime}% ${uptimeEmoji}
+📊 <b>Uptime:</b> ${uptimePercent}% ${uptimeEmoji}
 
 ${this.motivationMessage(uptime)}
     `;
@@ -122,6 +144,20 @@ ${this.motivationMessage(uptime)}
     return `${this.evmSupportedChainReplyTitle(params[0])}\n\n${contents}\n\n${this.motivationMessage()}`;
   }
 
+  public websocketConnectionIssueReply(data: WebSocketConnectionNotificationDataType): string {
+    const timestamp = new Date().toLocaleString();
+    const errorDetails = data.error ? `\nError: ${data.error}` : '';
+    const currentUrl = data.currentUrl ? `\nCurrent URL: ${data.currentUrl}` : '';
+    const retryCount = data.retryCount !== undefined ? `\nRetry Count: ${data.retryCount}` : '';
+    const nextRetryTime = data.nextRetryTime ? `\nNext Retry: ${new Date(data.nextRetryTime).toLocaleString()}` : '';
+    
+    return `⚠️ <b>WebSocket Connection Issue Detected</b>\n
+🕒 Time: ${timestamp}
+🔌 Status: ${data.status}${errorDetails}${currentUrl}${retryCount}${nextRetryTime}
+
+${data.message || 'Attempting to maintain connection...'}`;
+  }
+
   amplifierVoteReply(data: AmplifierVoteNotificationDataType): string {
     const { pollId, voter, moniker, vote, timestamp } = data;
     const date = new Date(timestamp).toLocaleString();
@@ -156,9 +192,13 @@ ${this.motivationMessage(uptime)}
 
   motivationMessage(uptime?: number): string {
     if (uptime !== undefined) {
-      if (uptime >= 99) return "🌟 Excellent uptime! Keep up the fantastic work!";
-      if (uptime >= 95) return "👍 Good job! Let's aim for even higher uptime!";
-      return "💪 There's room for improvement. Let's work on increasing that uptime!";
+      if (uptime >= this.thresholds.high) 
+        return "🌟 Excellent uptime! Keep up the fantastic work!";
+      if (uptime >= this.thresholds.medium) 
+        return "👍 Good uptime, but we can do better! Aim for ${(this.thresholds.high * 100).toFixed(1)}%";
+      if (uptime >= this.thresholds.low)
+        return "⚠️ Warning: Uptime is below target. Let's improve it to reach ${(this.thresholds.medium * 100).toFixed(1)}%";
+      return "🚨 Critical: Uptime needs immediate attention! Target: ${(this.thresholds.low * 100).toFixed(1)}%";
     }
     return "🚀 Keep up the great work!";
   }

@@ -1,8 +1,10 @@
 import appConfig from "@config/index";
 
+// Get thresholds from config, which loads from environment variables
 const {
-  uptimeThreshold: { low = 0.7, medium = 0.85, high = 0.985 },
+  uptimeThreshold: { low, medium, high },
 } = appConfig;
+
 export enum UptimeThreshold {
   LOW = low,
   MEDIUM = medium,
@@ -11,29 +13,39 @@ export enum UptimeThreshold {
 
 export const createUptimeCondition = (params: {
   operatorAddress: string;
-  uptime: number;
+  uptime: number | { toString(): string };
 }): { value: string; threshold: number } => {
   const { operatorAddress, uptime } = params;
-  let thRes = UptimeThreshold.HIGH;
-  let thText = "lower";
+  
+  // Convert uptime to number, handling both string and object cases
+  const uptimeValue = typeof uptime === 'object' && uptime.toString ? 
+    parseFloat(uptime.toString()) : 
+    Number(uptime);
 
+  let thRes = UptimeThreshold.HIGH;
+  let thText = "optimal";
+
+  // Compare with exact threshold values
   switch (true) {
-    case uptime < UptimeThreshold.LOW:
+    case uptimeValue < UptimeThreshold.LOW: // < 99.7%
       thRes = UptimeThreshold.LOW;
+      thText = "critical";
       break;
-    case uptime < UptimeThreshold.MEDIUM:
+    case uptimeValue < UptimeThreshold.MEDIUM: // < 99.8%
       thRes = UptimeThreshold.MEDIUM;
+      thText = "warning";
       break;
-    case uptime < UptimeThreshold.HIGH:
+    case uptimeValue < UptimeThreshold.HIGH: // < 99.9%
       thRes = UptimeThreshold.HIGH;
-      break;
-    default:
-      thText = "higher";
+      thText = "attention";
       break;
   }
 
+  // Format the uptime value after conversion
+  const formattedUptime = uptimeValue.toFixed(3);
+  
   return {
-    value: `${operatorAddress}_${uptime}_${thText}_${thRes}`,
+    value: `${operatorAddress}_${formattedUptime}_${thText}_${thRes}`,
     threshold: thRes,
   };
 };

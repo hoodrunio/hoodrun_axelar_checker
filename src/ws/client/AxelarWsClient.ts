@@ -1,10 +1,10 @@
 import appConfig from "@config/index";
 import { logger } from "@utils/logger";
 import { addWsMessageResultHandlerJob } from "@/queue/jobs/WsMessageResultHandler";
+import appJobProducer from "@/queue/producer/AppJobProducer";
 import { WebSocket } from "ws";
 import {
   ActivePollEvents,
-  ActivePollVotedEvents,
   PollSendEvent,
 } from "@/ws/event/PollSendEvent";
 import { PollEvent } from "@/ws/event/eventHelper";
@@ -21,6 +21,11 @@ export class AxelarWsClient extends EventEmitter {
   private evmIsReconnecting = false;
   private amplifierRetryCount = 0;
   private amplifierIsReconnecting = false;
+  private currentWsUrlIndex = 0;
+  private readonly RECONNECT_BASE_DELAY = 1000; // 1 second
+  private readonly MAX_RECONNECT_DELAY = 300000; // 5 minutes
+  private readonly NOTIFICATION_COOLDOWN = 360000; // 1 hour
+  private lastNotificationTime = 0;
 
   constructor() {
     super();
@@ -29,14 +34,19 @@ export class AxelarWsClient extends EventEmitter {
     this.connect();
   }
 
-  private connect() {
-    const url = mainnetAxelarWsUrls[0];
+  private async connect() {
+    if (mainnetAxelarWsUrls.length === 0) {
+      logger.error('No WebSocket URLs configured');
+      return;
+    }
+
+    const url = mainnetAxelarWsUrls[this.currentWsUrlIndex];
     
-    // EVM WebSocket bağlantısı
+    // EVM WebSocket connection
     this.evmWs = new WebSocket(url, this.getWsOptions());
     this.initEvmWebSocketEvents();
 
-    // Amplifier WebSocket bağlantısı
+    // Amplifier WebSocket connection
     this.amplifierWs = new WebSocket(url, this.getWsOptions());
     this.initAmplifierWebSocketEvents();
   }
@@ -61,6 +71,13 @@ export class AxelarWsClient extends EventEmitter {
       logger.info("Connected to Axelar EVM WebSocket");
       super.emit("evm-connect", event);
       this.initEvmSubscriptions();
+      
+      // Send success notification if we were previously disconnected
+      if (this.lastNotificationTime > 0) {
+        this.queueConnectionNotification(
+          `✅ WebSocket connection restored successfully\nURL: ${mainnetAxelarWsUrls[this.currentWsUrlIndex]}`
+        );
+      }
     };
 
     this.evmWs.onmessage = (event) => {
@@ -78,20 +95,23 @@ export class AxelarWsClient extends EventEmitter {
       }
     };
 
-    this.evmWs.onclose = (event) => {
-      logger.error('Disconnected from Axelar EVM WebSocket:', event);
+    this.evmWs.onclose = async (event) => {
+      const errorCode = event.code;
+      const errorReason = event.reason || 'Unknown reason';
+      logger.error('Disconnected from Axelar EVM WebSocket:', { code: errorCode, reason: errorReason });
       
       if (this.evmRetryCount < this.MAX_RETRIES) {
         setTimeout(() => {
           if (!this.evmIsReconnecting) {
-            this.reconnectEvmWs();
+            this.reconnectEvmWs(errorCode, errorReason);
           }
         }, 1000);
       }
     };
 
     this.evmWs.onerror = (error) => {
-      logger.error("EVM WebSocket error:", error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      logger.error("EVM WebSocket error:", errorMessage);
       super.emit('evm-error', error);
     };
   }
@@ -192,12 +212,7 @@ export class AxelarWsClient extends EventEmitter {
   }
 
   // Reconnection logic
-  private async reconnectEvmWs() {
-    if (this.evmRetryCount >= this.MAX_RETRIES) {
-      logger.error("Max retry attempts reached for EVM WebSocket");
-      return;
-    }
-
+  private async reconnectEvmWs(errorCode?: number, errorReason?: string) {
     if (this.evmIsReconnecting) return;
     
     try {
@@ -206,12 +221,50 @@ export class AxelarWsClient extends EventEmitter {
       
       logger.info(`EVM WebSocket reconnection attempt ${this.evmRetryCount}`);
       
-      const url = mainnetAxelarWsUrls[0];
+      // Calculate delay with exponential backoff
+      const delay = Math.min(
+        this.RECONNECT_BASE_DELAY * Math.pow(2, this.evmRetryCount - 1),
+        this.MAX_RECONNECT_DELAY
+      );
+      
+      await new Promise(resolve => setTimeout(resolve, delay));
+      
+      // Try next URL if current one fails
+      if (this.evmRetryCount % 3 === 0) {
+        this.currentWsUrlIndex = (this.currentWsUrlIndex + 1) % mainnetAxelarWsUrls.length;
+        const nextUrl = mainnetAxelarWsUrls[this.currentWsUrlIndex];
+        logger.info(`Switching to next WebSocket URL: ${nextUrl}`);
+        
+        await this.queueConnectionNotification(
+          `⚠️ Connection issues detected with current WebSocket.\n` +
+          `Error: ${errorCode ? `Code ${errorCode}` : 'Unknown'} - ${errorReason || 'No details'}\n` +
+          `Attempted ${this.evmRetryCount} reconnections.\n` +
+          `Switching to backup URL: ${nextUrl}`
+        );
+      }
+      
+      const url = mainnetAxelarWsUrls[this.currentWsUrlIndex];
       this.evmWs = new WebSocket(url, this.getWsOptions());
       this.initEvmWebSocketEvents();
       
+      // Send notification about connection issues
+      await this.queueConnectionNotification(
+        `⚠️ WebSocket connection issues detected.\n` +
+        `Error: ${errorCode ? `Code ${errorCode}` : 'Unknown'} - ${errorReason || 'No details'}\n` +
+        `Attempted ${this.evmRetryCount} reconnections.\n` +
+        `Current URL: ${url}`
+      );
+      
     } catch (error) {
       logger.error('Error during EVM WebSocket reconnection:', error);
+      if (this.evmRetryCount >= this.MAX_RETRIES) {
+        await this.queueConnectionNotification(
+          `❌ WebSocket connection failed after ${this.MAX_RETRIES} attempts.\n` +
+          `Error: ${errorCode ? `Code ${errorCode}` : 'Unknown'} - ${errorReason || 'No details'}\n` +
+          `All available URLs have been tried.\n` +
+          `Please check the WebSocket endpoints.`
+        );
+      }
     } finally {
       this.evmIsReconnecting = false;
     }
@@ -234,7 +287,7 @@ export class AxelarWsClient extends EventEmitter {
       const delay = Math.min(1000 * Math.pow(2, this.amplifierRetryCount), 30000);
       await new Promise(resolve => setTimeout(resolve, delay));
 
-      const url = mainnetAxelarWsUrls[0];
+      const url = mainnetAxelarWsUrls[this.currentWsUrlIndex];
       this.amplifierWs = new WebSocket(url, this.getWsOptions());
       this.initAmplifierWebSocketEvents();
       
@@ -246,6 +299,70 @@ export class AxelarWsClient extends EventEmitter {
       }
     } finally {
       this.amplifierIsReconnecting = false;
+    }
+  }
+
+  private async queueConnectionNotification(message: string) {
+    try {
+      const now = Date.now();
+      const isSuccessNotification = message.startsWith('✅');
+      
+      // Handle case where lastNotificationTime might be in the future due to system clock changes
+      if (this.lastNotificationTime > now) {
+        this.lastNotificationTime = 0;
+      }
+      
+      const timeSinceLastNotification = now - this.lastNotificationTime;
+      
+      // Allow success notifications to bypass cooldown
+      if (isSuccessNotification || this.lastNotificationTime === 0 || timeSinceLastNotification >= this.NOTIFICATION_COOLDOWN) {
+        const wsStatus = this.evmWs?.readyState;
+        const statusMap = {
+          [WebSocket.CONNECTING]: 'CONNECTING',
+          [WebSocket.OPEN]: 'CONNECTED',
+          [WebSocket.CLOSING]: 'CLOSING',
+          [WebSocket.CLOSED]: 'DISCONNECTED'
+        };
+
+        const jobData = {
+          message,
+          timestamp: new Date().toISOString(),
+          currentUrl: mainnetAxelarWsUrls[this.currentWsUrlIndex],
+          retryCount: this.evmRetryCount,
+          status: wsStatus !== undefined ? statusMap[wsStatus] : 'UNKNOWN',
+          nextRetryTime: new Date(now + this.NOTIFICATION_COOLDOWN).toISOString()
+        };
+        
+        logger.info('Queueing WebSocket notification with data:', {
+          ...jobData,
+          cooldown: `${this.NOTIFICATION_COOLDOWN / 1000} seconds`,
+          lastNotification: new Date(this.lastNotificationTime).toISOString(),
+          wsReadyState: wsStatus
+        });
+        
+        await appJobProducer.addJob(
+          "websocketConnectionNotificationJob",
+          jobData
+        );
+        
+        // Update timestamp after successful queue
+        this.lastNotificationTime = now;
+        logger.info('Successfully queued WebSocket connection notification');
+      } else {
+        const timeLeft = Math.ceil((this.NOTIFICATION_COOLDOWN - timeSinceLastNotification) / 1000);
+        logger.debug(`Skipping notification due to cooldown. Next notification in ${timeLeft} seconds`, {
+          lastNotification: new Date(this.lastNotificationTime).toISOString(),
+          cooldownPeriod: `${this.NOTIFICATION_COOLDOWN / 1000} seconds`,
+          timeLeft: `${timeLeft} seconds`,
+          wsReadyState: this.evmWs?.readyState
+        });
+      }
+    } catch (error) {
+      logger.error('Failed to queue connection notification:', error);
+      // Only reset lastNotificationTime for non-network errors
+      if (!(error instanceof Error && error.message.includes('ECONNREFUSED'))) {
+        this.lastNotificationTime = 0;
+      }
     }
   }
 
@@ -265,4 +382,4 @@ export class AxelarWsClient extends EventEmitter {
     this.amplifierRetryCount = 0;
     this.amplifierIsReconnecting = false;
   }
-}
+} 

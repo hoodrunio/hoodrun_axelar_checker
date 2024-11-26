@@ -64,60 +64,67 @@ class ValsUptimeCheckerQueueManager {
         // Set a higher concurrency for better performance
         this.queue.process(4, async (job) => {
           const db = new AppDb();
-          // const activeValidators = [await db.validatorRepository.activeValidators()];
           const activeValidators = [];
 
-          const envValidator = await db.validatorRepository.findOne({
-            voter_address: appConfig.axelarVoterAddress,
-            is_active: true,
-          });
-
-          if (envValidator) {
-            activeValidators.push(envValidator);
-          }
-
-          const promises = activeValidators.map(async (validator) => {
-            const {
-              uptime,
-              operator_address,
-              description: { moniker },
-            } = validator;
-
-            const event = NotificationEvent.UPTIME;
-            const { value: currentUptimeCondition, threshold: closestThreshold } =
-              createUptimeCondition({
-                operatorAddress: operator_address,
-                uptime,
-              });
-
-            // Get all telegram users
-            const tempAllTgUsers = await db.telegramUserRepo.findAll({});
-
-            const tgUserProcessPromisses = tempAllTgUsers.map(
-              async (tgUser) =>
-                await processTgUser({
-                  moniker,
-                  tgUser,
-                  operator_address,
-                  uptime,
-                  closestThreshold,
-                  currentUptimeCondition,
-                  event,
-                })
-            );
-
-            try {
-              await Promise.all(tgUserProcessPromisses);
-              return Promise.resolve();
-            } catch (error) {
-              logger.error("Error in uptime notification creation job", error);
-            }
-          });
-
           try {
-            (await Promise.all(promises)).removeNulls();
+            const envValidator = await db.validatorRepository.findOne({
+              voter_address: appConfig.axelarVoterAddress,
+              is_active: true,
+            });
+
+            if (envValidator) {
+              activeValidators.push(envValidator);
+              logger.info(`Processing uptime for validator: ${envValidator.description.moniker}`);
+            } else {
+              logger.warn('No active validator found for the configured voter address');
+              return Promise.resolve();
+            }
+
+            const promises = activeValidators.map(async (validator) => {
+              const {
+                uptime,
+                operator_address,
+                description: { moniker },
+              } = validator;
+
+              const event = NotificationEvent.UPTIME;
+              const { value: currentUptimeCondition, threshold: closestThreshold } =
+                createUptimeCondition({
+                  operatorAddress: operator_address,
+                  uptime,
+                });
+
+              // Log the current uptime and threshold
+              logger.info(`Validator ${moniker} current uptime: ${uptime}, threshold: ${closestThreshold}`);
+
+              // Get all telegram users
+              const tempAllTgUsers = await db.telegramUserRepo.findAll({});
+
+              const tgUserProcessPromisses = tempAllTgUsers.map(
+                async (tgUser) =>
+                  await processTgUser({
+                    moniker,
+                    tgUser,
+                    operator_address,
+                    uptime,
+                    closestThreshold,
+                    currentUptimeCondition,
+                    event,
+                  })
+              );
+
+              try {
+                await Promise.all(tgUserProcessPromisses);
+                return Promise.resolve();
+              } catch (error) {
+                logger.error("Error in uptime notification creation job", error);
+              }
+            });
+
+            await Promise.all(promises);
           } catch (error) {
             logger.error("Error in uptime checker job", error);
+            throw error; // Let Bull handle the retry
           }
 
           return Promise.resolve();
@@ -131,6 +138,11 @@ class ValsUptimeCheckerQueueManager {
         // Add stalled handler
         this.queue.on('stalled', (job: Job) => {
           logger.warn('Job stalled:', job.id);
+        });
+
+        // Add completed handler
+        this.queue.on('completed', (job: Job) => {
+          logger.debug('Uptime check completed:', job.id);
         });
 
         this.isInitialized = true;
@@ -160,15 +172,22 @@ export const addValUptimeCheckerJob = () => {
     {},
     {
       repeat: { every: xSeconds(10) },
+      removeOnComplete: true,
+      attempts: 3,
+      backoff: {
+        type: 'exponential',
+        delay: 6000
+      }
     }
   );
+  logger.info('Uptime checker job scheduled to run every 1 minutes');
 };
 
 interface ProcessTgUserParams {
   tgUser: ITelegramUser;
   moniker: string;
   operator_address: string;
-  uptime: number;
+  uptime: number | { toString(): string };
   closestThreshold: number;
   currentUptimeCondition: string;
   event: NotificationEvent;
@@ -188,9 +207,15 @@ async function processTgUser(params: ProcessTgUserParams) {
   const db = new AppDb();
   const tgChatId = tgUser.chat_id;
   const notificationId = `uptime-${operator_address}-${tgChatId}`;
+  
+  // Convert uptime to proper decimal value
+  const uptimeValue = typeof uptime === 'object' && 'toString' in uptime ? 
+    parseFloat(uptime.toString()) : 
+    Number(uptime);
+
   const uptimeNotificationData: UptimeNotificationDataType = {
     operatorAddress: operator_address,
-    currentUptime: uptime,
+    currentUptime: uptimeValue,
     moniker,
     threshold: closestThreshold,
   };
@@ -201,7 +226,8 @@ async function processTgUser(params: ProcessTgUserParams) {
   });
   const isNewCondition = !earlierCondition;
 
-  if (isNewCondition) {
+  // Always notify if it's a new condition or if the threshold has changed
+  if (isNewCondition || (earlierCondition?.data as UptimeNotificationDataType)?.threshold !== closestThreshold) {
     await db.notificationRepo.upsertOne(
       { notification_id: notificationId },
       {
@@ -213,5 +239,8 @@ async function processTgUser(params: ProcessTgUserParams) {
         sent: false,
       }
     );
+
+    // Log the threshold transition for monitoring
+    logger.info(`Uptime notification created for ${moniker}: ${uptimeValue}% (Threshold: ${closestThreshold})`);
   }
 }

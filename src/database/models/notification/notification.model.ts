@@ -16,7 +16,23 @@ const NotificationSchema: Schema<INotificationDocument> =
       enum: Object.values(NotificationEvent),
       required: true,
     },
-    data: { type: Schema.Types.Mixed, required: true },
+    data: {
+      type: Schema.Types.Mixed,
+      required: true,
+      get: (data: any) => {
+        if (data && typeof data === 'object' && 'currentUptime' in data) {
+          const uptimeValue = typeof data.currentUptime === 'object' && data.currentUptime.toString ? 
+            parseFloat(data.currentUptime.toString()) : 
+            Number(data.currentUptime);
+            
+          return {
+            ...data,
+            currentUptime: uptimeValue
+          };
+        }
+        return data;
+      }
+    },
     condition: { type: String, required: true },
     type: {
       type: String,

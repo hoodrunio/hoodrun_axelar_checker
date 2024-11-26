@@ -40,6 +40,7 @@ import {
 import { AppDb } from "@database/database";
 import { testRedisConnection } from "@/queue/queue/AppQueueFactory";
 import { AmplifierQueueManager } from '@/queue/queue/AmplifierQueueManager';
+import { initWebSocketConnectionNotificationQueue } from "@/queue/jobs/websocket/WebSocketConnectionNotificationJob";
 
 export default class App {
   axelarQueryService: AxelarQueryService;
@@ -154,7 +155,8 @@ export default class App {
         initNewWsAllPollDataQueue(),
         initRpcEndpointHealthcheckerQueue(),
         initBroadcasterBalanceCheckerQueue(),
-        initAmplifierTrackingQueues()
+        initAmplifierTrackingQueues(),
+        initWebSocketConnectionNotificationQueue()
       ]);
       
       logger.info('All queues initialized successfully');
@@ -177,6 +179,7 @@ export default class App {
         { name: 'pollVoteNotification', job: addPollVoteNotificationJob },
         { name: 'rpcEndpointHealthchecker', job: addRpcEndpointHealthcheckerJob },
         { name: 'broadcasterBalanceChecker', job: addBroadcasterBalanceCheckerJob },
+        { name: 'websocketConnectionNotificationJob', job: () => Promise.resolve() }, 
         { name: AMPLIFIER_POLL_TRACKING, job: () => {} },
         { name: AMPLIFIER_SIGNATURE_TRACKING, job: () => {} }
       ];
@@ -188,8 +191,10 @@ export default class App {
         jobs.map(async ({ name }) => {
           try {
             const queue = await AppQueueFactory.getQueue(name);
-            // Clear any existing jobs to start fresh
-            await queue.empty();
+            // Only clear non-WebSocket queues
+            if (!name.includes('websocket')) {
+              await queue.empty();
+            }
             return { name, queue, error: null };
           } catch (error) {
             return { name, queue: null, error };
