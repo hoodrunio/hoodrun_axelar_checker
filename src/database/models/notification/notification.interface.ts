@@ -11,7 +11,8 @@ export enum NotificationEvent {
   EVM_SUPPORTED_CHAIN_REGISTRATION = "EVM_SUPPORTED_CHAIN_REGISTRATION_EVENT",
   BROADCASTER_BALANCE_LOW = "BROADCASTER_BALANCE_LOW_EVENT",
   AMPLIFIER_VOTE = "AMPLIFIER_VOTE_EVENT",
-  AMPLIFIER_SIGNATURE = "AMPLIFIER_SIGNATURE_EVENT"
+  AMPLIFIER_SIGNATURE = "AMPLIFIER_SIGNATURE_EVENT",
+  WEBSOCKET_CONNECTION_ISSUE = "WEBSOCKET_CONNECTION_ISSUE",
 }
 
 export enum NotificationType {
@@ -19,17 +20,30 @@ export enum NotificationType {
   EMAIL = "EMAIL",
 }
 
+export type WebSocketConnectionNotificationDataType = {
+  message: string;
+  timestamp: string;
+  currentUrl: string;
+  retryCount: number;
+  nextRetryTime?: string;
+  error?: string;
+  status?: string;
+};
+
+export type NotificationDataType =
+  | UptimeNotificationDataType
+  | PollVoteNotificationDataType
+  | RpcEndpointHealthNotificationDataType
+  | EvmSupprtedChainRegistrationNotificationDataType
+  | BroadcasterBalanceLowNotificationDataType
+  | AmplifierVoteNotificationDataType
+  | AmplifierSignatureNotificationDataType
+  | WebSocketConnectionNotificationDataType;
+
 export interface INotification extends IBaseInterface {
   notification_id: string;
   event: NotificationEvent;
-  data:
-    | UptimeNotificationDataType
-    | PollVoteNotificationDataType
-    | RpcEndpointHealthNotificationDataType
-    | EvmSupprtedChainRegistrationNotificationDataType
-    | BroadcasterBalanceLowNotificationDataType
-    | AmplifierVoteNotificationDataType
-    | AmplifierSignatureNotificationDataType;
+  data: NotificationDataType;
   condition: string;
   type: NotificationType;
   recipient: string;
@@ -37,6 +51,8 @@ export interface INotification extends IBaseInterface {
   retryCount?: number;
   failed?: boolean;
   lastError?: string;
+  created_at?: Date;
+  updated_at?: Date;
 }
 
 export interface INotificationDocument extends Document, INotification {}

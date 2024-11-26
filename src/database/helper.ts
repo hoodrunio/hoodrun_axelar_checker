@@ -28,8 +28,8 @@ export const modelNumberPrecisionFixer = (
   params: ModelNumberPrecisionFixerParams
 ): number => {
   const { value, defaultValue, precision = 5 } = params;
-  const tempValue = value || defaultValue || 0;
+  // Fix: Use nullish coalescing to properly handle zero values
+  const tempValue = value ?? defaultValue ?? 0;
   const finalValue = new BigNumber(tempValue);
-
   return finalValue.decimalPlaces(precision).toNumber();
 };

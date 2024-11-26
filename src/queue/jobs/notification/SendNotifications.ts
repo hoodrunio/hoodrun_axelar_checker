@@ -59,88 +59,75 @@ class SendNotificationsQueueManager {
           }
         }
 
-        this.queue = AppQueueFactory.createQueue(SEND_NOTIFICATIONS_JOB);
+        this.queue = AppQueueFactory.createQueue<any>(SEND_NOTIFICATIONS_JOB);
 
         this.queue.process(async (job) => {
           try {
-            const maxRetries = 3;
-            let retries = 0;
+            const { notificationRepo } = new AppDb();
+            const notSentNotifications = await notificationRepo.findAll({
+              sent: false,
+              sort: { createdAt: 1 },
+            });
 
-            const processNotifications = async () => {
-              const processWithRetry = async () => {
+            if (!notSentNotifications || notSentNotifications.length === 0) {
+              logger.info("No unsent notifications found");
+              return;
+            }
+
+            logger.info(`Found ${notSentNotifications.length} unsent notifications`);
+            logger.info('Notification types:', notSentNotifications.map(n => n.event).join(', '));
+
+            const tgBot = await TGBot.getInstance();
+
+            const results = await Promise.allSettled(
+              notSentNotifications.map(async (notification: INotification) => {
                 try {
-                  const { notificationRepo } = new AppDb();
-                  const notSentNotifications = await notificationRepo.findAll({
-                    sent: false,
-                    sort: { createdAt: 1 },
-                  });
-
-                  if (!notSentNotifications || notSentNotifications.length === 0) {
-                    logger.info("No unsent notifications found");
-                    return;
+                  logger.info(`Processing notification ${notification.notification_id} of type ${notification.event}`);
+                  const result = await tgBot.sendNotification(notification);
+                  if (result.sentSuccess) {
+                    await notificationRepo.updateOne(
+                      { notification_id: notification.notification_id },
+                      { sent: true }
+                    );
+                    logger.info(`Successfully sent notification ${notification.notification_id}`);
+                  } else {
+                    logger.warn(`Failed to send notification ${notification.notification_id}`);
                   }
-
-                  logger.info(`Found ${notSentNotifications.length} unsent notifications`);
-
-                  const tgBot = await TGBot.getInstance();
-
-                  const results = await Promise.allSettled(
-                    notSentNotifications.map(async (notification: INotification) => {
-                      try {
-                        logger.info(`Attempting to send notification ${notification.notification_id}`);
-                        const result = await tgBot.sendNotification(notification);
-                        if (result.sentSuccess) {
-                          await notificationRepo.updateOne(
-                            { notification_id: notification.notification_id },
-                            { sent: true }
-                          );
-                          logger.info(`Successfully sent notification ${notification.notification_id}`);
-                        }
-                        return { notification_id: notification.notification_id, error: null };
-                      } catch (error) {
-                        logger.error(`Error sending notification ${notification.notification_id}:`, error);
-                        return { notification_id: notification.notification_id, error };
-                      }
-                    })
-                  );
-
-                  await reQueueFailedNotifications(results);
-
+                  return { notification_id: notification.notification_id, error: null };
                 } catch (error) {
-                  logger.error("Error in processWithRetry:", error);
-                  throw error;
+                  logger.error(`Error sending notification ${notification.notification_id}:`, error);
+                  return { notification_id: notification.notification_id, error };
                 }
-              };
+              })
+            );
 
-              while (retries < maxRetries) {
-                try {
-                  await processWithRetry();
-                  break;
-                } catch (error) {
-                  retries++;
-                  if (retries === maxRetries) {
-                    logger.error(`Failed to process notifications after ${maxRetries} attempts`);
-                    throw error;
-                  }
-                  logger.warn(`Retry attempt ${retries}/${maxRetries}`);
-                  await new Promise(resolve => setTimeout(resolve, 1000 * retries));
-                }
-              }
-            };
+            const failedNotifications = results.filter(
+              (result) => result.status === "rejected"
+            );
 
-            await processNotifications();
+            if (failedNotifications.length > 0) {
+              await reQueueFailedNotifications(failedNotifications);
+            }
+
+            return results;
           } catch (error) {
-            logger.error("Error in notification processing:", error);
+            logger.error('Error processing notifications:', error);
             throw error;
           }
         });
 
-        // Add error handler
+        this.queue.on('completed', (job) => {
+          logger.info(`Notification job completed: ${job.id}`);
+        });
+
+        this.queue.on('failed', (job, error) => {
+          logger.error(`Notification job failed: ${job.id}`, error);
+        });
+
         this.queue.on('error', (error: Error) => {
           logger.error('Queue error:', error);
         });
 
-        // Add stalled handler
         this.queue.on('stalled', (job: Job) => {
           logger.warn('Job stalled:', job.id);
         });
@@ -148,7 +135,7 @@ class SendNotificationsQueueManager {
         this.isInitialized = true;
         logger.info('SendNotifications queue initialized successfully');
       } catch (error) {
-        logger.error('Error initializing SendNotifications queue:', error);
+        logger.error('Error initializing notification queue:', error);
         throw error;
       } finally {
         this.initializationPromise = null;

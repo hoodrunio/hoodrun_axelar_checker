@@ -70,6 +70,13 @@ class AppQueueFactory {
 
   public static createQueue<T>(name: string, deleteOnCompleted?: boolean): Queue.Queue<T> {
     try {
+      logger.info(`Creating queue: ${name}`);
+      
+      if (this.queues[name]) {
+        logger.info(`Queue ${name} already exists, returning existing queue`);
+        return this.queues[name];
+      }
+
       const queue = new Queue(name, {
         createClient: (type) => {
           switch (type) {
@@ -84,55 +91,44 @@ class AppQueueFactory {
           }
         },
         limiter: { 
-          max: 100,  // Process max 100 jobs
-          duration: 1000  // Per second
+          max: 100,
+          duration: 1000
         },
         defaultJobOptions: {
-          attempts: 5,  // Increase retry attempts
+          attempts: 5,
           backoff: {
             type: 'exponential',
             delay: 1000,
           },
-          removeOnComplete: true,  // Clean up completed jobs
-          removeOnFail: true,      // Clean up failed jobs after max attempts
-          timeout: 60000,  // Increase timeout to 60 seconds
+          removeOnComplete: true,
+          removeOnFail: true,
+          timeout: 60000,
         },
         settings: {
-          stalledInterval: 10000,  // Check for stalled jobs more frequently
-          maxStalledCount: 3,      // Allow more stalled attempts
+          stalledInterval: 10000,
+          maxStalledCount: 15,      // Allow more stalled attempts
           drainDelay: 5,           // Small delay between processing jobs
           lockDuration: 30000,     // Lock jobs for 30 seconds
         }
       });
 
-      // Set up queue-level error handling
-      queue.on('error', (error) => {
-        logger.error(`Queue ${name} error:`, error);
-      });
-
-      queue.on('waiting', (jobId) => {
-        logger.debug(`Job ${jobId} is waiting in queue ${name}`);
-      });
-
-      queue.on('active', (job) => {
-        logger.debug(`Processing job ${job.id} in queue ${name}`);
-      });
-
       queue.on('completed', (job) => {
-        logger.info(`Job ${job.id} completed in queue ${name}`);
+        logger.info(`Job completed in queue ${name}:`, job.id);
       });
 
-      queue.on('failed', (job, error) => {
-        logger.error(`Job ${job.id} failed in queue ${name}:`, error);
+      queue.on('failed', (job, err) => {
+        logger.error(`Job failed in queue ${name}:`, job.id, err);
       });
 
-      queue.on('stalled', (job) => {
-        logger.warn(`Job ${job.id} has stalled in queue ${name}`);
+      queue.on('error', (err) => {
+        logger.error(`Queue ${name} error:`, err);
       });
 
+      this.queues[name] = queue;
+      logger.info(`Queue ${name} created successfully`);
       return queue;
     } catch (error) {
-      logger.error(`Error creating queue ${name}: ${error}`);
+      logger.error(`Error creating queue ${name}:`, error);
       throw error;
     }
   }

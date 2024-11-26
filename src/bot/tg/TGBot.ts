@@ -21,6 +21,7 @@ import {
   PollVoteNotificationDataType,
   RpcEndpointHealthNotificationDataType,
   UptimeNotificationDataType,
+  WebSocketConnectionNotificationDataType
 } from "@database/models/notification/notification.interface";
 import { logger } from "@utils/logger";
 import { Bot, InlineKeyboard } from "grammy";
@@ -147,55 +148,92 @@ export class TGBot {
     let sentSuccess = false;
 
     switch (event) {
-      case NotificationEvent.UPTIME:
+      case NotificationEvent.UPTIME: {
+        const uptimeData = data as UptimeNotificationDataType;
         await this.sendUptimeNotification({
-          ...(data as UptimeNotificationDataType),
+          operatorAddress: uptimeData.operatorAddress,
+          currentUptime: Number(uptimeData.currentUptime),
+          moniker: uptimeData.moniker,
+          threshold: uptimeData.threshold,
           chat_id: tgRecipient,
         });
         sentSuccess = true;
         break;
-      case NotificationEvent.POOL_VOTE:
+      }
+      case NotificationEvent.POOL_VOTE: {
+        const pollVoteData = data as PollVoteNotificationDataType;
         await this.sendPollVoteNotification({
-          ...(data as PollVoteNotificationDataType),
+          operatorAddress: pollVoteData.operatorAddress,
+          vote: pollVoteData.vote,
+          pollId: pollVoteData.pollId,
+          chain: pollVoteData.chain,
+          moniker: pollVoteData.moniker,
           chat_id: tgRecipient,
         });
         sentSuccess = true;
         break;
-      case NotificationEvent.RPC_ENDPOINT_HEALTH:
+      }
+      case NotificationEvent.RPC_ENDPOINT_HEALTH: {
+        const rpcHealthData = data as RpcEndpointHealthNotificationDataType;
         await this.sendRpcHealthNotif({
-          ...(data as RpcEndpointHealthNotificationDataType),
+          rpcEndpoint: rpcHealthData.rpcEndpoint,
+          isHealthy: rpcHealthData.isHealthy,
+          name: rpcHealthData.name,
+          moniker: rpcHealthData.moniker,
+          operatorAddress: rpcHealthData.operatorAddress,
           chat_id: tgRecipient,
         });
         sentSuccess = true;
         break;
-      case NotificationEvent.EVM_SUPPORTED_CHAIN_REGISTRATION:
+      }
+      case NotificationEvent.EVM_SUPPORTED_CHAIN_REGISTRATION: {
+        const evmSupChainData = data as EvmSupprtedChainRegistrationNotification;
         await this.sendEvmSupChainNotif({
-          ...(data as EvmSupprtedChainRegistrationNotification),
+          chain: evmSupChainData.chain,
+          moniker: evmSupChainData.moniker,
+          operatorAddress: evmSupChainData.operatorAddress,
+          status: evmSupChainData.status,
           chat_id: tgRecipient,
         });
         sentSuccess = true;
         break;
-      case NotificationEvent.BROADCASTER_BALANCE_LOW:
+      }
+      case NotificationEvent.BROADCASTER_BALANCE_LOW: {
+        const broadcasterBalanceLowData = data as BroadcasterBalanceLowNotificationDataType;
         await this.sendBroadcasterBalanceLowNotification({
-          ...(data as BroadcasterBalanceLowNotificationDataType),
+          ...broadcasterBalanceLowData,
           chat_id: tgRecipient,
         });
         sentSuccess = true;
         break;
-      case NotificationEvent.AMPLIFIER_VOTE:
+      }
+      case NotificationEvent.AMPLIFIER_VOTE: {
+        const amplifierVoteData = data as AmplifierVoteNotificationDataType;
         await this.sendAmplifierVoteNotification({
-          ...(data as AmplifierVoteNotificationDataType),
+          ...amplifierVoteData,
           chat_id: tgRecipient,
         });
         sentSuccess = true;
         break;
-      case NotificationEvent.AMPLIFIER_SIGNATURE:
+      }
+      case NotificationEvent.AMPLIFIER_SIGNATURE: {
+        const amplifierSignatureData = data as AmplifierSignatureNotificationDataType;
         await this.sendAmplifierSignatureNotification({
-          ...(data as AmplifierSignatureNotificationDataType),
+          ...amplifierSignatureData,
           chat_id: tgRecipient,
         });
         sentSuccess = true;
         break;
+      }
+      case NotificationEvent.WEBSOCKET_CONNECTION_ISSUE: {
+        const wsData = data as WebSocketConnectionNotificationDataType;
+        await this.sendMessageToUser(
+          { chat_id: tgRecipient },
+          this.tgReply.websocketConnectionIssueReply(wsData)
+        );
+        sentSuccess = true;
+        break;
+      }
     }
 
     return Promise.resolve({ sentSuccess });
