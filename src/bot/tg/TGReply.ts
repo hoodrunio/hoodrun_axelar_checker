@@ -79,7 +79,7 @@ ${this.motivationMessage(uptime)}
 🆔 <b>Poll ID:</b> ${pollId}
 🔗 <b>Chain:</b> ${chain.toUpperCase()}
 🗳️ <b>Vote:</b> ${vote} ${voteEmoji}
-🔗 <b>View Poll:</b> <a href="https://axelarscan.io/evm-poll/${pollId}">Axelarscan</a>
+🔗 <b>View Poll:</b> <a href="https://axelarscan.io/evm-poll/${pollId}" disable_web_page_preview="true">Axelarscan</a>
     `;
   }
 
