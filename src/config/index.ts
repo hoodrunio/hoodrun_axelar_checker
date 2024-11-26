@@ -20,6 +20,8 @@ export interface AppConfigType {
   mainnetAxelarRestBaseUrls: string[];
   mainnetAxelarLCDRestBaseUrls: string[];
   mainnetAxelarRpcBaseUrls: string[];
+  mainnetAxelarArchiveRestBaseUrls: string[];
+  mainnetAxelarArchiveRpcBaseUrls: string[];
   mainnetAxelarWsUrls: string[];
   testnetAxelarRestBaseUrls: string[];
   testnetAxelarRpcBaseUrls: string[];

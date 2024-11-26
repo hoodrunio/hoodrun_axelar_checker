@@ -171,7 +171,7 @@ export const addValUptimeCheckerJob = () => {
     VALIDATOR_UPTIME_CHECKER,
     {},
     {
-      repeat: { every: xSeconds(10) },
+      repeat: { every: xSeconds(60) },
       removeOnComplete: true,
       attempts: 3,
       backoff: {
