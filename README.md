@@ -7,9 +7,14 @@ Axelar Validator Checker is a Node.js application designed to provide tracking f
 - Validator Tracking: Monitor validators' uptime, poll votes, supported EVM chains, and RPC health.
 - Environment Configuration: Utilize an environment file for seamless deployment to Docker. All features are configurable via environment variables.
 - Poll Vote Indexing: Index poll votes based on the specified voter address to facilitate tracking and analysis.
-- Amplifier Polls: Monitor and track Amplifier polls and votesfor your verifier.
+- Amplifier Polls: Monitor and track Amplifier polls and votes for your verifier.
 - Amplifier Signatures: Monitor and track Amplifier signatures for your verifier.
-- Telegram Notifications: Receive notifications via Telegram based on uptime thresholds and operator performance.
+- Telegram Notifications: Receive alerts via Telegram for various validator & verifier performance metrics:
+  - Uptime
+  - Poll votes (EVM and Amplifier)
+  - Signatures (Amplifier)
+  - EVM RPCs endpoint health
+  - Maintainer registration/deregistration events
 - Automated Health Checks: Regular monitoring of node status and performance metrics
 - Multi-endpoint Support: Redundancy through multiple API endpoints
 - Queue Management: Bull queue implementation for reliable job processing
