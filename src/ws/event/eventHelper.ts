@@ -10,6 +10,7 @@ export enum PollEvent {
   ConfirmGatewayTxStarted = "ConfirmGatewayTxStarted",
   Voted = "Voted",
 }
+
 export const getStartedPollEvent = (event: IncludedPollEvents) => {
   switch (event) {
     case PollEvent.ConfirmDeposit:
@@ -22,11 +23,13 @@ export const getStartedPollEvent = (event: IncludedPollEvents) => {
       return PollEvent.ConfirmGatewayTxStarted;
   }
 };
+
 export const createPollWsEventQuery = (
   action: PollEvent,
   participantEvent: PollEvent
 ) =>
   `tm.event='Tx' AND message.action='${action}' AND axelar.evm.v1beta1.${participantEvent}.participants CONTAINS 'participants'`;
+
 export const createPollVoteWsEventQuery = (
   action: PollEvent,
   voterAddress?: string

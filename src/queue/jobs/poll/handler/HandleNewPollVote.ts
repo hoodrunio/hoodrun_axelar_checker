@@ -23,16 +23,42 @@ export const handleOnNewPollVote = async (
   }
 
   const tx = await axlQueryService.getTxWithHash(txHash);
-  const txInnerMessageEvents = tx.tx.body.messages.find(
-    (msg) => msg?.inner_message
-  )?.inner_message?.vote?.events;
 
-  if (txInnerMessageEvents && txInnerMessageEvents?.length > 0) {
-    voteState = PollVoteType.YES;
-  }
+  // Recursive function to search for vote message
+  const findVoteMessage = (messages: any[]): any => {
+    for (const msg of messages) {
+      // Check BatchRequest messages
+      if (msg['@type'] === '/axelar.auxiliary.v1beta1.BatchRequest' && Array.isArray(msg.messages)) {
+        const found = findVoteMessage(msg.messages);
+        if (found) return found;
+      }
+      
+      // Check RefundMsgRequest with inner_message
+      if (msg['@type'] === '/axelar.reward.v1beta1.RefundMsgRequest' && msg.inner_message) {
+        if (msg.inner_message['@type'] === '/axelar.vote.v1beta1.VoteRequest') {
+          return msg.inner_message;
+        }
+      }
+      
+      // Direct VoteRequest message
+      if (msg['@type'] === '/axelar.vote.v1beta1.VoteRequest') {
+        return msg;
+      }
+    }
+    return null;
+  };
 
-  if (txInnerMessageEvents && txInnerMessageEvents?.length === 0) {
-    voteState = PollVoteType.NO;
+  const messages = tx?.tx?.body?.messages || [];
+  const voteMessage = findVoteMessage(messages);
+
+  if (voteMessage && voteMessage.poll_id === pollId) {
+    const voteEvents = voteMessage.vote?.events || [];
+    // Check if there are any events with valid status
+    if (voteEvents.length > 0) {
+      voteState = PollVoteType.YES;
+    } else {
+      voteState = PollVoteType.NO;
+    }
   }
 
   const customId = genPollVoteCustomId(pollId, voter_address);

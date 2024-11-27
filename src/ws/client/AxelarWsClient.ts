@@ -25,7 +25,12 @@ export class AxelarWsClient extends EventEmitter {
   private readonly RECONNECT_BASE_DELAY = 1000; // 1 second
   private readonly MAX_RECONNECT_DELAY = 300000; // 5 minutes
   private readonly NOTIFICATION_COOLDOWN = 360000; // 1 hour
+  private readonly RECOVERY_ATTEMPT_INTERVAL = 1800000; // 30 minutes
   private lastNotificationTime = 0;
+  private lastConnectedUrl: string | null = null;
+  private totalReconnectAttempts = 0;
+  private isPushNotificationMode = false;
+  private recoveryTimer: NodeJS.Timeout | null = null;
 
   constructor() {
     super();
@@ -218,8 +223,9 @@ export class AxelarWsClient extends EventEmitter {
     try {
       this.evmIsReconnecting = true;
       this.evmRetryCount++;
+      this.totalReconnectAttempts++;
       
-      logger.info(`EVM WebSocket reconnection attempt ${this.evmRetryCount}`);
+      logger.info(`EVM WebSocket reconnection attempt ${this.evmRetryCount} (Total: ${this.totalReconnectAttempts})`);
       
       // Calculate delay with exponential backoff
       const delay = Math.min(
@@ -229,44 +235,94 @@ export class AxelarWsClient extends EventEmitter {
       
       await new Promise(resolve => setTimeout(resolve, delay));
       
-      // Try next URL if current one fails
-      if (this.evmRetryCount % 3 === 0) {
+      const currentUrl = mainnetAxelarWsUrls[this.currentWsUrlIndex];
+      
+      // Try next URL after certain number of retries on current URL
+      if (this.evmRetryCount >= 3) {
+        this.evmRetryCount = 0; // Reset retry count for new URL
         this.currentWsUrlIndex = (this.currentWsUrlIndex + 1) % mainnetAxelarWsUrls.length;
         const nextUrl = mainnetAxelarWsUrls[this.currentWsUrlIndex];
-        logger.info(`Switching to next WebSocket URL: ${nextUrl}`);
         
-        await this.queueConnectionNotification(
-          `⚠️ Connection issues detected with current WebSocket.\n` +
-          `Error: ${errorCode ? `Code ${errorCode}` : 'Unknown'} - ${errorReason || 'No details'}\n` +
-          `Attempted ${this.evmRetryCount} reconnections.\n` +
-          `Switching to backup URL: ${nextUrl}`
-        );
+        // If we've cycled through all URLs
+        if (this.currentWsUrlIndex === 0 && this.totalReconnectAttempts >= mainnetAxelarWsUrls.length * 3) {
+          await this.switchToPushNotificationMode(errorCode, errorReason);
+          return;
+        }
+        
+        if (nextUrl !== this.lastConnectedUrl) {
+          await this.queueConnectionNotification(
+            `⚠️ Switching to alternate WebSocket URL.\n` +
+            `Previous: ${currentUrl}\n` +
+            `New: ${nextUrl}\n` +
+            `Attempt: ${Math.floor(this.totalReconnectAttempts / mainnetAxelarWsUrls.length) + 1}`
+          );
+        }
       }
       
       const url = mainnetAxelarWsUrls[this.currentWsUrlIndex];
       this.evmWs = new WebSocket(url, this.getWsOptions());
       this.initEvmWebSocketEvents();
       
-      // Send notification about connection issues
-      await this.queueConnectionNotification(
-        `⚠️ WebSocket connection issues detected.\n` +
-        `Error: ${errorCode ? `Code ${errorCode}` : 'Unknown'} - ${errorReason || 'No details'}\n` +
-        `Attempted ${this.evmRetryCount} reconnections.\n` +
-        `Current URL: ${url}`
-      );
-      
     } catch (error) {
       logger.error('Error during EVM WebSocket reconnection:', error);
-      if (this.evmRetryCount >= this.MAX_RETRIES) {
-        await this.queueConnectionNotification(
-          `❌ WebSocket connection failed after ${this.MAX_RETRIES} attempts.\n` +
-          `Error: ${errorCode ? `Code ${errorCode}` : 'Unknown'} - ${errorReason || 'No details'}\n` +
-          `All available URLs have been tried.\n` +
-          `Please check the WebSocket endpoints.`
-        );
-      }
+      this.handleReconnectionError(errorCode, errorReason);
     } finally {
       this.evmIsReconnecting = false;
+    }
+  }
+
+  private async switchToPushNotificationMode(errorCode?: number, errorReason?: string) {
+    this.isPushNotificationMode = true;
+    
+    // Clear any existing recovery timer
+    if (this.recoveryTimer) {
+      clearTimeout(this.recoveryTimer);
+    }
+    
+    // Set up periodic recovery attempts
+    this.recoveryTimer = setTimeout(() => this.attemptRecovery(), this.RECOVERY_ATTEMPT_INTERVAL);
+    
+    await this.queueConnectionNotification(
+      `❌ All WebSocket connection attempts failed.\n` +
+      `Tried all URLs ${Math.floor(this.totalReconnectAttempts / mainnetAxelarWsUrls.length)} times.\n` +
+      `Switching to push notification mode.\n` +
+      `Will attempt recovery in ${this.RECOVERY_ATTEMPT_INTERVAL / 60000} minutes.\n` +
+      `Last error: ${errorCode ? `Code ${errorCode}` : 'Unknown'} - ${errorReason || 'No details'}`
+    );
+  }
+
+  private async attemptRecovery() {
+    logger.info('Attempting WebSocket recovery from push notification mode');
+    
+    // Reset counters for fresh attempt
+    this.evmRetryCount = 0;
+    this.totalReconnectAttempts = 0;
+    this.currentWsUrlIndex = 0;
+    this.isPushNotificationMode = false;
+    
+    try {
+      // Try to connect to the first URL
+      const url = mainnetAxelarWsUrls[0];
+      this.evmWs = new WebSocket(url, this.getWsOptions());
+      this.initEvmWebSocketEvents();
+      
+      await this.queueConnectionNotification(
+        `🔄 Attempting to recover WebSocket connection.\n` +
+        `URL: ${url}\n` +
+        `Next recovery attempt in ${this.RECOVERY_ATTEMPT_INTERVAL / 60000} minutes if unsuccessful.`
+      );
+    } catch (error) {
+      logger.error('Error during WebSocket recovery attempt:', error);
+      // If recovery fails, stay in push notification mode and schedule next attempt
+      this.isPushNotificationMode = true;
+      this.recoveryTimer = setTimeout(() => this.attemptRecovery(), this.RECOVERY_ATTEMPT_INTERVAL);
+    }
+  }
+
+  private async handleReconnectionError(errorCode?: number, errorReason?: string) {
+    // Only switch to push notification mode if we've tried all URLs multiple times
+    if (this.currentWsUrlIndex === 0 && this.totalReconnectAttempts >= mainnetAxelarWsUrls.length * 3) {
+      await this.switchToPushNotificationMode(errorCode, errorReason);
     }
   }
 
@@ -306,16 +362,29 @@ export class AxelarWsClient extends EventEmitter {
     try {
       const now = Date.now();
       const isSuccessNotification = message.startsWith('✅');
+      const isFailureNotification = message.startsWith('❌');
       
-      // Handle case where lastNotificationTime might be in the future due to system clock changes
+      // Reset clock drift
       if (this.lastNotificationTime > now) {
         this.lastNotificationTime = 0;
       }
       
       const timeSinceLastNotification = now - this.lastNotificationTime;
+      const currentUrl = mainnetAxelarWsUrls[this.currentWsUrlIndex];
       
-      // Allow success notifications to bypass cooldown
-      if (isSuccessNotification || this.lastNotificationTime === 0 || timeSinceLastNotification >= this.NOTIFICATION_COOLDOWN) {
+      // Allow notifications to bypass cooldown if:
+      // 1. It's a success notification
+      // 2. It's a complete failure notification (push notification mode)
+      // 3. We're connecting to a different URL than last time
+      // 4. It's our first notification
+      // 5. We've passed the cooldown period
+      if (
+        isSuccessNotification ||
+        isFailureNotification ||
+        currentUrl !== this.lastConnectedUrl ||
+        this.lastNotificationTime === 0 ||
+        timeSinceLastNotification >= this.NOTIFICATION_COOLDOWN
+      ) {
         const wsStatus = this.evmWs?.readyState;
         const statusMap = {
           [WebSocket.CONNECTING]: 'CONNECTING',
@@ -327,10 +396,12 @@ export class AxelarWsClient extends EventEmitter {
         const jobData = {
           message,
           timestamp: new Date().toISOString(),
-          currentUrl: mainnetAxelarWsUrls[this.currentWsUrlIndex],
+          currentUrl,
           retryCount: this.evmRetryCount,
+          totalAttempts: this.totalReconnectAttempts,
           status: wsStatus !== undefined ? statusMap[wsStatus] : 'UNKNOWN',
-          nextRetryTime: new Date(now + this.NOTIFICATION_COOLDOWN).toISOString()
+          isPushNotificationMode: this.isPushNotificationMode,
+          nextRetryTime: this.isPushNotificationMode ? null : new Date(now + this.NOTIFICATION_COOLDOWN).toISOString()
         };
         
         logger.info('Queueing WebSocket notification with data:', {
@@ -345,8 +416,14 @@ export class AxelarWsClient extends EventEmitter {
           jobData
         );
         
-        // Update timestamp after successful queue
+        // Update tracking variables after successful queue
         this.lastNotificationTime = now;
+        if (isSuccessNotification) {
+          this.lastConnectedUrl = currentUrl;
+          this.isPushNotificationMode = false;
+          this.totalReconnectAttempts = 0;
+        }
+        
         logger.info('Successfully queued WebSocket connection notification');
       } else {
         const timeLeft = Math.ceil((this.NOTIFICATION_COOLDOWN - timeSinceLastNotification) / 1000);
@@ -377,9 +454,14 @@ export class AxelarWsClient extends EventEmitter {
       this.amplifierWs = null;
     }
     
+    if (this.recoveryTimer) {
+      clearTimeout(this.recoveryTimer);
+      this.recoveryTimer = null;
+    }
+    
     this.evmRetryCount = 0;
     this.evmIsReconnecting = false;
-    this.amplifierRetryCount = 0;
-    this.amplifierIsReconnecting = false;
+    this.totalReconnectAttempts = 0;
+    this.isPushNotificationMode = false;
   }
 } 
