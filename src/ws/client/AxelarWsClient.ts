@@ -25,10 +25,12 @@ export class AxelarWsClient extends EventEmitter {
   private readonly RECONNECT_BASE_DELAY = 1000; // 1 second
   private readonly MAX_RECONNECT_DELAY = 300000; // 5 minutes
   private readonly NOTIFICATION_COOLDOWN = 360000; // 1 hour
+  private readonly RECOVERY_ATTEMPT_INTERVAL = 1800000; // 30 minutes
   private lastNotificationTime = 0;
   private lastConnectedUrl: string | null = null;
   private totalReconnectAttempts = 0;
   private isPushNotificationMode = false;
+  private recoveryTimer: NodeJS.Timeout | null = null;
 
   constructor() {
     super();
@@ -243,13 +245,7 @@ export class AxelarWsClient extends EventEmitter {
         
         // If we've cycled through all URLs
         if (this.currentWsUrlIndex === 0 && this.totalReconnectAttempts >= mainnetAxelarWsUrls.length * 3) {
-          this.isPushNotificationMode = true;
-          await this.queueConnectionNotification(
-            `❌ All WebSocket connection attempts failed.\n` +
-            `Tried all URLs ${Math.floor(this.totalReconnectAttempts / mainnetAxelarWsUrls.length)} times.\n` +
-            `Switching to push notification mode.\n` +
-            `Last error: ${errorCode ? `Code ${errorCode}` : 'Unknown'} - ${errorReason || 'No details'}`
-          );
+          await this.switchToPushNotificationMode(errorCode, errorReason);
           return;
         }
         
@@ -275,17 +271,58 @@ export class AxelarWsClient extends EventEmitter {
     }
   }
 
+  private async switchToPushNotificationMode(errorCode?: number, errorReason?: string) {
+    this.isPushNotificationMode = true;
+    
+    // Clear any existing recovery timer
+    if (this.recoveryTimer) {
+      clearTimeout(this.recoveryTimer);
+    }
+    
+    // Set up periodic recovery attempts
+    this.recoveryTimer = setTimeout(() => this.attemptRecovery(), this.RECOVERY_ATTEMPT_INTERVAL);
+    
+    await this.queueConnectionNotification(
+      `❌ All WebSocket connection attempts failed.\n` +
+      `Tried all URLs ${Math.floor(this.totalReconnectAttempts / mainnetAxelarWsUrls.length)} times.\n` +
+      `Switching to push notification mode.\n` +
+      `Will attempt recovery in ${this.RECOVERY_ATTEMPT_INTERVAL / 60000} minutes.\n` +
+      `Last error: ${errorCode ? `Code ${errorCode}` : 'Unknown'} - ${errorReason || 'No details'}`
+    );
+  }
+
+  private async attemptRecovery() {
+    logger.info('Attempting WebSocket recovery from push notification mode');
+    
+    // Reset counters for fresh attempt
+    this.evmRetryCount = 0;
+    this.totalReconnectAttempts = 0;
+    this.currentWsUrlIndex = 0;
+    this.isPushNotificationMode = false;
+    
+    try {
+      // Try to connect to the first URL
+      const url = mainnetAxelarWsUrls[0];
+      this.evmWs = new WebSocket(url, this.getWsOptions());
+      this.initEvmWebSocketEvents();
+      
+      await this.queueConnectionNotification(
+        `🔄 Attempting to recover WebSocket connection.\n` +
+        `URL: ${url}\n` +
+        `Next recovery attempt in ${this.RECOVERY_ATTEMPT_INTERVAL / 60000} minutes if unsuccessful.`
+      );
+    } catch (error) {
+      logger.error('Error during WebSocket recovery attempt:', error);
+      // If recovery fails, stay in push notification mode and schedule next attempt
+      this.isPushNotificationMode = true;
+      this.recoveryTimer = setTimeout(() => this.attemptRecovery(), this.RECOVERY_ATTEMPT_INTERVAL);
+    }
+  }
+
   private async handleReconnectionError(errorCode?: number, errorReason?: string) {
     // Only switch to push notification mode if we've tried all URLs multiple times
     if (this.currentWsUrlIndex === 0 && this.totalReconnectAttempts >= mainnetAxelarWsUrls.length * 3) {
-      this.isPushNotificationMode = true;
-      await this.queueConnectionNotification(
-        `❌ WebSocket connection failed after trying all URLs.\n` +
-        `Tried each URL ${Math.floor(this.totalReconnectAttempts / mainnetAxelarWsUrls.length)} times.\n` +
-        `Total attempts: ${this.totalReconnectAttempts}\n` +
-        `Switching to push notification mode.\n` +
-        `Last error: ${errorCode ? `Code ${errorCode}` : 'Unknown'} - ${errorReason || 'No details'}`
-      );
+      await this.switchToPushNotificationMode(errorCode, errorReason);
     }
   }
 
@@ -417,9 +454,14 @@ export class AxelarWsClient extends EventEmitter {
       this.amplifierWs = null;
     }
     
+    if (this.recoveryTimer) {
+      clearTimeout(this.recoveryTimer);
+      this.recoveryTimer = null;
+    }
+    
     this.evmRetryCount = 0;
     this.evmIsReconnecting = false;
-    this.amplifierRetryCount = 0;
-    this.amplifierIsReconnecting = false;
+    this.totalReconnectAttempts = 0;
+    this.isPushNotificationMode = false;
   }
 } 
